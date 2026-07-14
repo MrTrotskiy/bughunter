@@ -46,3 +46,5 @@ Each live capability guard → test path (revert-verified).
 - the off-origin skip is http(s)-scheme-gated: a javascript: anchor is fired, not dropped as external — tests/live/scheme-gate.test.mjs
 - a cookie/consent overlay is dismissed so the underlying control becomes reachable; a non-consent accept-text control is left alone — tests/live/overlay.test.mjs
 - the snapshot classifies each control's durable locator (testid/id/role-name/css) and gates test-id uniqueness (page-unique discriminator vs shared marker) — tests/live/locator.test.mjs
+- debug capture rides an act (before/after key-frames + rect + per-phase timings) WITHOUT perturbing causal attribution (real edge credited, in-window poll rejected) — tests/live/capture-causal.test.mjs
+- (unit) the debug admin serves the trail behind a loopback Host-guard + no-CORS + resolved-path containment; a foreign Host is 403'd — tests/unit/admin-server.test.mjs
