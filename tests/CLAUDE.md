@@ -43,3 +43,6 @@ Each live capability guard → test path (revert-verified).
 - reused page (persistentStep) does not mis-credit an earlier act's foreground path to a later act's same-path background poll — tests/live/cross-act.test.mjs
 - the fire path fast-fails NOT_VISIBLE on a DOM-present-but-hidden control instead of hanging the 30s click timeout — tests/live/not-visible.test.mjs
 - recon crawls multiple same-origin routes, attributes controls to the LANDED route, and never fires an off-origin link — tests/live/multi-route.test.mjs
+- the off-origin skip is http(s)-scheme-gated: a javascript: anchor is fired, not dropped as external — tests/live/scheme-gate.test.mjs
+- a cookie/consent overlay is dismissed so the underlying control becomes reachable; a non-consent accept-text control is left alone — tests/live/overlay.test.mjs
+- the snapshot classifies each control's durable locator (testid/id/role-name/css) and gates test-id uniqueness (page-unique discriminator vs shared marker) — tests/live/locator.test.mjs

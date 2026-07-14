@@ -30,6 +30,6 @@ Target: $ARGUMENTS
 ## Boundaries (state honestly, do not paper over)
 - Multi-route, same-origin: recon follows same-origin navigation and maps every page reachable by a DIRECT navigation, attributing each page's controls to its own route. Off-origin links are recorded (`external-link`) but never fired.
 - Direct-navigation reach only: controls (or whole routes) revealed only after an in-app CLIENT-state action (a row's Edit after a search; an SPA view reachable only by clicking, not by URL) are DISCOVERED but recorded `unreachable-coldstart` — reaching them is the stay-on-page work, not yet built.
-- No overlay dismissal yet: a cookie/consent banner that intercepts clicks leaves the controls beneath it recorded `not-visible` until dismissed — that dismissal step is not built.
+- Cookie/consent overlays are dismissed automatically before each snapshot/act (curated framework accept buttons + a consent-scoped accept-text fallback), so a consent wall no longer hides the controls beneath it. A fully custom banner the curated list misses still leaves its controls `not-visible` (honest, no silent skip).
 - No login: recon does not authenticate. It maps the surface reachable without logging in. Credentials in `test.md` are NOT used here.
 - Recon maps behavior; it does NOT fire destructive/logout/payment controls or fuzz inputs. That is later-phase work.

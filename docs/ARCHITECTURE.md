@@ -9,8 +9,8 @@ One incremental **graph** is the central artifact. It grows as the agent actuall
 Single identity model: **DOM/CSS via `page.evaluate`** is the source of truth; ARIA role/name are attributes. Two-level identity:
 - `Route` — a URL/page.
 - `State` — a UI state within a route (modal open, tab selected); states nest.
-- `Element` — a control at TEMPLATE level (`templateSelector`, structural indices normalized out), carrying `instances[]`.
-- `Instance` — one occurrence (`instanceSelector` + `instanceKey`), so a 50-row table is 50 addressable instances of one template.
+- `Element` — a control at TEMPLATE level (`templateSelector`, structural indices normalized out), carrying `instances[]` and a `locator` KIND.
+- `Instance` — one occurrence (`instanceSelector` + `instanceKey`), so a 50-row table is 50 addressable instances of one template. Each carries a `locator` — the most DURABLE handle Phase-2 should generate on (test-id > strictly-stable `#id` > role+name > css), with a two-level uniqueness gate (page-unique test-id = discriminator; shared across a template's rows = marker). Locator is a DERIVED attribute; identity still keys on the selector string, so it never churns ids/edges.
 - `Request` — `{method, urlPattern}` (query values and numeric/uuid path segments masked to `:param`).
 - Edge `Element --triggers--> Request` with `provenance:"causal"`.
 
@@ -31,6 +31,7 @@ CDP-dependent (chromium); degrades to token-only on other engines.
 - `whats-new` — DOM-diff + causal-token capture, single manual step (BUILT, `lib/recon/whats-new.mjs`).
 - `step` — the shared browser step primitive: `snapshotStep` + `actStep`, the ONE causal act+capture both the manual CLI and the loop use. Attributes revealed controls to the route the act LANDED on (`routeKey(page.url())`) and refuses to fire off-origin links (BUILT, `lib/recon/step.mjs`).
 - `scope` — route identity + origin boundary: `routeKey(url)` (navigable key — query/plain-anchor dropped, path-like SPA hash kept, concrete path NOT masked) and `sameOrigin(a,b)` (RFC 6454 scheme+host+port). The single source of route identity the multi-route crawl hangs on (BUILT, `lib/recon/scope.mjs`).
+- `overlays` — `dismissOverlays(page)`: clears a cookie/consent wall (curated framework accept-selectors + a consent-scoped accept-text fallback) so it stops intercepting clicks on every underlying control. Runs after navigation, BEFORE the causal window (the accept-click's request is idle-tagged, never a causal edge) (BUILT, `lib/recon/overlays.mjs`).
 - `frontier` — receptive-field selection (next unexplored templates) + honest discovered/explored/remaining denominator (BUILT, `lib/recon/frontier.mjs`).
 - `recon-loop` — Phase-1 loop-driver: nextBatch → act → markExplored → stop on empty-frontier/budget. Pure control-flow; the browser step and the LLM judge are injected (BUILT, `lib/recon/recon-loop.mjs`).
 - `recon-run` — loop runner CLI: baseline snapshot → drive `recon-loop` over a COLD-START step (fresh page per act; graph = cross-step memory) (BUILT, `lib/recon/recon-run.mjs`).
