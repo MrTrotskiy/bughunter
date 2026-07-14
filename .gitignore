@@ -1,0 +1,15 @@
+node_modules/
+state/
+.env
+.env.*
+.DS_Store
+*.log
+playwright-report/
+test-results/
+.claude/settings.local.json
+
+# Local draft notes (not source)
+docs/draft/
+
+# Local test file — targets + live credentials, never commit
+test.md
