@@ -47,6 +47,12 @@ have no Write access, by design (file-only handoff via state/graph.json).
 
 State dir is `BUGHUNTER_STATE_DIR` (or `state/`). Localhost fixtures need `PW_ALLOW_PRIVATE=1`.
 
+0. SHARED BROWSER (recommended, idempotent): `node lib/recon/recon-session.mjs --start`
+   — boots ONE chromium daemon for the whole run so every `whats-new` below CONNECTS to
+   it instead of launching its own browser per act (the resource win). Safe to call again
+   (no-op if already running; reaps a dead one). If skipped, each `whats-new` cold-launches
+   — correct, just heavier. The RUN is closed with `node lib/recon/recon-session.mjs --stop`
+   (the run driver's job, not per-batch — do NOT stop mid-run).
 1. BASELINE (first invocation on a fresh graph only): `node lib/recon/whats-new.mjs --url=<url>`
    — snapshots the initially-present controls into the graph and seeds the frontier.
 2. EMIT the receptive field: `node lib/recon/frontier-cli.mjs --emit [--size=<2-5>]`
