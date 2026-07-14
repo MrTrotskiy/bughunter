@@ -6,7 +6,9 @@
 //   observation on a Delete/Logout/Pay control (a mis-judging agent cannot fire it),
 //   while still allowing it to be recorded as NOT acted; (3) a value-less --template
 //   flag is rejected, not silently written to templateId 1; (4) --state-change=false is
-//   stored as false, not coerced to true.
+//   stored as false, not coerced to true; (5) an unreachable-coldstart observation is
+//   flagged `unreachable`, so the agent path does not inflate genuine coverage (parity
+//   with the node-loop denominator).
 // FAIL-ON-REVERT: drop the DANGER_FLOOR refusal → an ACTED observation on "Delete" is
 //   accepted → assert.throws fails "acting on a Delete control must be refused". Also:
 //   drop markExplored → "observed template still in the frontier"; revert the boolean
@@ -19,6 +21,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { makeGraph, mergeSnapshot, saveGraph, loadGraph } from '../../lib/graph/graph-store.mjs';
+import { frontierStats } from '../../lib/recon/frontier.mjs';
 import { observe } from '../../lib/recon/observe.mjs';
 import { emit } from '../../lib/recon/frontier-cli.mjs';
 
@@ -60,6 +63,25 @@ test('observe records semantics, marks explored, and drains the template from th
   assert.equal(g.elements[3].semantics.effect, 'reveal');
   assert.equal(g.elements[3].explored, true);
   assert.deepEqual(emit().batch.map((b) => b.templateId), [], 'observed template still in the frontier');
+});
+
+// Guards: honest-coverage PARITY with the node-loop path. A control the agent could not
+//   reach (effect=unreachable-coldstart) is drained from the frontier but flagged
+//   `unreachable`, so it is NOT counted as genuine `explored` coverage — the agent path
+//   must not report 100% when a control was never actually reached.
+// FAIL-ON-REVERT: drop the `markUnreachable` call in observe.mjs → an unreachable-coldstart
+//   observation counts as explored → stats.unreachable is 0, stats.explored is 1 →
+//   "unreachable-coldstart is flagged, not counted as explored" fails.
+test('an unreachable-coldstart observation is honest coverage, not inflated explored', (t) => {
+  const { graphPath } = withState(t, [searchEl]);
+  const res = observe({ template: 3, purpose: 'edit behind in-app state', danger: 'safe', effect: 'unreachable-coldstart', acted: 'false' });
+  assert.equal(res.unreachable, true, 'observe reports the never-reached control as unreachable');
+
+  const g = loadGraph(graphPath);
+  assert.deepEqual(emit().batch.map((b) => b.templateId), [], 'drained from the frontier (not re-emitted)');
+  const stats = frontierStats(g);
+  assert.equal(stats.unreachable, 1, 'unreachable-coldstart is flagged, not counted as explored');
+  assert.equal(stats.explored, 0, 'a control that was never reached is not genuine coverage');
 });
 
 test('destructive backstop refuses an ACTED observation on a Delete control', (t) => {
