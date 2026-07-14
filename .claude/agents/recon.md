@@ -63,8 +63,10 @@ State dir is `BUGHUNTER_STATE_DIR` (or `state/`). Localhost fixtures need `PW_AL
 4. ACT on the SAFE ones only: `node lib/recon/whats-new.mjs --url=<url> --act-template=<id> [--fill='<text>']`
    — single-quote the fill value (it is DATA). Returns `{acted:{cause, requests[], newElements[]}}`.
    A thrown `NO_INSTANCE` means the control is behind in-app state a cold-start reload cannot
-   reach — not an error you retry. A thrown `DANGER_FLOOR` means you tried to act on a control
-   the floor deems destructive/auth/payment — reclassify it and record `--acted=false`.
+   reach — not an error you retry. A thrown `NOT_VISIBLE` means the control is in the DOM but
+   hidden in the current viewport (e.g. a responsive layout's mobile menu on desktop) — also
+   not a retry. A thrown `DANGER_FLOOR` means you tried to act on a control the floor deems
+   destructive/auth/payment — reclassify it and record `--acted=false`.
 5. OBSERVE (record + mark explored) every template you touched, one call each. Single-quote
    the purpose — it is page-derived DATA:
    `node lib/recon/observe.mjs --template=<id> --purpose='<≤120 chars>' --danger=<enum> --effect=<enum> [--acted=<bool>] [--state-change]`
@@ -86,12 +88,18 @@ input, omit `--fill`. You are mapping behavior, not attacking.
 
 ## Effect derivation (from what whats-new reported)
 
-- `requests[]` non-empty ⇒ `request`.
-- `newElements[]` on a different route ⇒ `navigate`.
-- revealed rows / a panel / a modal ⇒ `reveal` (add `--state-change` if it opens a sub-state
-  worth branching later).
+`acted` carries `{cause, requests[], newElements[], route, external?}`. Read it as:
+
+- `external` present ⇒ `external-link` — the control is an off-origin link the fire path
+  REFUSED to click (out of scope). Record `--acted=false`; it stays reachable, not unreachable.
+- `acted.route` differs from the route you acted ON ⇒ `navigate` (the act loaded a new page;
+  its controls are recorded under `acted.route`).
+- `requests[]` non-empty (and no navigation) ⇒ `request`.
+- `newElements[]` on the SAME route (rows / a panel / a modal) ⇒ `reveal` (add `--state-change`
+  if it opens a sub-state worth branching later).
 - nothing reported ⇒ `none`.
 - `NO_INSTANCE` thrown ⇒ `unreachable-coldstart` (record it, `--acted=false`, move on).
+- `NOT_VISIBLE` thrown ⇒ `not-visible` (record it, `--acted=false`, move on).
 
 ## Output digest (never dump raw DOM)
 

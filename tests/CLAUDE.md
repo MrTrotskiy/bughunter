@@ -41,3 +41,5 @@ Each live capability guard → test path (revert-verified).
 - attach() connects to the shared daemon (mode 'attached'), one process serves N acts — tests/live/daemon.test.mjs
 - the CDP initiator classifier still rejects an in-window poll over a chromium.connect() session — tests/live/daemon.test.mjs
 - reused page (persistentStep) does not mis-credit an earlier act's foreground path to a later act's same-path background poll — tests/live/cross-act.test.mjs
+- the fire path fast-fails NOT_VISIBLE on a DOM-present-but-hidden control instead of hanging the 30s click timeout — tests/live/not-visible.test.mjs
+- recon crawls multiple same-origin routes, attributes controls to the LANDED route, and never fires an off-origin link — tests/live/multi-route.test.mjs
