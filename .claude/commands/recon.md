@@ -10,22 +10,25 @@ Target: $ARGUMENTS
 ## Setup
 1. Resolve the target URL from the argument above. If it is empty, ask the user for a URL and stop until they answer. If it is a localhost / 127.0.0.1 / private host, every command below MUST be prefixed with `PW_ALLOW_PRIVATE=1` (the SSRF gate refuses private hosts otherwise). Public URL → no prefix.
 2. State lives in the default `state/` dir (gitignored) — do NOT set BUGHUNTER_STATE_DIR. If the user asks for a clean run, `rm -f state/graph.json state/element-ids.json` first.
-3. Start the shared browser daemon: `node lib/recon/recon-session.mjs --start`. Confirm `{ok:true}`. This is ONE chromium for the whole run — every `whats-new` below connects to it instead of launching its own.
+3. Open a debug-capture run: `node lib/debug/trace-cli.mjs --open --target=<url>` → capture the printed `runId`. From here on, EVERY recon command (the baseline, `frontier-cli`, and the recon subagent's `whats-new`/`observe`) MUST carry `BUGHUNTER_RUN_ID=<runId>` in its env prefix — that is what writes the trail the admin replays. So the full prefix is `BUGHUNTER_RUN_ID=<runId>` (public) or `PW_ALLOW_PRIVATE=1 BUGHUNTER_RUN_ID=<runId>` (localhost/private). Do NOT prefix `recon-session` or `report` — the trail is only for the acting CLIs.
+4. Start the admin viewer in the background: `node lib/debug/admin-server.mjs --port=7666 &`. It prints `{ok:true,"url":"http://127.0.0.1:7666/?t=<token>"}` — the URL carries a per-startup ACCESS TOKEN that gates the data routes. Give the user that EXACT url (with the `?t=…`) to watch this run — graph growth, the agent's walk, what it tested, before/after screenshots, logs, and speed (it live-polls, so it fills in as the crawl proceeds). If the command errors with `EADDRINUSE`/listen-failed, an admin is already running on that port — reuse it (its own earlier url/token), do NOT start a second.
+5. Start the shared browser daemon: `node lib/recon/recon-session.mjs --start`. Confirm `{ok:true}`. This is ONE chromium for the whole run — every `whats-new` below connects to it instead of launching its own.
 
 ## Baseline
-4. `node lib/recon/whats-new.mjs --url=<url>` — snapshots the initially-present controls into the graph and seeds the frontier. Report the baseline counts (`total`, `new`, `opaque`).
+6. `BUGHUNTER_RUN_ID=<runId> node lib/recon/whats-new.mjs --url=<url>` — snapshots the initially-present controls into the graph, seeds the frontier, and writes the baseline `route` event. Report the baseline counts (`total`, `new`, `opaque`).
 
 ## Recon loop (the AI perceptron loop)
-5. Repeat these steps until the frontier drains, up to a hard cap of 20 iterations:
-   a. Check what is left: `node lib/recon/frontier-cli.mjs --emit`. If `batch` is EMPTY (`stats.remaining` 0), the frontier is drained — leave the loop.
-   b. Otherwise invoke the **`recon` subagent** (the Agent tool, subagent_type `recon`) to study ONE receptive field. In its prompt give it: the target URL, the exact env prefix to use on every command (`PW_ALLOW_PRIVATE=1` if localhost, plus the repo cwd), and the instruction that a daemon is already running so it must NOT touch `recon-session` — only `whats-new` / `frontier-cli` / `observe`. It studies 2-5 NEW templates, acts on the safe ones, writes purpose/danger/effect, and returns a short digest. Relay one line of that digest.
+7. Repeat these steps until the frontier drains, up to a hard cap of 20 iterations:
+   a. Check what is left: `BUGHUNTER_RUN_ID=<runId> node lib/recon/frontier-cli.mjs --emit`. If `batch` is EMPTY (`stats.remaining` 0), the frontier is drained — leave the loop.
+   b. Otherwise invoke the **`recon` subagent** (the Agent tool, subagent_type `recon`) to study ONE receptive field. In its prompt give it: the target URL, the exact env prefix to use on every command (`BUGHUNTER_RUN_ID=<runId>`, plus `PW_ALLOW_PRIVATE=1` if localhost, plus the repo cwd), and the instruction that a daemon is already running so it must NOT touch `recon-session` — only `whats-new` / `frontier-cli` / `observe`. It studies 2-5 NEW templates, acts on the safe ones, writes purpose/danger/effect, and returns a short digest. Relay one line of that digest.
    c. Continue the loop. The graph persists between invocations, so `explored` accumulates and each pass sees fewer unexplored templates.
-6. If you hit the 20-iteration cap with templates still remaining, stop looping and say so honestly (the run was budget-bounded, not exhaustive).
+8. If you hit the 20-iteration cap with templates still remaining, stop looping and say so honestly (the run was budget-bounded, not exhaustive).
 
 ## Teardown + report
-7. ALWAYS finish by stopping the daemon: `node lib/recon/recon-session.mjs --stop` — even if a step above failed. Never leave an orphaned chromium.
-8. `node lib/recon/report.mjs` — print the coverage report: honest denominator (explored / discovered / unreachable / remaining), per-route controls with danger/effect/purpose, and the causal control→endpoint map.
-9. Summarize for the user: how many templates were explored vs discovered, which controls are `unreachable-coldstart` (behind in-app state a cold-start reload can't reach — the known Phase-1 boundary), any controls skipped as destructive/auth/payment, and the causal edges found. This graph is the input to Phase-2 test-case design.
+9. ALWAYS finish by stopping the daemon: `node lib/recon/recon-session.mjs --stop` — even if a step above failed. Never leave an orphaned chromium.
+10. Close the debug run (stamps it finished with the final coverage stats): `node lib/debug/trace-cli.mjs --close --run=<runId>`.
+11. `node lib/recon/report.mjs` — print the coverage report: honest denominator (explored / discovered / unreachable / remaining), per-route controls with danger/effect/purpose, and the causal control→endpoint map.
+12. Summarize for the user: how many templates were explored vs discovered, which controls are `unreachable-coldstart` (behind in-app state a cold-start reload can't reach — the known Phase-1 boundary), any controls skipped as destructive/auth/payment, and the causal edges found. Point them again at the tokenized admin url from step 4 (`http://127.0.0.1:7666/?t=<token>`) to inspect the run visually (the admin keeps serving `state/runs/` until they stop the process or the session ends). This graph is the input to Phase-2 test-case design.
 
 ## Boundaries (state honestly, do not paper over)
 - Multi-route, same-origin: recon follows same-origin navigation and maps every page reachable by a DIRECT navigation, attributing each page's controls to its own route. Off-origin links are recorded (`external-link`) but never fired.
