@@ -67,12 +67,12 @@ test('nextBatch skips templates with no addressable instance', () => {
 
 test('frontier drains as templates are explored; denominator does not collapse', () => {
   const g = seed(3);
-  assert.deepEqual(frontierStats(g), { discovered: 3, explored: 0, unreachable: 0, remaining: 3 });
+  assert.deepEqual(frontierStats(g), { discovered: 3, explored: 0, unreachable: 0, remaining: 3, routes: 1 });
   markExplored(g, 1);
   markExplored(g, 2);
-  assert.deepEqual(frontierStats(g), { discovered: 3, explored: 2, unreachable: 0, remaining: 1 });
+  assert.deepEqual(frontierStats(g), { discovered: 3, explored: 2, unreachable: 0, remaining: 1, routes: 1 });
   markExplored(g, 3);
-  assert.deepEqual(frontierStats(g), { discovered: 3, explored: 3, unreachable: 0, remaining: 0 });
+  assert.deepEqual(frontierStats(g), { discovered: 3, explored: 3, unreachable: 0, remaining: 0, routes: 1 });
   assert.equal(nextBatch(g).length, 0, 'empty frontier → loop terminates');
 });
 
@@ -81,5 +81,5 @@ test('an unreachable-drained template counts as unreachable, not genuine coverag
   markExplored(g, 1);
   markUnreachable(g, 1, 'NO_INSTANCE'); // drained from the frontier but never actually reached
   markExplored(g, 2); // genuinely explored
-  assert.deepEqual(frontierStats(g), { discovered: 2, explored: 1, unreachable: 1, remaining: 0 });
+  assert.deepEqual(frontierStats(g), { discovered: 2, explored: 1, unreachable: 1, remaining: 0, routes: 1 });
 });

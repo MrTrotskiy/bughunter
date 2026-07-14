@@ -41,12 +41,12 @@ function withStateDir(t, n) {
 test('emitted denominator does not collapse as templates are explored', (t) => {
   const { g, graphPath } = withStateDir(t, 3);
   saveGraph(graphPath, g);
-  assert.deepEqual(emit().stats, { discovered: 3, explored: 0, unreachable: 0, remaining: 3 });
+  assert.deepEqual(emit().stats, { discovered: 3, explored: 0, unreachable: 0, remaining: 3, routes: 1 });
 
   markExplored(g, 1);
   markExplored(g, 2);
   saveGraph(graphPath, g);
-  assert.deepEqual(emit().stats, { discovered: 3, explored: 2, unreachable: 0, remaining: 1 }, 'discovered must not shrink');
+  assert.deepEqual(emit().stats, { discovered: 3, explored: 2, unreachable: 0, remaining: 1, routes: 1 }, 'discovered must not shrink');
 });
 
 test('batch is capped at the receptive-field ceiling regardless of --size', (t) => {

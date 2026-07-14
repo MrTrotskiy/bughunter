@@ -84,6 +84,23 @@ test('an unreachable-coldstart observation is honest coverage, not inflated expl
   assert.equal(stats.explored, 0, 'a control that was never reached is not genuine coverage');
 });
 
+// Guards: a present-but-hidden control (effect=not-visible — the fire path threw
+//   NOT_VISIBLE) is honest-coverage too: drained yet flagged `unreachable`, so a run full
+//   of responsive/hidden duplicates does not report inflated coverage.
+// FAIL-ON-REVERT: drop 'not-visible' from the UNREACHED set in observe.mjs → a not-visible
+//   observation counts as explored → stats.unreachable is 0, stats.explored is 1 →
+//   "not-visible is flagged, not counted as explored" fails.
+test('a not-visible observation is honest coverage, not inflated explored', (t) => {
+  const { graphPath } = withState(t, [searchEl]);
+  const res = observe({ template: 3, purpose: 'hidden mobile-menu item on desktop', danger: 'safe', effect: 'not-visible', acted: 'false' });
+  assert.equal(res.unreachable, true, 'observe reports the hidden control as unreachable');
+
+  const g = loadGraph(graphPath);
+  const stats = frontierStats(g);
+  assert.equal(stats.unreachable, 1, 'not-visible is flagged, not counted as explored');
+  assert.equal(stats.explored, 0, 'a control never actually clicked is not genuine coverage');
+});
+
 test('destructive backstop refuses an ACTED observation on a Delete control', (t) => {
   withState(t, [deleteEl]);
   assert.throws(

@@ -51,7 +51,7 @@ test('drains a static frontier, each template acted exactly once', async () => {
   const ids = actedIds(res).sort((a, b) => a - b);
   assert.deepEqual(ids, [1, 2, 3]);
   assert.equal(res.stopped, 'frontier-drained');
-  assert.deepEqual(res.stats, { discovered: 3, explored: 3, unreachable: 0, remaining: 0 });
+  assert.deepEqual(res.stats, { discovered: 3, explored: 3, unreachable: 0, remaining: 0, routes: 1 });
 });
 
 test('no template is acted twice across the run', async () => {
@@ -99,7 +99,7 @@ test('an errored step marks the template unreachable, not genuine coverage', asy
   const g = seed(2);
   const res = await reconLoop(g, { step: throwingStep });
   assert.equal(res.stopped, 'frontier-drained'); // still drains → terminates
-  assert.deepEqual(res.stats, { discovered: 2, explored: 0, unreachable: 2, remaining: 0 });
+  assert.deepEqual(res.stats, { discovered: 2, explored: 0, unreachable: 2, remaining: 0, routes: 1 });
   assert.ok(res.steps.flat().every((a) => a.error), 'each errored step surfaces its error, not swallowed');
 });
 
