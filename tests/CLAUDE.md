@@ -37,3 +37,7 @@ Each live capability guard → test path (revert-verified).
 - recon loop composes frontier + causal capture on a live browser: attributes the caused edge, drains the frontier — tests/live/recon-loop.test.mjs
 - recon tool chain (baseline → emit → act → observe) persists causal edge + semantics and drains the observed template — tests/live/recon-sequence.test.mjs
 - the fire path refuses to click a destructive control and fires no request (DANGER_FLOOR before the click) — tests/live/danger-gate.test.mjs
+- one browser for the whole crawl, not one per act (launch-count guard) — tests/live/recon-loop.test.mjs
+- attach() connects to the shared daemon (mode 'attached'), one process serves N acts — tests/live/daemon.test.mjs
+- the CDP initiator classifier still rejects an in-window poll over a chromium.connect() session — tests/live/daemon.test.mjs
+- reused page (persistentStep) does not mis-credit an earlier act's foreground path to a later act's same-path background poll — tests/live/cross-act.test.mjs
