@@ -73,6 +73,40 @@ test('report: bidirectional causal control→endpoint map', (t) => {
 // FAIL-ON-REVERT: drop the oneLine() collapse in report.mjs → the raw newlines survive →
 //   the "[5]" template line no longer contains the collapsed "timeout - waiting" fragment
 //   (it spills onto separate physical lines) → the single-line assertion fails.
+// Guards: report surfaces observed response status(es) + resource type — in the --json
+//   request objects AND on the text causal-map line — so the Phase-2 input shows what each
+//   endpoint returned, not just its method+path.
+// FAIL-ON-REVERT: drop the `statuses`/`rtype` render in report.mjs's causal-map loop → the
+//   "GET /api/list" line no longer carries "200 xhr" → the assertion fails.
+test('report: observed response status + resource type are surfaced', (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'bughunter-rep2-'));
+  const prev = process.env.BUGHUNTER_STATE_DIR;
+  process.env.BUGHUNTER_STATE_DIR = dir;
+  t.after(() => {
+    rmSync(dir, { recursive: true, force: true });
+    if (prev === undefined) delete process.env.BUGHUNTER_STATE_DIR; else process.env.BUGHUNTER_STATE_DIR = prev;
+  });
+  const g = makeGraph();
+  mergeSnapshot(g, '/', [
+    { templateId: 3, instanceId: 4, templateSelector: 'button#list', role: 'button', name: 'List', instanceKey: '#1', instanceSelector: 'button#list' },
+  ]);
+  addTrigger(g, 3, { method: 'GET', urlPattern: '/api/list', status: 200, resourceType: 'XHR' });
+  saveGraph(path.join(dir, 'graph.json'), g);
+
+  const rep = report({ json: true });
+  const req = rep.requests.find((r) => r.key === 'GET /api/list');
+  assert.deepEqual(req.statuses, { '200': 1 }, 'the status histogram is in the JSON report');
+  assert.equal(req.resourceType, 'XHR', 'the resource type is in the JSON report');
+
+  const text = report({ json: false });
+  // The causal-map line (`[3] → GET /api/list  200 xhr`), not the control line which also
+  // lists the endpoint it causes.
+  const line = text.split('\n').find((l) => l.includes('[3] → GET /api/list'));
+  assert.ok(line, 'the causal-map line for the endpoint exists');
+  assert.ok(line.includes('200'), 'the status is rendered on the causal-map line');
+  assert.ok(line.includes('xhr'), 'the resource type is rendered (lowercased) on the causal-map line');
+});
+
 test('report: a multi-line unreachable reason renders on one line', (t) => {
   const dir = mkdtempSync(path.join(tmpdir(), 'bughunter-rep1-'));
   const prev = process.env.BUGHUNTER_STATE_DIR;

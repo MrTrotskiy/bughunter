@@ -47,6 +47,12 @@ Each live capability guard → test path (revert-verified).
 - a cookie/consent overlay is dismissed so the underlying control becomes reachable; a non-consent accept-text control is left alone — tests/live/overlay.test.mjs
 - the snapshot classifies each control's durable locator (testid/id/role-name/css) and gates test-id uniqueness (page-unique discriminator vs shared marker) — tests/live/locator.test.mjs
 - debug capture rides an act (before/after key-frames + rect + per-phase timings) WITHOUT perturbing causal attribution (real edge credited, in-window poll rejected) — tests/live/capture-causal.test.mjs
+- request/response BODY capture (opt-in) writes REDACTED bodies to the trail (files), keeps requests[] body-free, and re-proves the in-window poll is still rejected with capture ON; default OFF captures nothing; text/html is off-allowlist — tests/live/response-body.test.mjs
+- endCause freezes the kept-set (selectKept) BEFORE any body await, so a mid-await verdict flip adds no phantom edge (white-box tracker-seam) — tests/live/response-body.test.mjs
+- (unit) selectKept applies token + initiator + static filters synchronously (the kept-set decision is await-free) — tests/unit/select-kept.test.mjs
+- (unit) redact.mjs redacts secret KEYS and secret VALUES (JWT/Bearer/AWS/card/SSN/email under an innocent key — the H1 bypass), walks form structurally, and is LINEAR on a pathological body (no ReDoS) — tests/unit/redact.test.mjs
+- (unit) the response ledger's double-gate defaults OFF (no body without the flag+run — the login state), gates the request body on the content-type allowlist (multipart skipped), and redacts request bodies at store time — tests/unit/response-ledger.test.mjs
+- (unit) bodyCaptureEnabled is the double gate: half-open (flag set, no run) → false (the login-safe default) — tests/unit/initiator.test.mjs
 - (unit) the debug admin serves the trail behind a loopback Host-guard + no-CORS + resolved-path containment; a foreign Host is 403'd — tests/unit/admin-server.test.mjs
 - authed recon: a login storageState makes the crawl map the logged-in surface (authed-only control present) — tests/live/auth.test.mjs (T1)
 - login VERIFIES success before persisting: wrong creds never write a storageState — tests/live/auth.test.mjs (T2)

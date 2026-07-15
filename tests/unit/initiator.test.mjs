@@ -15,7 +15,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyInitiator } from '../../lib/browser/initiator.mjs';
+import { classifyInitiator, bodyCaptureEnabled } from '../../lib/browser/initiator.mjs';
 
 // A CDP async-parent frame carrying a description (the timer boundary tag).
 const asyncFrame = (description, parent = null) => ({ description, callFrames: [], parent });
@@ -55,4 +55,18 @@ test('null and empty initiators -> background:false (never drop a real edge)', (
   assert.equal(classifyInitiator(null).background, false);
   assert.equal(classifyInitiator(undefined).background, false);
   assert.equal(classifyInitiator({}).background, false);
+});
+
+// The body-capture DOUBLE GATE, as a pure predicate over env. HALF-OPEN (flag set, no run) must
+// be false — that is the login pre-step's state (it clears both before wiring) and the guarantee
+// that no body is captured without a trail to hold it.
+// Guards: bodyCaptureEnabled requires BOTH BUGHUNTER_CAPTURE_BODIES=1 AND BUGHUNTER_RUN_ID.
+// FAIL-ON-REVERT: make it `env.BUGHUNTER_CAPTURE_BODIES === '1'` (drop the run clause) → the
+//   half-open case flips to true → "flag set but no run → false" fails.
+test('bodyCaptureEnabled: ON only with BOTH flag and run; half-open is false', () => {
+  assert.equal(bodyCaptureEnabled({ BUGHUNTER_CAPTURE_BODIES: '1', BUGHUNTER_RUN_ID: 'r1' }), true, 'both set → on');
+  assert.equal(bodyCaptureEnabled({ BUGHUNTER_CAPTURE_BODIES: '1' }), false, 'flag set but NO run → false (half-open / login)');
+  assert.equal(bodyCaptureEnabled({ BUGHUNTER_RUN_ID: 'r1' }), false, 'run but no flag → false (default off)');
+  assert.equal(bodyCaptureEnabled({ BUGHUNTER_CAPTURE_BODIES: 'true', BUGHUNTER_RUN_ID: 'r1' }), false, 'flag must be exactly "1"');
+  assert.equal(bodyCaptureEnabled({}), false, 'neither → false');
 });
