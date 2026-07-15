@@ -66,6 +66,47 @@ test('recordSemantics on an unknown template is a no-op', () => {
   assert.equal(g.elements[999], undefined);
 });
 
+// Guards (panel reach, backend SHOULD FIX): the reveal fill's genuine-coverage guard. A baseline-
+//   hidden instance that was GENUINELY reached (explored, NOT unreachable, no reveal — it appeared by
+//   its OWN means and was acted) is NEVER reset by a later opener's fill; only a NOT_VISIBLE-drained
+//   (explored+unreachable) or not-yet-acted hidden instance acquires the opener's reveal path + reopens.
+// FAIL-ON-REVERT: drop `if (inst.explored && !inst.unreachable) return false;` in fillRevealIfHidden
+//   → the genuinely-reached instance is reset (reveal stamped, explored cleared, listed in filled) →
+//   the "genuine coverage survives" assertions go red.
+test('the reveal fill protects genuine coverage, fills only a drained/unacted hidden instance', () => {
+  const g = makeGraph();
+  const hidden = (key) => ({
+    templateId: 5, instanceId: 50, templateSelector: 'button.tab', role: 'button', name: 'Tab',
+    instanceKey: key, instanceSelector: `button.tab[data-k="${key}"]`, visible: false,
+  });
+  // Two hidden-at-baseline instances of ONE template (hiddenWhenSeen=true, pathless). [0] is #genuine.
+  mergeSnapshot(g, '/', [hidden('#genuine'), hidden('#drained')]);
+  const node = g.elements[5];
+  const genuine = node.instances.find((i) => i.instanceKey === '#genuine');
+  const drained = node.instances.find((i) => i.instanceKey === '#drained');
+  assert.ok(genuine.hiddenWhenSeen && drained.hiddenWhenSeen, 'both captured hidden at baseline');
+
+  // #genuine: appeared by its OWN means and was genuinely acted (explored, reachable, no reveal).
+  genuine.explored = true;
+  // #drained: acted but NOT_VISIBLE-drained (explored + unreachable, no reveal).
+  drained.explored = true; drained.unreachable = 'NOT_VISIBLE';
+
+  // A later opener act makes BOTH visible and offers a reveal path.
+  const now = (key) => ({ ...hidden(key), visible: true });
+  const res = mergeSnapshot(g, '/', [now('#genuine'), now('#drained')], { revealPath: [{ templateId: 9, instanceKey: '#more' }] });
+
+  // #genuine survives untouched — real coverage is never discarded, no bogus reveal stamped.
+  assert.equal(genuine.reveal, undefined, 'genuine coverage keeps its null reveal (no bogus path)');
+  assert.equal(genuine.explored, true, 'genuine coverage stays explored (not reopened)');
+  assert.ok(!res.filled.some((f) => f.instanceKey === '#genuine'), 'genuine instance is NOT in filled');
+
+  // #drained is legitimately filled — it was never really reached, so it acquires the path + reopens.
+  assert.ok(drained.reveal && drained.reveal.statePath.length === 1, 'drained instance acquired the [More] reveal path');
+  assert.equal(drained.explored, false, 'drained instance is reopened for a genuine attempt');
+  assert.equal(drained.unreachable, undefined, 'drained instance shed its unreachable flag');
+  assert.ok(res.filled.some((f) => f.instanceKey === '#drained'), 'drained instance IS in filled');
+});
+
 // Guards (INC.1): the schemaVersion gate — a graph minted under a DIFFERENT identity scheme
 //   (a pre-INC.1 graph has NO schemaVersion; its ids anchored on framework-noise selectors) is
 //   RESET on load rather than co-mingled with current-scheme ids, while a current-scheme graph
