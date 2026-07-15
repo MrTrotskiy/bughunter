@@ -16,6 +16,8 @@
 //   T5 login output carries counts only — the credentials never appear in its envelope.
 //   T6 login refuses an OFF-ORIGIN form action before typing the creds (a compromised login
 //      page cannot POST the password to an attacker).
+//   T7 login FAILS LOUD when the submit leaves the form but sets only a tracking cookie — the
+//      silent-guest-crawl bug: "password field gone" alone is not proof of a session.
 // FAIL-ON-REVERT:
 //   T1 drop `storageState` from contextOptions() in session.mjs → /dashboard 302→/login →
 //      no 'Account' node → "the crawl was logged in" goes red. Also: revert login.mjs to a
@@ -30,6 +32,9 @@
 //   T6 remove the off-origin form-action check in login.mjs → it fills + submits to the
 //      off-origin action → the error is a network failure, not the 'off-origin' refusal →
 //      the message assertion goes red.
+//   T7 drop the hasSessionArtifact() requirement in loginSucceeded() (return on "left the form")
+//      → the tracking-only login "succeeds" + writes a storageState → assert.rejects(LOGIN_FAILED)
+//      goes red.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -199,4 +204,25 @@ test('T6: login refuses an off-origin form action before submitting the credenti
     'an off-origin form action must be refused with an off-origin LOGIN_FAILED',
   );
   assert.ok(!fs.existsSync(path.join(stateDir, 'storage-state.json')), 'no storageState written when the form is off-origin');
+});
+
+test('T7: login fails loud when the submit sets only a tracking cookie (no real session)', async (t) => {
+  const server = await start(0, { user: USER, pass: PASS });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const stateDir = mkState(t);
+  t.after(() => server.close());
+  setEnv(t, {
+    PW_ALLOW_PRIVATE: '1', BUGHUNTER_STATE_DIR: stateDir,
+    BUGHUNTER_LOGIN_USER: USER, BUGHUNTER_LOGIN_PASS: PASS, BUGHUNTER_STORAGE_STATE: undefined,
+  });
+
+  // The submit LEFTS the form (302 → /welcome, no password field) but the server set ONLY a `_ga`
+  // analytics cookie. The old "password field gone → success" heuristic would persist a storageState
+  // for a logged-OUT session (the silent-guest-crawl bug). hasSessionArtifact must reject it.
+  await assert.rejects(
+    () => login({ loginUrl: `${base}/login-tracking` }),
+    (err) => err?.envelope?.code === 'LOGIN_FAILED',
+    'a tracking-only "login" must reject with LOGIN_FAILED (no non-tracking session cookie)',
+  );
+  assert.ok(!fs.existsSync(path.join(stateDir, 'storage-state.json')), 'no storageState is written for a tracking-only login');
 });

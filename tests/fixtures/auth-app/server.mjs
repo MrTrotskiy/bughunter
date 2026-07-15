@@ -61,6 +61,21 @@ const WELCOME = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Welcome</title></head>
 <body><h1>Welcome</h1><button type="button" id="go">Browse</button></body></html>`;
 
+// A login form that "succeeds" superficially — the submit navigates AWAY from the form (password
+// gone) — but the server sets ONLY an analytics cookie, no session. This is the silent-guest-crawl
+// bug: the old "password field gone → success" heuristic would persist a storageState for a
+// logged-OUT session. login.mjs must now fail loud (no non-tracking session artifact).
+const LOGIN_TRACKING = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Login</title></head>
+<body>
+  <h1>Sign in</h1>
+  <form method="post" action="/login-tracking">
+    <input type="email" id="email" name="email" placeholder="Email">
+    <input type="password" id="password" name="password" placeholder="Password">
+    <button type="submit" id="submit">Sign in</button>
+  </form>
+</body></html>`;
+
 // A login form whose action posts OFF-ORIGIN (a compromised/XSS'd login page). login.mjs
 // must refuse to submit the credentials here. `.invalid` never resolves (RFC 2606).
 const LOGIN_OFFSITE = `<!doctype html>
@@ -112,6 +127,12 @@ export function start(port, { user = 'admin@example.test', pass = 'correct-horse
       logoutHits++;
       res.writeHead(302, { 'set-cookie': 'sid=; Path=/; Max-Age=0', location: '/login' }); res.end(); return;
     }
+    if (p === '/login-tracking' && req.method === 'POST') {
+      // Leaves the form (302 to /welcome, no password field there) but sets ONLY an analytics cookie.
+      res.writeHead(302, { 'set-cookie': '_ga=GA1.2.987654321.1700000000; Path=/', location: '/welcome' });
+      res.end(); return;
+    }
+    if (p === '/login-tracking') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(LOGIN_TRACKING); return; }
     if (p === '/welcome') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(WELCOME); return; }
     if (p === '/login-offsite') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(LOGIN_OFFSITE); return; }
     if (p.startsWith('/api/')) {
