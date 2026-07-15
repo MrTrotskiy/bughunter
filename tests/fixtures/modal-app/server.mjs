@@ -16,10 +16,15 @@
 //                     THEN reveals #save2. Because the revealing act is not all-GET, the GET-only
 //                     replayability gate must NOT stamp #save2 with a reveal path — so #save2 stays
 //                     honestly `unreachable` (its POST-revealed state is never replayed).
+//   - #open-read      a POST-that-READS opener (apps like rawcaster fire list/search over POST):
+//                     fires POST /api/list (returns data, mutates NOTHING) and reveals #expand.
+//                     The GET-only default leaves #expand unstamped; the agent-judged
+//                     `--opener-replayable` widen (a read, not a write) must stamp + reach it.
+//   - modal #expand   fires GET /api/expand (fires nothing else) — the control the widen reaches.
 //
-// The modal markup is injected on the #open / #open-post click (never present at load), so its
-// inner controls are unreachable without replaying the reveal path. A poll hit-counter (pollHits)
-// lets the test prove the poll was actually live (non-vacuous) during the crawl.
+// The modal markup is injected on the #open / #open-post / #open-read click (never present at
+// load), so its inner controls are unreachable without replaying the reveal path. A poll
+// hit-counter (pollHits) lets the test prove the poll was actually live (non-vacuous) during the crawl.
 
 import http from 'node:http';
 
@@ -30,8 +35,10 @@ const PAGE = `<!doctype html>
   <button id="baseline" type="button">Ping baseline</button>
   <button id="open" type="button">Open</button>
   <button id="open-post" type="button">Open form</button>
+  <button id="open-read" type="button">Load list</button>
   <div id="modal-root"></div>
   <div id="modal-root2"></div>
+  <div id="modal-root3"></div>
   <script>
     // BACKGROUND: a setInterval-rooted poll running the whole time. The initiator classifier
     // must reject it even when it ticks inside the depth-1 modal act's (slow) causal window.
@@ -66,6 +73,19 @@ const PAGE = `<!doctype html>
       fetch('/api/mutate', { method: 'POST' }).catch(function () {});
       root2.innerHTML = '<div class="modal2"><button id="save2" type="button">Persist</button></div>';
     });
+    // #open-read is a POST-that-READS opener: it fires a POST that mutates NOTHING (a list query)
+    // and reveals #expand. The GET-only gate leaves #expand unstamped; the agent-judged widen
+    // (--opener-replayable, a read) must stamp + reach it.
+    document.getElementById('open-read').addEventListener('click', function () {
+      var root3 = document.getElementById('modal-root3');
+      if (root3.childElementCount) return; // idempotent
+      fetch('/api/list', { method: 'POST' }).catch(function () {});
+      root3.innerHTML = '<div class="modal3"><button id="expand" type="button">Expand</button></div>';
+      // #expand fires a plain GET so the acted control has a clean causal edge at depth.
+      document.getElementById('expand').addEventListener('click', function () {
+        fetch('/api/expand').catch(function () {});
+      });
+    });
   </script>
 </body></html>`;
 
@@ -89,6 +109,10 @@ export function start(port = 0) {
     if (u.pathname === '/api/modal-save') return setTimeout(() => sendJson(res, 200, { saved: true }), 600);
     // A non-navigating MUTATION fired by #open-post — makes that opener non-replayable (not all-GET).
     if (u.pathname === '/api/mutate' && req.method === 'POST') return sendJson(res, 200, { mutated: true });
+    // A POST-that-READS fired by #open-read (list query, mutates nothing) — replayable ONLY under
+    // the agent's --opener-replayable judgment; the caused GET fired by the revealed #expand.
+    if (u.pathname === '/api/list' && req.method === 'POST') return sendJson(res, 200, { items: [1, 2, 3] });
+    if (u.pathname === '/api/expand') return sendJson(res, 200, { expanded: true });
     // A self-logout danger route — the pre-click reveal guard must REFUSE a hop that links here
     // BEFORE navigating, so this counter must stay 0 (a hit = a replay clicked its way to logout).
     if (u.pathname === '/logout') { logoutHits++; return sendJson(res, 200, { loggedOut: true }); }

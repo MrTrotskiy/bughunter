@@ -136,6 +136,7 @@ test('at depth-1 (modal open), the poll ticks INSIDE Save\'s window carrying its
 // built graphs — the deterministic way to force each adversarial hop):
 //   (a) REVEAL_STALE     — a statePath step whose instance is gone from the graph.
 //   (L1) REVEAL_TOO_DEEP — a path deeper than REVEAL_MAX_DEPTH (deep/cyclic guard).
+//   (L2) REVEAL_CYCLE    — a statePath that revisits a templateId (A→B→A) is refused before walking.
 //   (H1) PRE-CLICK safety — a live element that is an OFF-ORIGIN link (REVEAL_OFFORIGIN) or links
 //        to a /logout danger route (REVEAL_DANGER) is refused BEFORE the click, so the partner /
 //        logout endpoints get ZERO hits — an authed session can never self-logout / leave scope.
@@ -145,6 +146,9 @@ test('at depth-1 (modal open), the poll ticks INSIDE Save\'s window carrying its
 //   off-origin/logout link is CLICKED (off-origin: same pathname '/', so the post-hoc route check
 //   does NOT catch it → replay completes with no throw; logout: extHits/logoutHits = 1) → the
 //   REVEAL_OFFORIGIN/REVEAL_DANGER assert.rejects + the 0-hit assertions go red.
+// FAIL-ON-REVERT (L2): remove the `seenTemplates` cycle check in reveal-replay.mjs → the duplicate-
+//   template path proceeds to hop resolution and throws REVEAL_STALE (template 7 absent), not
+//   REVEAL_CYCLE → the (L2) assert.rejects goes red.
 test('replay REFUSES a stale, too-deep, off-origin, or danger-route hop BEFORE clicking it', async (t) => {
   process.env.PW_ALLOW_PRIVATE = '1';
   const ext = await startExternal(0);
@@ -170,6 +174,14 @@ test('replay REFUSES a stale, too-deep, off-origin, or danger-route hop BEFORE c
     () => replayRevealPath(page, { elements: {} }, { route: '/', statePath: deep }),
     (e) => e.code === 'REVEAL_TOO_DEEP',
     'a path deeper than REVEAL_MAX_DEPTH throws REVEAL_TOO_DEEP',
+  );
+
+  // (L2) REVEAL_CYCLE — a statePath that revisits a templateId is refused BEFORE walking, so the
+  // duplicated template's instance is never resolved (the cycle check precedes hop resolution).
+  await assert.rejects(
+    () => replayRevealPath(page, { elements: {} }, { route: '/', statePath: [{ templateId: 7, instanceKey: '#1' }, { templateId: 7, instanceKey: '#2' }] }),
+    (e) => e.code === 'REVEAL_CYCLE',
+    'a reveal path revisiting a template throws REVEAL_CYCLE',
   );
 
   // (H1a) PRE-CLICK OFF-ORIGIN — a live off-origin link hop is refused BEFORE the click, so the

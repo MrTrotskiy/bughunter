@@ -40,7 +40,7 @@ import path from 'node:path';
 import { start } from '../fixtures/auth-app/server.mjs';
 import { login } from '../../lib/recon/login.mjs';
 import { crawl } from '../../lib/recon/recon-run.mjs';
-import { loadGraph } from '../../lib/graph/graph-store.mjs';
+import { loadGraph, SCHEMA_VERSION } from '../../lib/graph/graph-store.mjs';
 
 // Set env for the duration of one test, restoring exactly on teardown (including vars
 // reassigned mid-test — captured `prev` is what existed BEFORE the test).
@@ -141,6 +141,7 @@ test('T3: the crawl refuses to navigate to a danger route (no self-logout)', asy
   // ledger past the trap's ids so the baseline's freshly-minted /welcome control cannot
   // collide onto templateId 1 (an empty ledger would re-mint id 1 and merge the two).
   const seed = {
+    schemaVersion: SCHEMA_VERSION, // current-scheme seed: loadGraph must NOT reset it (INC.1 gate)
     routes: { '/logout': { type: 'route', url: '/logout' } },
     elements: {
       1: {
