@@ -9,411 +9,321 @@
     --bg: #0e1117; --panel: #161b22; --panel2: #1c2330; --line: #2a3240;
     --fg: #e6edf3; --dim: #8b949e; --accent: #58a6ff; --good: #3fb950;
     --warn: #d29922; --bad: #f85149; --mut: #6e7681;
-    --route: #58a6ff; --frontier: #a371f7; --act: #3fb950; --observe: #d29922;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-         background: var(--bg); color: var(--fg); }
+         background: var(--bg); color: var(--fg); display: flex; flex-direction: column; overflow: hidden; }
   code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  header { display: flex; align-items: center; gap: 14px; padding: 10px 16px;
-           background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-  header h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: .2px; }
-  header .sub { color: var(--dim); font-size: 12px; }
-  select, button { background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
-                   border-radius: 6px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
+  button, select { background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
+                   border-radius: 6px; padding: 4px 9px; font-size: 12px; cursor: pointer; }
   button:hover, select:hover { border-color: var(--accent); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: var(--panel); color: var(--dim); padding: 4px 11px; }
+  .seg button.on { background: var(--accent); color: #04101f; font-weight: 600; }
+  /* header */
+  header { display: flex; align-items: center; gap: 12px; padding: 9px 14px; background: var(--panel);
+           border-bottom: 1px solid var(--line); flex-wrap: wrap; flex: 0 0 auto; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 700; }
+  header .sub { color: var(--dim); font-size: 12px; }
+  .tabbar { display: inline-flex; gap: 2px; }
+  .tabbar button { background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0;
+                   color: var(--dim); padding: 6px 14px; font-size: 13px; }
+  .tabbar button.on { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
   .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
   .badge.running { background: rgba(88,166,255,.15); color: var(--accent); }
   .badge.done { background: rgba(63,185,80,.15); color: var(--good); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-  .dot.live { background: var(--good); box-shadow: 0 0 0 0 rgba(63,185,80,.6); animation: pulse 1.6s infinite; }
+  .dot-live { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; background: var(--good); animation: pulse 1.6s infinite; }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(63,185,80,.5); } 70% { box-shadow: 0 0 0 6px rgba(63,185,80,0); } }
-  .kpis { display: flex; gap: 10px; padding: 12px 16px; flex-wrap: wrap; background: var(--bg); }
-  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
-         padding: 8px 14px; min-width: 92px; }
-  .kpi .v { font-size: 20px; font-weight: 700; }
-  .kpi .l { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
-  nav.tabs { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
-  nav.tabs button { border: none; border-bottom: 2px solid transparent; border-radius: 0;
-                    background: none; padding: 9px 14px; color: var(--dim); }
-  nav.tabs button.active { color: var(--fg); border-bottom-color: var(--accent); }
-  main { padding: 14px 16px; }
-  .panel { display: none; } .panel.active { display: block; }
-  /* Walk */
-  .walk { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
-  .timeline { max-height: 72vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
-  .ev { display: flex; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--line);
-        cursor: pointer; align-items: baseline; }
-  .ev:hover { background: var(--panel2); } .ev.sel { background: rgba(88,166,255,.10); }
-  .ev .seq { color: var(--mut); font-size: 11px; min-width: 24px; }
-  .ev .diamond { width: 9px; height: 9px; transform: rotate(45deg); flex: 0 0 auto; margin-top: 3px; }
-  .ev .lbl { flex: 1; min-width: 0; }
-  .ev .lbl b { font-weight: 600; } .ev .lbl .meta { color: var(--dim); font-size: 11px; }
-  .k-route .diamond { background: var(--route); } .k-frontier .diamond { background: var(--frontier); }
-  .k-act .diamond { background: var(--act); } .k-observe .diamond { background: var(--observe); }
-  .detail { border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-height: 200px; }
-  .detail h3 { margin: 0 0 4px; font-size: 14px; }
-  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
-  .shot { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel2); }
-  .shot .cap { padding: 5px 8px; font-size: 11px; color: var(--dim); border-bottom: 1px solid var(--line); }
-  .shot .frame { position: relative; line-height: 0; }
-  .shot img { width: 100%; display: block; cursor: zoom-in; }
-  .shot .box { position: absolute; border: 2px solid var(--bad); box-shadow: 0 0 0 2px rgba(248,81,73,.3); pointer-events: none; }
-  .reqs { margin: 10px 0; } .reqs .r { padding: 4px 0; border-bottom: 1px solid var(--line); }
-  .method { display: inline-block; min-width: 42px; font-weight: 700; font-size: 11px; }
-  .m-GET { color: var(--good); } .m-POST { color: var(--warn); } .m-PUT, .m-PATCH { color: var(--accent); }
-  .m-DELETE { color: var(--bad); }
-  .bars { margin: 10px 0; } .bar-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
-  .bar-row .name { width: 60px; color: var(--dim); font-size: 11px; }
-  .bar { height: 12px; background: var(--accent); border-radius: 3px; min-width: 2px; }
-  .bar.settle { background: var(--warn); } .bar.snap { background: var(--frontier); }
-  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px;
-         margin-right: 5px; background: var(--panel2); border: 1px solid var(--line); }
-  .tag.danger-safe { color: var(--good); } .tag.danger-destructive, .tag.danger-auth, .tag.danger-payment { color: var(--bad); }
-  .muted { color: var(--dim); }
-  /* Graph */
-  .scrub { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .scrub input[type=range] { flex: 1; }
-  .route-block { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
-  .route-block > .head { padding: 8px 12px; background: var(--panel); font-weight: 600; }
-  .ctrl { padding: 7px 12px; border-top: 1px solid var(--line); }
-  .ctrl .arrow { color: var(--mut); margin: 0 6px; }
+  .kpis { display: flex; gap: 16px; padding: 6px 14px; background: var(--bg); border-bottom: 1px solid var(--line); flex: 0 0 auto; flex-wrap: wrap; }
+  .kpi b { font-size: 14px; } .kpi span { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
+  /* body: runs | stage | steps */
+  .body { flex: 1; display: grid; grid-template-columns: var(--leftw, 250px) 1fr var(--rightw, 320px); min-height: 0; }
+  .body.no-left { --leftw: 0px; } .body.no-right { --rightw: 0px; }
+  .col { overflow-y: auto; overflow-x: hidden; background: var(--panel); }
+  .col.left { border-right: 1px solid var(--line); } .col.right { border-left: 1px solid var(--line); }
+  .no-left .col.left { border-right: none; } .no-right .col.right { border-left: none; }
+  .hd { padding: 7px 12px; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+        border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 1; }
+  /* runs list */
+  .runrow { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--line); }
+  .runrow:hover { background: var(--panel2); } .runrow.sel { background: rgba(88,166,255,.12); box-shadow: inset 3px 0 0 var(--accent); }
+  .runrow .top { display: flex; align-items: center; gap: 6px; }
+  .runrow .id { font-size: 12px; font-weight: 600; } .runrow .sub { color: var(--dim); font-size: 11px; margin-top: 2px; word-break: break-all; }
+  .sdot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--good); } .sdot.run { background: var(--accent); }
+  /* steps list */
+  .steprow { padding: 6px 12px; cursor: pointer; border-bottom: 1px solid var(--line); }
+  .steprow:hover { background: var(--panel2); } .steprow.sel { background: rgba(88,166,255,.10); box-shadow: inset 3px 0 0 var(--accent); }
+  .steprow .line { display: flex; gap: 8px; align-items: baseline; }
+  .steprow .n { color: var(--mut); font-size: 11px; min-width: 18px; } .steprow .lbl { flex: 1; min-width: 0; }
+  .steprow.err .lbl { color: var(--bad); }
+  .routelbl { padding: 5px 12px 2px; color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; border-top: 1px solid var(--line); }
+  .stepdetail { margin: 8px 0 2px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+  .stepdetail h5 { margin: 8px 0 4px; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--dim); }
+  .stepdetail h5:first-child { margin-top: 0; }
+  .reqrow { padding: 2px 0; } .method { display: inline-block; min-width: 40px; font-weight: 700; font-size: 11px; }
+  .m-GET { color: var(--good); } .m-POST { color: var(--warn); } .m-PUT,.m-PATCH { color: var(--accent); } .m-DELETE { color: var(--bad); }
   .endpoint { color: var(--accent); }
-  /* Log */
-  .logtable { width: 100%; border-collapse: collapse; }
-  .logtable td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  .logtable .j { white-space: pre-wrap; word-break: break-word; color: var(--dim); font-size: 11px; }
-  .filters { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
-  /* Lightbox */
-  #lb { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; z-index: 50;
-        align-items: center; justify-content: center; padding: 24px; }
-  #lb.open { display: flex; } #lb img { max-width: 96vw; max-height: 92vh; border: 1px solid var(--line); }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+  .bar-row .nm { width: 52px; color: var(--dim); font-size: 11px; }
+  .bar { height: 10px; background: var(--accent); border-radius: 3px; min-width: 2px; } .bar.settle { background: var(--warn); } .bar.snap { background: #a371f7; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; margin: 0 5px 4px 0; background: var(--panel2); border: 1px solid var(--line); }
+  .tag.safe { color: var(--good); } .tag.destructive,.tag.auth,.tag.payment { color: var(--bad); }
+  .muted { color: var(--dim); }
+  /* stage */
+  .stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .stagebar { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+  .stagebar .title { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .stagebar .spacer { flex: 1; }
+  .stagewrap { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px; background: #0b0e13; }
+  .frame { position: relative; line-height: 0; max-width: 100%; max-height: 100%; }
+  .frame img { max-width: 100%; max-height: calc(100vh - 320px); display: block; border: 1px solid var(--line); border-radius: 4px; cursor: zoom-in; }
+  .frame .box { position: absolute; border: 2px solid var(--bad); box-shadow: 0 0 0 2px rgba(248,81,73,.3); pointer-events: none; display: none; }
+  .placard { color: var(--dim); text-align: center; padding: 40px; } .placard.err { color: var(--bad); }
+  /* filmstrip */
+  .strip { flex: 0 0 auto; border-top: 1px solid var(--line); background: var(--panel); padding: 10px 14px 14px; display: flex; align-items: center; gap: 12px; }
+  .strip .tbtn { font-size: 15px; line-height: 1; padding: 4px 10px; }
+  .track { position: relative; flex: 1; height: 40px; cursor: pointer; touch-action: none; }
+  .rail-line { position: absolute; left: 0; right: 0; top: 26px; height: 2px; background: var(--line); border-radius: 2px; }
+  .sep { position: absolute; top: 6px; height: 30px; width: 1px; background: var(--mut); opacity: .6; }
+  .sep .rl { position: absolute; top: -4px; left: 3px; font-size: 9px; color: var(--dim); white-space: nowrap; }
+  .pdot { position: absolute; top: 20px; width: 13px; height: 13px; margin-left: -6.5px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
+  .pdot.error { background: var(--bad); } .pdot.danger { box-shadow: 0 0 0 2px var(--warn); }
+  .pdot.cur { width: 19px; height: 19px; margin-left: -9.5px; top: 17px; z-index: 2; box-shadow: 0 0 0 3px rgba(88,166,255,.25); }
+  .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); margin-left: -1px; z-index: 1; pointer-events: none; }
+  .readout { min-width: 150px; text-align: right; color: var(--dim); font-size: 12px; }
+  .tip { position: absolute; bottom: 44px; transform: translateX(-50%); background: #000; border: 1px solid var(--line); padding: 3px 7px; border-radius: 5px; font-size: 11px; white-space: nowrap; display: none; z-index: 3; }
   .empty { color: var(--dim); padding: 40px; text-align: center; }
+  #lb { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; z-index: 50; align-items: center; justify-content: center; padding: 24px; }
+  #lb.open { display: flex; } #lb img { max-width: 96vw; max-height: 92vh; border: 1px solid var(--line); }
+  .hide { display: none !important; }
 </style>
 </head>
 <body>
 <header>
-  <h1>bughunter</h1><span class="sub">Phase-1 debug capture</span>
-  <select id="runPick" title="run"></select>
+  <h1>bughunter</h1><span class="sub">Phase-1 debug</span>
+  <span class="tabbar" id="tabs"><button data-tab="runs" class="on">Прогоны</button><button data-tab="tests">Тесты</button></span>
   <span id="runTarget" class="sub mono"></span>
   <span id="runStatus"></span>
+  <span style="flex:1"></span>
+  <button id="tLeft" title="toggle runs">⇤ прогоны</button>
+  <button id="tRight" title="toggle steps">шаги ⇥</button>
   <label class="sub"><input type="checkbox" id="autoref" checked> live</label>
-  <button id="refresh">↻ refresh</button>
+  <button id="refresh">↻</button>
 </header>
 <div class="kpis" id="kpis"></div>
-<nav class="tabs">
-  <button data-tab="walk" class="active">Walk</button>
-  <button data-tab="graph">Graph</button>
-  <button data-tab="log">Log</button>
-  <button data-tab="speed">Speed</button>
-</nav>
-<main>
-  <section class="panel active" id="tab-walk">
-    <div class="walk">
-      <div class="timeline" id="timeline"></div>
-      <div class="detail" id="detail"><div class="empty">Select a step in the timeline.</div></div>
+<div class="body" id="bodyGrid">
+  <div class="col left"><div class="hd">прогоны</div><div id="runsList"></div></div>
+  <div class="stage">
+    <div class="stagebar">
+      <span class="title" id="stageTitle">—</span>
+      <span class="spacer"></span>
+      <span class="seg" id="frameSel"><button data-frame="before" class="on">before</button><button data-frame="after">after</button></span>
     </div>
-  </section>
-  <section class="panel" id="tab-graph">
-    <div class="scrub">
-      <span class="muted">step</span>
-      <input type="range" id="graphSeq" min="0" max="0" value="0">
-      <span id="graphSeqLbl" class="mono muted">—</span>
-    </div>
-    <div id="graphBody"></div>
-  </section>
-  <section class="panel" id="tab-log">
-    <div class="filters">
-      <label class="sub"><input type="checkbox" class="kf" value="route" checked> route</label>
-      <label class="sub"><input type="checkbox" class="kf" value="frontier.emit" checked> frontier</label>
-      <label class="sub"><input type="checkbox" class="kf" value="act" checked> act</label>
-      <label class="sub"><input type="checkbox" class="kf" value="observe" checked> observe</label>
-      <label class="sub" style="margin-left:auto"><input type="checkbox" id="expand"> expand payloads</label>
-    </div>
-    <table class="logtable"><tbody id="logBody"></tbody></table>
-  </section>
-  <section class="panel" id="tab-speed"><div id="speedBody"></div></section>
-</main>
+    <div class="stagewrap" id="stageWrap"></div>
+  </div>
+  <div class="col right"><div class="hd">шаги</div><div id="stepsList"></div></div>
+</div>
+<div class="strip" id="strip">
+  <button class="tbtn" id="prev" title="prev (←)">‹</button>
+  <div class="track" id="track" tabindex="0" role="slider" aria-label="run timeline">
+    <div class="rail-line"></div><div class="playhead" id="playhead" style="display:none"></div><div class="tip" id="tip"></div>
+  </div>
+  <button class="tbtn" id="next" title="next (→)">›</button>
+  <div class="readout" id="readout">—</div>
+</div>
+<div id="testsView" class="hide"><div class="empty" style="padding-top:80px">Phase-2 тест-кейсы для этого прогона ещё не сняты.<br>Этот раздел переиспользует ту же сцену + полосу, когда появится <span class="mono">/gen</span>.</div></div>
 <div id="lb"><img id="lbImg" alt=""></div>
-<script>
+<script type="module">
+import { deriveSteps, clampIndex, dotLeftPct, indexFromClientX, boxFromRect, dotClass } from './scrub-math.mjs';
+
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state = { runId: null, run: null, events: [], sel: null, tab: 'walk', graphSeqs: [] };
-
-// The access token rides in the URL the operator opened (…/?t=<token>); every /api call
-// (including <img> screenshot/graph fetches) must carry it or the server 403s.
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const api = (p) => p + (p.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(TOKEN);
-
 async function jget(url) { const r = await fetch(api(url)); if (!r.ok) throw new Error(r.status); return r.json(); }
+
+const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before' };
 
 async function loadRuns() {
   const { runs } = await jget('/api/runs');
-  const pick = $('#runPick');
-  const prev = state.runId;
-  pick.innerHTML = runs.map((r) => `<option value="${esc(r.id)}">${esc(r.id)}${r.status === 'running' ? ' ●' : ''}</option>`).join('');
-  if (!runs.length) { $('#kpis').innerHTML = '<div class="empty">No runs captured yet. Start one with /recon.</div>'; return; }
-  const keep = runs.find((r) => r.id === prev);
-  state.runId = keep ? prev : runs[0].id;
-  pick.value = state.runId;
-  await loadRun();
+  S.runs = runs || [];
+  if (!S.runs.length) { $('#runsList').innerHTML = '<div class="empty">Пусто — запусти /recon.</div>'; $('#kpis').innerHTML = ''; return; }
+  renderRunsList();
+  if (!S.runId || !S.runs.some((r) => r.id === S.runId)) { S.runId = S.runs[0].id; await loadRun(true); }
+  else if (S.run && S.run.status === 'running') await loadRun(false); // live-refresh the open run
 }
 
-async function loadRun() {
-  if (!state.runId) return;
-  const data = await jget('/api/runs/' + state.runId);
-  state.run = data.run; state.events = data.events || [];
-  state.graphSeqs = state.events.filter((e) => e.kind === 'act' || e.kind === 'observe' || e.kind === 'route').map((e) => e.seq);
-  renderHeader(); renderKpis(); renderTimeline(); renderLog(); renderSpeed(); renderGraphControls();
-  if (state.sel == null && state.events.length) selectEvent(lastActSeq());
-  else if (state.sel != null) renderDetail();
+function renderRunsList() {
+  $('#runsList').innerHTML = S.runs.map((r) => {
+    const st = r.stats || {};
+    return `<div class="runrow ${r.id === S.runId ? 'sel' : ''}" data-id="${esc(r.id)}">
+      <div class="top"><span class="sdot ${r.status === 'running' ? 'run' : ''}"></span><span class="id mono">${esc(r.id)}</span></div>
+      <div class="sub">${esc(r.target || '')}</div>
+      <div class="sub">${st.explored ?? '–'}/${st.discovered ?? '–'} explored · ${st.routes ?? '–'} routes</div></div>`;
+  }).join('');
+  $('#runsList').querySelectorAll('.runrow').forEach((el) => el.onclick = () => { if (el.dataset.id !== S.runId) { S.runId = el.dataset.id; loadRun(true); } });
 }
 
-function lastActSeq() {
-  const acts = state.events.filter((e) => e.kind === 'act');
-  return acts.length ? acts[acts.length - 1].seq : state.events[state.events.length - 1].seq;
+async function loadRun(reset) {
+  const data = await jget('/api/runs/' + S.runId);
+  S.run = data.run; S.events = data.events || [];
+  const steps = deriveSteps(S.events);
+  const atEnd = reset || S.i >= S.steps.length - 1 || !S.steps.length;
+  S.steps = steps;
+  S.i = atEnd ? Math.max(0, steps.length - 1) : clampIndex(S.i, steps.length);
+  renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage();
 }
 
 function renderHeader() {
-  const r = state.run || {};
+  const r = S.run || {};
   $('#runTarget').textContent = r.target || '';
   const live = r.status === 'running';
-  $('#runStatus').innerHTML = `<span class="badge ${live ? 'running' : 'done'}">${live ? '<span class="dot live"></span>running' : 'done'}</span>`;
+  $('#runStatus').innerHTML = r.id ? `<span class="badge ${live ? 'running' : 'done'}">${live ? '<span class="dot-live"></span>running' : 'done'}</span>` : '';
 }
-
-function renderKpis() {
-  const acts = state.events.filter((e) => e.kind === 'act');
-  const stats = (state.run && state.run.stats) || lastStats();
-  const edges = new Set();
-  let tActMs = 0, nAct = 0;
-  for (const a of acts) {
-    (a.payload.requests || []).forEach((rq) => edges.add(rq.method + ' ' + rq.urlPattern));
-    if (a.payload.timings && typeof a.payload.timings.actMs === 'number') { tActMs += a.payload.timings.actMs; nAct++; }
-  }
-  const kpi = (v, l) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`;
-  $('#kpis').innerHTML = [
-    kpi(stats.explored ?? '–', 'explored'),
-    kpi(stats.discovered ?? '–', 'discovered'),
-    kpi(stats.unreachable ?? '–', 'unreachable'),
-    kpi(stats.remaining ?? '–', 'remaining'),
-    kpi(stats.routes ?? '–', 'routes'),
-    kpi(acts.length, 'acts'),
-    kpi(edges.size, 'causal edges'),
-    kpi(nAct ? Math.round(tActMs / nAct) + 'ms' : '–', 'avg act'),
-  ].join('');
-}
-
 function lastStats() {
-  for (let i = state.events.length - 1; i >= 0; i--) {
-    const e = state.events[i];
-    if (e.kind === 'frontier.emit' && e.payload.stats) return e.payload.stats;
-  }
-  return {};
+  for (let k = S.events.length - 1; k >= 0; k--) if (S.events[k].kind === 'frontier.emit' && S.events[k].payload.stats) return S.events[k].payload.stats;
+  return (S.run && S.run.stats) || {};
+}
+function renderKpis() {
+  const st = (S.run && S.run.stats) || lastStats();
+  const edges = new Set(); let tot = 0, n = 0;
+  for (const s of S.steps) { (s.requests || []).forEach((q) => edges.add(q.method + ' ' + q.urlPattern)); if (s.timings) { tot += s.timings.actMs; n++; } }
+  const k = (v, l) => `<span class="kpi"><b>${v}</b> <span>${l}</span></span>`;
+  $('#kpis').innerHTML = [k(`${st.explored ?? '–'}/${st.discovered ?? '–'}`, 'explored'), k(st.unreachable ?? '–', 'unreachable'),
+    k(st.routes ?? '–', 'routes'), k(S.steps.length, 'acts'), k(edges.size, 'edges'), k(n ? Math.round(tot / n) + 'ms' : '–', 'avg act')].join('');
 }
 
-function evLabel(e) {
-  const p = e.payload || {};
-  if (e.kind === 'route') return `<b>→ ${esc(p.route)}</b> <span class="meta">${p.total ?? 0} controls · ${p.new ?? 0} new${p.overlayDismissed ? ' · overlay cleared' : ''}</span>`;
-  if (e.kind === 'frontier.emit') return `<b>frontier</b> <span class="meta">${(p.candidates || []).length} candidates · ${p.stats ? p.stats.remaining + ' remaining' : ''}</span>`;
-  if (e.kind === 'act') {
-    if (p.error) return `<b>act [${p.templateId}]</b> ${esc(p.name || p.role || '')} <span class="meta" style="color:var(--bad)">failed</span>`;
-    const reqs = (p.requests || []).length;
-    return `<b>act [${p.templateId}]</b> ${esc(p.name || p.role || '')} <span class="meta">${reqs} req${p.external ? ' · external' : ''} · +${p.revealed || 0}</span>`;
-  }
-  if (e.kind === 'observe') return `<b>observe [${p.templateId}]</b> <span class="meta">${esc(p.danger || '?')}/${esc(p.effect || '?')}</span>`;
-  return `<b>${esc(e.kind)}</b>`;
+function stepDetailHtml(s) {
+  const reqs = (s.requests || []).map((r) => `<div class="reqrow"><span class="method m-${esc(r.method)}">${esc(r.method)}</span> <span class="endpoint mono">${esc(r.urlPattern)}</span></div>`).join('') || '<div class="muted">no request caused</div>';
+  const t = s.timings, w = (ms) => Math.max(2, Math.min(340, (ms || 0) * 1.2));
+  const bars = t ? `<div class="bar-row"><span class="nm">act</span><div class="bar" style="width:${w(t.actMs)}px"></div><span class="muted">${t.actMs}ms</span></div>
+    <div class="bar-row"><span class="nm">settle</span><div class="bar settle" style="width:${w(t.settleMs)}px"></div><span class="muted">${t.settleMs}ms</span></div>
+    <div class="bar-row"><span class="nm">snapshot</span><div class="bar snap" style="width:${w(t.snapMs)}px"></div><span class="muted">${t.snapMs}ms</span></div>` : '<div class="muted">—</div>';
+  const o = s.observe;
+  const obs = o ? `<span class="tag ${esc(o.danger)}">danger: ${esc(o.danger)}</span><span class="tag">effect: ${esc(o.effect)}</span>${o.unreachable ? '<span class="tag" style="color:var(--bad)">unreachable</span>' : ''}<div>${esc(o.purpose) || '<span class="muted">—</span>'}</div>` : '<div class="muted">no observation (node-loop run)</div>';
+  const err = s.error ? `<h5>error</h5><div class="mono" style="color:var(--bad)">${esc(s.error)}</div>` : '';
+  return `<div class="stepdetail">${err}<h5>caused · control → endpoint</h5>${reqs}<div class="muted" style="margin-top:4px">revealed ${s.revealed} instance(s)${s.external ? ' · external link, not fired' : ''}</div>
+    <h5>speed</h5>${bars}<h5>observation</h5>${obs}</div>`;
 }
-
-function renderTimeline() {
-  const tl = $('#timeline');
-  if (!state.events.length) { tl.innerHTML = '<div class="empty">no events</div>'; return; }
-  tl.innerHTML = state.events.map((e) => `
-    <div class="ev k-${e.kind.replace('.', '-')} ${e.seq === state.sel ? 'sel' : ''}" data-seq="${e.seq}">
-      <span class="seq">${e.seq}</span><span class="diamond"></span>
-      <span class="lbl">${evLabel(e)}</span>
-    </div>`).join('');
-  tl.querySelectorAll('.ev').forEach((el) => el.onclick = () => selectEvent(Number(el.dataset.seq)));
-}
-
-function selectEvent(seq) { state.sel = seq; renderTimeline(); renderDetail(); }
-
-function shotBox(p) {
-  // Place the target rect over the "before" frame independent of devicePixelRatio: the shot
-  // covers exactly the CSS viewport box, so rect maps as rect.x * imgClientWidth / viewport.width.
-  const s = p.shots || {};
-  // s.before/s.after are run-dir-relative paths ("shots/t1-before.png"); the /shots/:file
-  // route lives directly under the run, so the rel path appends cleanly onto /api/runs/:id/.
-  // api() adds the access token so the <img> load is not 403'd.
-  const beforeImg = s.before ? api(`/api/runs/${state.runId}/${s.before}`) : null;
-  const afterImg = s.after ? api(`/api/runs/${state.runId}/${s.after}`) : null;
-  const boxAttr = (s.rect && s.viewport) ? ` data-rect='${esc(JSON.stringify(s.rect))}' data-vp='${esc(JSON.stringify(s.viewport))}'` : '';
-  const cell = (img, cap, withBox) => img ? `
-    <div class="shot"><div class="cap">${cap}</div>
-      <div class="frame">${withBox ? `<div class="box" style="display:none"></div>` : ''}
-        <img src="${img}"${withBox ? boxAttr : ''} alt="${cap}"></div></div>` : '';
-  if (!beforeImg && !afterImg) return '';
-  return `<div class="shots">${cell(beforeImg, 'before (target boxed)', true)}${cell(afterImg, 'after (effect)', false)}</div>`;
-}
-
-function placeBoxes() {
-  document.querySelectorAll('.shot img[data-rect]').forEach((img) => {
-    const box = img.parentElement.querySelector('.box');
-    if (!box) return;
-    const draw = () => {
-      try {
-        const rect = JSON.parse(img.dataset.rect), vp = JSON.parse(img.dataset.vp);
-        if (!rect || !vp || !vp.width) return;
-        const sx = img.clientWidth / vp.width, sy = img.clientHeight / vp.height;
-        box.style.left = (rect.x * sx) + 'px'; box.style.top = (rect.y * sy) + 'px';
-        box.style.width = (rect.width * sx) + 'px'; box.style.height = (rect.height * sy) + 'px';
-        box.style.display = 'block';
-      } catch {}
-    };
-    if (img.complete) draw(); else img.onload = draw;
-  });
-}
-
-function renderDetail() {
-  const e = state.events.find((x) => x.seq === state.sel);
-  const d = $('#detail');
-  if (!e) { d.innerHTML = '<div class="empty">Select a step.</div>'; return; }
-  const p = e.payload || {};
-  if (e.kind === 'act' && p.error) {
-    d.innerHTML = `<h3>act · template [${p.templateId}] <span style="color:var(--bad)">failed</span></h3>
-      <div class="muted">${esc(p.role || '')} ${esc(JSON.stringify(p.name || ''))} on <span class="mono">${esc(p.route)}</span></div>
-      <p><b>error:</b> <span class="mono" style="color:var(--bad)">${esc(p.error)}</span></p>
-      <p class="muted">This control was drained from the frontier and counted as unreachable, not as coverage.</p>`;
-    return;
-  }
-  if (e.kind === 'act') {
-    const reqs = (p.requests || []).map((r) => `<div class="r"><span class="method m-${esc(r.method)}">${esc(r.method)}</span> <span class="endpoint mono">${esc(r.urlPattern)}</span></div>`).join('') || '<div class="muted">no request caused</div>';
-    const t = p.timings || {}; const w = (ms) => Math.max(2, Math.min(600, (ms || 0) * 1.5));
-    const bars = t.actMs != null ? `<div class="bars">
-        <div class="bar-row"><span class="name">act</span><div class="bar" style="width:${w(t.actMs)}px"></div><span class="muted">${t.actMs}ms</span></div>
-        <div class="bar-row"><span class="name">settle</span><div class="bar settle" style="width:${w(t.settleMs)}px"></div><span class="muted">${t.settleMs}ms</span></div>
-        <div class="bar-row"><span class="name">snapshot</span><div class="bar snap" style="width:${w(t.snapMs)}px"></div><span class="muted">${t.snapMs}ms</span></div>
-      </div>` : '';
-    d.innerHTML = `<h3>act · template [${p.templateId}]</h3>
-      <div class="muted">${esc(p.role || '')} ${esc(JSON.stringify(p.name || ''))} on <span class="mono">${esc(p.route)}</span>${p.external ? ' · <span style="color:var(--bad)">external link (not fired)</span>' : ''}</div>
-      ${shotBox(p)}
-      <div><b>caused (control → endpoint):</b><div class="reqs">${reqs}</div></div>
-      <div><b>revealed:</b> ${p.revealed || 0} new instance(s)</div>
-      ${bars}`;
-    placeBoxes();
-  } else if (e.kind === 'observe') {
-    d.innerHTML = `<h3>observe · template [${p.templateId}]</h3>
-      <div class="muted mono">${esc(p.route || '')}</div>
-      <p><span class="tag danger-${esc(p.danger)}">danger: ${esc(p.danger)}</span>
-         <span class="tag">effect: ${esc(p.effect)}</span>
-         <span class="tag">acted: ${p.acted}</span>
-         ${p.unreachable ? '<span class="tag" style="color:var(--bad)">unreachable</span>' : ''}
-         ${p.stateChange ? '<span class="tag">state-change</span>' : ''}</p>
-      <p><b>purpose:</b> ${esc(p.purpose) || '<span class="muted">—</span>'}</p>`;
-  } else if (e.kind === 'route') {
-    d.innerHTML = `<h3>route · ${esc(p.route)}</h3>
-      <p>${p.total ?? 0} controls present · ${p.new ?? 0} new · ${p.opaque ?? 0} opaque region(s)${p.overlayDismissed ? ` · overlay cleared (<span class="mono">${esc(p.overlayDismissed)}</span>)` : ''}</p>`;
-  } else if (e.kind === 'frontier.emit') {
-    const rows = (p.candidates || []).map((c) => `<div class="ctrl">[${c.templateId}] <b>${esc(c.role || '?')}</b> ${esc(JSON.stringify(c.name || ''))} <span class="muted mono">${esc(c.route)}</span></div>`).join('');
-    d.innerHTML = `<h3>frontier — next receptive field</h3>
-      <div class="muted">${p.stats ? `${p.stats.explored}/${p.stats.discovered} explored · ${p.stats.remaining} remaining` : ''}</div>
-      <div class="route-block" style="margin-top:10px">${rows || '<div class="ctrl muted">drained</div>'}</div>`;
-  }
-}
-
-/* ---- Graph tab ---- */
-function renderGraphControls() {
-  const r = $('#graphSeq');
-  const seqs = state.graphSeqs;
-  r.max = String(Math.max(0, seqs.length - 1));
-  r.value = r.max;
-  r.oninput = () => renderGraph();
-  renderGraph();
-}
-async function renderGraph() {
-  const seqs = state.graphSeqs;
-  const body = $('#graphBody');
-  if (!seqs.length) { body.innerHTML = '<div class="empty">no graph snapshots yet</div>'; $('#graphSeqLbl').textContent = '—'; return; }
-  const idx = Math.min(Number($('#graphSeq').value) || 0, seqs.length - 1);
-  const seq = seqs[idx];
-  $('#graphSeqLbl').textContent = 'seq ' + seq;
-  let g;
-  try { g = await jget(`/api/runs/${state.runId}/graph/${seq}`); } catch { body.innerHTML = '<div class="empty">snapshot unavailable</div>'; return; }
-  const causesOf = (tid) => (g.edges || []).filter((e) => e.from === `element:${tid}` && e.type === 'triggers').map((e) => String(e.to).replace('request:', ''));
-  const els = Object.values(g.elements || {});
-  const routes = Object.keys(g.routes || {}).sort();
-  body.innerHTML = routes.map((route) => {
-    const ctrls = els.filter((n) => n.route === route).sort((a, b) => a.templateId - b.templateId);
-    const rows = ctrls.map((n) => {
-      const sem = n.semantics || {};
-      const loc = n.locator && n.locator.type ? `<span class="tag">loc=${esc(n.locator.type)}</span>` : '';
-      const dg = sem.danger ? `<span class="tag danger-${esc(sem.danger)}">${esc(sem.danger)}</span>` : '';
-      const ef = sem.effect ? `<span class="tag">${esc(sem.effect)}</span>` : (n.explored ? '' : '<span class="tag muted">unexplored</span>');
-      const un = n.unreachable ? '<span class="tag" style="color:var(--bad)">unreachable</span>' : '';
-      const causes = causesOf(n.templateId);
-      const ep = causes.length ? `<span class="arrow">→</span>${causes.map((c) => `<span class="endpoint mono">${esc(c)}</span>`).join(', ')}` : '';
-      const inst = n.instances && n.instances.length > 1 ? ` ×${n.instances.length}` : '';
-      return `<div class="ctrl">[${n.templateId}] <b>${esc(n.role || '?')}</b> ${esc(JSON.stringify(n.name || ''))}${inst} ${loc}${dg}${ef}${un} ${ep}</div>`;
-    }).join('');
-    return `<div class="route-block"><div class="head mono">${esc(route)} <span class="muted">· ${ctrls.length} control(s)</span></div>${rows}</div>`;
-  }).join('') || '<div class="empty">empty graph</div>';
-}
-
-/* ---- Log tab ---- */
-function renderLog() {
-  const on = new Set([...document.querySelectorAll('.kf:checked')].map((c) => c.value));
-  const expand = $('#expand').checked;
-  const rows = state.events.filter((e) => on.has(e.kind)).map((e) => `
-    <tr><td class="muted mono">${e.seq}</td>
-        <td><span class="tag">${esc(e.kind)}</span></td>
-        <td>${evLabel(e)}${expand ? `<div class="j">${esc(JSON.stringify(e.payload))}</div>` : ''}</td></tr>`).join('');
-  $('#logBody').innerHTML = rows || '<tr><td class="empty" colspan="3">no events</td></tr>';
-}
-
-/* ---- Speed tab ---- */
-function renderSpeed() {
-  const acts = state.events.filter((e) => e.kind === 'act' && e.payload.timings);
-  if (!acts.length) { $('#speedBody').innerHTML = '<div class="empty">no timed acts yet</div>'; return; }
-  const tot = acts.reduce((s, a) => s + (a.payload.timings.actMs + a.payload.timings.settleMs + a.payload.timings.snapMs), 0);
-  const maxTot = Math.max(...acts.map((a) => a.payload.timings.actMs + a.payload.timings.settleMs + a.payload.timings.snapMs));
-  const rows = acts.map((a) => {
-    const t = a.payload.timings; const sum = t.actMs + t.settleMs + t.snapMs;
-    const pct = (ms) => (ms / maxTot * 100);
-    return `<div class="bar-row" style="align-items:stretch">
-      <span class="name mono">[${a.payload.templateId}]</span>
-      <div style="flex:1; display:flex; height:16px; border-radius:3px; overflow:hidden; min-width:2px">
-        <div class="bar" style="width:${pct(t.actMs)}%; border-radius:0" title="act ${t.actMs}ms"></div>
-        <div class="bar settle" style="width:${pct(t.settleMs)}%; border-radius:0" title="settle ${t.settleMs}ms"></div>
-        <div class="bar snap" style="width:${pct(t.snapMs)}%; border-radius:0" title="snap ${t.snapMs}ms"></div>
-      </div><span class="muted">${sum}ms</span></div>`;
+function renderSteps() {
+  const list = $('#stepsList');
+  if (!S.steps.length) { list.innerHTML = '<div class="empty">нет актов</div>'; return; }
+  list.innerHTML = S.steps.map((s, idx) => {
+    const sep = s.routeStart ? `<div class="routelbl">${esc(s.route)}</div>` : '';
+    const lbl = `${esc(s.role || '?')} ${esc(JSON.stringify(s.name || ''))}${s.error ? ' · ' + esc(s.error.split(':')[0]) : ''}`;
+    const det = idx === S.i ? stepDetailHtml(s) : '';
+    return `${sep}<div class="steprow ${idx === S.i ? 'sel' : ''} ${s.error ? 'err' : ''}" data-i="${idx}">
+      <div class="line"><span class="n">${idx + 1}</span><span class="lbl">${lbl}</span></div>${det}</div>`;
   }).join('');
-  $('#speedBody').innerHTML = `
-    <div class="filters"><span class="tag"><span class="bar" style="display:inline-block;width:10px;height:10px"></span> act</span>
-      <span class="tag"><span class="bar settle" style="display:inline-block;width:10px;height:10px"></span> settle</span>
-      <span class="tag"><span class="bar snap" style="display:inline-block;width:10px;height:10px"></span> snapshot</span>
-      <span style="margin-left:auto" class="muted">total ${tot}ms · avg ${Math.round(tot / acts.length)}ms/act</span></div>
-    ${rows}`;
+  list.querySelectorAll('.steprow').forEach((el) => el.onclick = () => setStep(Number(el.dataset.i)));
+  const sel = list.querySelector('.steprow.sel'); if (sel) sel.scrollIntoView({ block: 'nearest' });
 }
 
-/* ---- wiring ---- */
-document.querySelectorAll('nav.tabs button').forEach((b) => b.onclick = () => {
-  state.tab = b.dataset.tab;
-  document.querySelectorAll('nav.tabs button').forEach((x) => x.classList.toggle('active', x === b));
-  document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + state.tab));
-  if (state.tab === 'graph') renderGraph();
-});
-$('#runPick').onchange = (e) => { state.runId = e.target.value; state.sel = null; loadRun(); };
-$('#refresh').onclick = loadRuns;
-document.querySelectorAll('.kf').forEach((c) => c.onchange = renderLog);
-$('#expand').onchange = renderLog;
-$('#lb').onclick = () => $('#lb').classList.remove('open');
-document.addEventListener('click', (e) => { if (e.target.matches('.shot img')) { $('#lbImg').src = e.target.src; $('#lb').classList.add('open'); } });
-window.addEventListener('resize', placeBoxes);
+function renderStrip() {
+  const track = $('#track'), count = S.steps.length;
+  track.querySelectorAll('.pdot, .sep').forEach((n) => n.remove());
+  S.steps.forEach((s, idx) => {
+    if (s.routeStart && idx > 0) {
+      const mid = (dotLeftPct(idx, count) + dotLeftPct(idx - 1, count)) / 2;
+      const sep = document.createElement('div'); sep.className = 'sep'; sep.style.left = mid + '%';
+      sep.innerHTML = `<span class="rl">${esc(s.route)}</span>`; track.appendChild(sep);
+    }
+    const d = document.createElement('div');
+    d.className = 'pdot ' + dotClass(s) + (idx === S.i ? ' cur' : '');
+    d.style.left = dotLeftPct(idx, count) + '%'; d.dataset.i = idx;
+    d.onclick = (e) => { e.stopPropagation(); setStep(idx); };
+    track.appendChild(d);
+  });
+  renderCursor(); renderReadout();
+}
+function renderCursor() {
+  const count = S.steps.length, ph = $('#playhead');
+  if (!count) { ph.style.display = 'none'; return; }
+  ph.style.display = 'block'; ph.style.left = dotLeftPct(S.i, count) + '%';
+  $('#track').querySelectorAll('.pdot').forEach((d) => d.classList.toggle('cur', Number(d.dataset.i) === S.i));
+}
+function renderReadout() {
+  const s = S.steps[S.i];
+  $('#readout').textContent = s ? `seq ${s.seq} · t${s.templateId} · ${S.i + 1}/${S.steps.length}` : '—';
+}
 
-let timer = null;
+function shotUrl(rel) { return api(`/api/runs/${S.runId}/${rel}`); }
+function renderStage() {
+  const wrap = $('#stageWrap'), s = S.steps[S.i];
+  $('#stageTitle').textContent = s ? `act [${s.templateId}] ${JSON.stringify(s.name || '')} · ${s.route}` : '—';
+  if (!s) { wrap.innerHTML = '<div class="empty">нет шага</div>'; return; }
+  if (s.error) { wrap.innerHTML = `<div class="placard err">акт упал<br><span class="mono">${esc(s.error)}</span><br><span class="muted">кадр не снят · засчитан unreachable</span></div>`; return; }
+  const sh = s.shots || {}, rel = S.frame === 'after' ? sh.after : sh.before;
+  if (!rel) { wrap.innerHTML = '<div class="placard">нет скриншота для этого кадра</div>'; return; }
+  wrap.innerHTML = `<div class="frame"><div class="box" id="rbox"></div><img id="stageImg" src="${shotUrl(rel)}" alt="frame"></div>`;
+  const img = $('#stageImg'); img.onclick = () => { $('#lbImg').src = img.src; $('#lb').classList.add('open'); };
+  img.onload = placeBox; if (img.complete) placeBox();
+}
+function placeBox() {
+  const s = S.steps[S.i], img = $('#stageImg'), box = $('#rbox');
+  if (!img || !box) return;
+  const sh = s && s.shots;
+  if (S.frame !== 'before' || !sh || !sh.rect || !sh.viewport) { box.style.display = 'none'; return; }
+  const b = boxFromRect(sh.rect, sh.viewport, img.clientWidth, img.clientHeight);
+  if (!b) { box.style.display = 'none'; return; }
+  box.style.left = b.left + 'px'; box.style.top = b.top + 'px'; box.style.width = b.width + 'px'; box.style.height = b.height + 'px'; box.style.display = 'block';
+}
+
+function setStep(i) { S.i = clampIndex(i, S.steps.length); renderCursor(); renderReadout(); renderSteps(); renderStage(); }
+
+/* ---- scrub interaction ---- */
+let dragging = false, raf = 0;
+function scrubTo(clientX) {
+  const rect = $('#track').getBoundingClientRect();
+  const i = indexFromClientX(clientX, rect.left, rect.width, S.steps.length);
+  if (i === S.i) return;
+  S.i = i; renderCursor(); renderReadout();
+  if (raf) cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => { renderSteps(); renderStage(); });
+}
+const track = $('#track');
+track.addEventListener('pointerdown', (e) => { if (!S.steps.length) return; dragging = true; track.setPointerCapture(e.pointerId); scrubTo(e.clientX); $('#tip').style.display = 'none'; });
+track.addEventListener('pointermove', (e) => {
+  if (dragging) { scrubTo(e.clientX); return; }
+  if (!S.steps.length) return;
+  const rect = track.getBoundingClientRect(), i = indexFromClientX(e.clientX, rect.left, rect.width, S.steps.length), s = S.steps[i];
+  const tip = $('#tip'); tip.style.display = 'block'; tip.style.left = dotLeftPct(i, S.steps.length) + '%';
+  tip.textContent = `${i + 1}. t${s.templateId} ${s.name || s.role} · ${s.route}`;
+});
+track.addEventListener('pointerup', () => { dragging = false; });
+track.addEventListener('pointerleave', () => { $('#tip').style.display = 'none'; });
+
+/* ---- tabs + wiring ---- */
+function setTab(t) {
+  S.tab = t;
+  $('#tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+  const tests = t === 'tests';
+  ['#bodyGrid', '#strip', '#kpis'].forEach((sel) => $(sel).classList.toggle('hide', tests));
+  $('#testsView').classList.toggle('hide', !tests);
+}
+$('#tabs').querySelectorAll('button').forEach((b) => b.onclick = () => setTab(b.dataset.tab));
+$('#prev').onclick = () => setStep(S.i - 1);
+$('#next').onclick = () => setStep(S.i + 1);
+$('#refresh').onclick = loadRuns;
+$('#lb').onclick = () => $('#lb').classList.remove('open');
+$('#tLeft').onclick = () => $('#bodyGrid').classList.toggle('no-left');
+$('#tRight').onclick = () => $('#bodyGrid').classList.toggle('no-right');
+$('#frameSel').querySelectorAll('button').forEach((b) => b.onclick = () => {
+  S.frame = b.dataset.frame; $('#frameSel').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); renderStage();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || S.tab !== 'runs') return;
+  if (e.key === 'ArrowLeft') { setStep(S.i - 1); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { setStep(S.i + 1); e.preventDefault(); }
+  else if (e.key === 'Home') { setStep(0); e.preventDefault(); }
+  else if (e.key === 'End') { setStep(S.steps.length - 1); e.preventDefault(); }
+  else if (e.key === 'f') { S.frame = S.frame === 'before' ? 'after' : 'before'; $('#frameSel').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.frame === S.frame)); renderStage(); }
+});
+window.addEventListener('resize', placeBox);
+
 function tick() { if ($('#autoref').checked) loadRuns().catch(() => {}); }
-$('#autoref').onchange = () => {};
-loadRuns().catch((e) => { $('#kpis').innerHTML = `<div class="empty">failed to load: ${esc(e.message)}</div>`; });
-timer = setInterval(tick, 2500);
+loadRuns().catch((e) => { $('#runsList').innerHTML = `<div class="empty">ошибка: ${esc(e.message)}</div>`; });
+setInterval(tick, 2500);
 </script>
 </body>
 </html>

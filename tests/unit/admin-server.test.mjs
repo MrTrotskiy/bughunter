@@ -115,4 +115,11 @@ test('admin serves the capture trail behind a loopback + containment fence', asy
   // Path traversal cannot escape the run dir (URL normalization + regex + containment).
   const trav = await get(port, q(`/api/runs/${runId}/shots/..%2f..%2frun.json`));
   assert.notEqual(trav.status, 200, 'traversal attempt is not served');
+
+  // The scrubber geometry module is served same-origin + token-free (it is code, not run
+  // data) so the page's `script-src 'self'` can import it.
+  const mod = await get(port, '/scrub-math.mjs');
+  assert.equal(mod.status, 200, 'scrub-math.mjs served');
+  assert.match(mod.headers['content-type'], /javascript/, 'served as javascript');
+  assert.match(mod.body.toString(), /export function deriveSteps/, 'is the geometry module');
 });
