@@ -2,6 +2,16 @@
 
 Founding architectural decisions for `bughunter`. Rejected alternatives logged more than accepted ones.
 
+### 2026-07-15 — Authenticated recon via a login pre-step + storageState reuse
+- CHOSE: a standalone `login.mjs` authenticates ONCE and persists a Playwright storageState (cookies + localStorage); `session.mjs contextOptions()` loads it at BOTH newContext sites via `BUGHUNTER_STORAGE_STATE`, so the existing crawl (cold-launch AND daemon-attach) maps the logged-in surface with the SAME graph/causal/coverage machinery — one wiring point, the crawl unchanged. Login is SETUP (separate process, no debug trail, no measured act), so causal attribution is provably untouched. Creds ride operator env vars (`BUGHUNTER_LOGIN_USER`/`_PASS`), never argv or a parsed file.
+- CHOSE: a fresh graph per auth mode (anonymous vs authed are different surfaces → separate honest denominators), matching the existing clean-run step.
+- CHOSE: a route-level refusal (`routeRefused`) in `persistentStep` — the name-only click gate cannot see a GET `/logout` reached by NAVIGATION, so classify the route path too; reconLoop marks it unreachable (honest), never visits it.
+- REJECTED: per-target login recipes parsed from `test.md` — a parser over the freeform secrets file is brittle and a new leak surface; a generic heuristic (email + password + submit) with `--*-selector` flag overrides covers the standard form with zero config. Revisit only when a second target needs SSO/OAuth/2FA.
+- REJECTED: threading `storageState` through every recon CLI's argv — a purely cross-cutting concern; an env var read in one helper matches every other cross-cut (`BUGHUNTER_STATE_DIR`, `BUGHUNTER_RUN_ID`) and touches no signatures.
+- REJECTED: one graph tagged `authState: anonymous|authed` — conflates two denominators so coverage % loses meaning; defer to a future "auth-state as a graph dimension" ADR.
+- REJECTED: a silent anonymous fallback when the storageState file is missing — a run the operator believes is authenticated must not quietly crawl logged-out; `contextOptions` fails loud (`STORAGE_STATE_MISSING`).
+- DEFERRED (honest boundaries): multi-step/SSO/OAuth/2FA login; mid-crawl session-expiry detection + re-login; the click-navigates-to-/logout class (href-path floor in `actStep`); an `auth-check` liveness probe.
+
 ### 2026-07-14 — Rebuild from scratch, not patch bughunt-agents
 - CHOSE: greenfield `bughunter` — the old foundation is unfixable by patching.
 - REJECTED: keep patching `bughunt-agents` — its hot file `recon-network.mjs` (1038 lines) was patched for months; blast radius too high, two identity systems structurally cannot join.

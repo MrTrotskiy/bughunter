@@ -48,3 +48,9 @@ Each live capability guard → test path (revert-verified).
 - the snapshot classifies each control's durable locator (testid/id/role-name/css) and gates test-id uniqueness (page-unique discriminator vs shared marker) — tests/live/locator.test.mjs
 - debug capture rides an act (before/after key-frames + rect + per-phase timings) WITHOUT perturbing causal attribution (real edge credited, in-window poll rejected) — tests/live/capture-causal.test.mjs
 - (unit) the debug admin serves the trail behind a loopback Host-guard + no-CORS + resolved-path containment; a foreign Host is 403'd — tests/unit/admin-server.test.mjs
+- authed recon: a login storageState makes the crawl map the logged-in surface (authed-only control present) — tests/live/auth.test.mjs (T1)
+- login VERIFIES success before persisting: wrong creds never write a storageState — tests/live/auth.test.mjs (T2)
+- the crawl refuses to NAVIGATE to a danger route (/logout), so an authed run never logs itself out — tests/live/auth.test.mjs (T3)
+- login output carries counts only — the credentials never appear in its result envelope — tests/live/auth.test.mjs (T5)
+- (unit) contextOptions injects storageState at newContext, fails loud on a missing state file, and anonymous forces a clean context — tests/unit/session-context.test.mjs
+- (unit) routeRefused classifies /logout, /account/delete, /checkout as refused; ordinary routes pass — tests/unit/danger-floor.test.mjs

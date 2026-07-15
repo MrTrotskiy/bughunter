@@ -15,7 +15,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dangerFloor } from '../../lib/recon/danger-floor.mjs';
+import { dangerFloor, routeRefused } from '../../lib/recon/danger-floor.mjs';
 
 test('destructive control names classify destructive', () => {
   for (const name of ['Delete', 'Delete row', 'Remove item', 'Discard changes', 'Reset', 'Purge cache']) {
@@ -71,4 +71,23 @@ test('extended destructive / payment vocabulary classifies', () => {
 test('an icon-only control with no name is unknown, not safe', () => {
   assert.equal(dangerFloor({ name: '', route: '/' }), 'unknown');
   assert.equal(dangerFloor({ name: '   ', route: '' }), 'unknown');
+});
+
+// routeRefused — the navigation-level gate (recon-run persistentStep). Authed runs can
+// reach a GET /logout by NAVIGATING to a control's own route; the name-only click gate
+// never sees it, so the route path itself must classify as refused.
+// Guards: the crawl will not re-navigate to a destructive/auth/payment route (self-logout
+//   / self-delete class). FAIL-ON-REVERT: widen the AUTH regex so 'logout' no longer
+//   matches, or make routeRefused always return false → the '/logout' assertion goes red.
+test('routeRefused stops danger routes and passes ordinary ones', () => {
+  assert.equal(routeRefused('/logout'), true, '/logout must be refused (auth)');
+  assert.equal(routeRefused('/account/logout'), true, 'a nested logout route must be refused');
+  assert.equal(routeRefused('/sign-off'), true, '/sign-off must be refused (auth)');
+  assert.equal(routeRefused('/signoff'), true, '/signoff must be refused (auth)');
+  assert.equal(routeRefused('/account/delete'), true, '/account/delete must be refused (destructive)');
+  assert.equal(routeRefused('/checkout'), true, '/checkout must be refused (payment)');
+  assert.equal(routeRefused('/log%6fut'), true, 'a percent-encoded /logout is decoded then refused');
+  assert.equal(routeRefused('/products'), false, 'an ordinary route is not refused');
+  assert.equal(routeRefused('/dashboard'), false, 'the dashboard is not refused');
+  assert.equal(routeRefused(''), false, 'an empty route is not refused (nothing to classify)');
 });
