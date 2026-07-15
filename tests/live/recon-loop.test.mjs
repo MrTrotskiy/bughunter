@@ -1,21 +1,23 @@
 // Live end-to-end for the Phase-1 loop-driver. Boots the search fixture and runs the
 // real recon loop (baseline → persistent browser step, re-navigate per act → reconLoop)
 // against it. Proves the loop COMPOSES the frontier + causal capture into one graph: it
-// drives a real browser, attributes the caused request to the right control, drains
-// the frontier, and honestly cannot reach controls behind in-app state (each act
-// re-navigates to the clean baseline).
+// drives a real browser, attributes the caused request to the right control, drains the
+// frontier, and — with the GAP 2 stay-on-page prologue — REACHES the Edit button revealed
+// only by clicking Search (a same-URL, GET-idempotent reveal) by replaying that path.
 //
 // Guards: the loop, driving a real browser, persists the causal search edge to the
 //   graph (#search --triggers--> GET /api/search, provenance causal); leaves the
 //   load-burst /api/config and background poll /api/ping UNcredited (no request nodes);
-//   discovers the revealed Edit template; terminates by draining the frontier; and keeps
-//   the denominator HONEST — the reload-unreachable Edit is counted as `unreachable`,
-//   NOT as explored. This is what the unit tests (fake step) and the keystone (single
-//   manual act) do NOT prove: that these COMPOSE against a live browser.
+//   discovers AND reaches the revealed Edit template via the reveal-replay prologue
+//   (explored, not unreachable); and terminates by draining the frontier. This is what the
+//   unit tests (fake step) and the keystone (single manual act) do NOT prove: that these
+//   COMPOSE against a live browser. (The honest-`unreachable` denominator is unit-guarded in
+//   tests/unit/frontier.test.mjs + tests/unit/recon-loop.test.mjs.)
 // FAIL-ON-REVERT: (a) remove `addTrigger(graph, tid, req)` in lib/recon/step.mjs — the
 //   loop no longer persists the causal edge → "loop must persist the causal search edge"
-//   (graph.edges empty); (b) drop `markUnreachable` in lib/recon/recon-loop.mjs → Edit
-//   counts as explored → stats.unreachable is 0, the unreachable assertion fails.
+//   (graph.edges empty); (b) disable the replay prologue (drop the `if (target.reveal) await
+//   replayRevealPath` branch in lib/recon/reveal-replay.mjs) → Edit is closed when acted →
+//   NO_INSTANCE → Edit counts as `unreachable` → explored drops to 2, unreachable rises to 1.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,13 +48,13 @@ test('recon loop: drives a real browser, attributes the caused edge, drains the 
   assert.equal(res.ok, true);
   assert.ok(res.baseline.total >= 2, `expected >=2 initial controls, got ${res.baseline.total}`);
 
-  // The loop terminated by draining the frontier. The denominator is HONEST: the input
-  // and Search were genuinely explored, while the revealed Edit button — unreachable on
-  // a cold-start reload — is counted as `unreachable`, NOT as covered.
+  // The loop terminated by draining the frontier. The input and Search were genuinely
+  // explored; the Edit button — revealed only by clicking Search — is ALSO explored now,
+  // reached by the reveal-replay prologue re-opening the Search results before acting.
   assert.equal(res.stopped, 'frontier-drained', `loop should drain, got ${res.stopped}`);
   assert.equal(res.stats.remaining, 0, 'frontier drained');
-  assert.equal(res.stats.unreachable, 1, 'cold-start-unreachable Edit is flagged, not counted as explored');
-  assert.equal(res.stats.explored, 2, 'only the two genuinely-reached controls count as explored');
+  assert.equal(res.stats.unreachable, 0, 'the depth-1 stay-on-page Edit is reached (replay), not unreachable');
+  assert.equal(res.stats.explored, 3, 'input, Search, AND the reveal-reached Edit all count as explored');
 
   // Inspect the graph the loop built.
   const graph = JSON.parse(readFileSync(path.join(stateDir, 'graph.json'), 'utf8'));

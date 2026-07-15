@@ -60,3 +60,6 @@ Each live capability guard → test path (revert-verified).
 - login output carries counts only — the credentials never appear in its result envelope — tests/live/auth.test.mjs (T5)
 - (unit) contextOptions injects storageState at newContext, fails loud on a missing state file, and anonymous forces a clean context — tests/unit/session-context.test.mjs
 - (unit) routeRefused classifies /logout, /account/delete, /checkout as refused; ordinary routes pass — tests/unit/danger-floor.test.mjs
+- GAP 2 stay-on-page: a control behind a depth-1 modal is reached via the replay prologue, causally attributed at depth (in-window poll still dropped, raw-ring proven), the GET-only gate leaves a POST-opener's children unreachable, and a replay hop that is stale / too-deep / an off-origin link / a /logout danger route is REFUSED before the click — tests/live/stay-on-page.test.mjs
+- (unit) mergeSnapshot stamps node.reveal on NEW nodes only (first-reveal-path-wins) with ZERO id churn (ledger + diffIdentity), and frontier.nextBatch carries reveal — tests/unit/reveal-annotation.test.mjs
+- (unit) identity-diff catches a re-keyed OR dropped template/instance key + dropped edge, and its CLI loader fails loud on a corrupt (present-but-unparseable) state file — tests/unit/identity-diff.test.mjs
