@@ -15,8 +15,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeGraph, mergeSnapshot, markExplored, markUnreachable } from '../../lib/graph/graph-store.mjs';
-import { nextBatch, frontierStats } from '../../lib/recon/frontier.mjs';
+import { makeGraph, mergeSnapshot, markExplored, markUnreachable, markOpener, markInstanceExplored } from '../../lib/graph/graph-store.mjs';
+import { nextBatch, frontierStats, frontierInstanceStats, OPENER_INSTANCE_CAP } from '../../lib/recon/frontier.mjs';
 
 // Build a graph with n distinct single-instance templates (ids 1..n), as ids.mjs
 // would have minted them, then merged.
@@ -82,4 +82,40 @@ test('an unreachable-drained template counts as unreachable, not genuine coverag
   markUnreachable(g, 1, 'NO_INSTANCE'); // drained from the frontier but never actually reached
   markExplored(g, 2); // genuinely explored
   assert.deepEqual(frontierStats(g), { discovered: 2, explored: 1, unreachable: 1, remaining: 0, routes: 1 });
+});
+
+// Guards: instance-level coverage honesty — an opener with N instances is N addressable controls,
+//   not one. frontierInstanceStats reports the honest instance-level frontier (walkable/walked/
+//   remaining) that, unlike template `frontierStats`, never reads "done" while nextBatch still yields
+//   opener siblings; and opener instances BEYOND OPENER_INSTANCE_CAP are counted in `cappedRemainder`
+//   — the un-walked remainder is FLAGGED, never silently hidden (the "coverage never hidden" invariant).
+// FAIL-ON-REVERT: make `cappedRemainder` always 0 (drop the `insts.length - CAP` term) → the
+//   "2 beyond-cap flagged" assertion goes red; make the opener `limit` 1 (template-level) → walkable
+//   reads 2 not CAP+1 and the walked/remaining assertions go red.
+test('frontierInstanceStats: opener siblings + beyond-cap remainder are honest, not hidden', () => {
+  const g = makeGraph();
+  const N = OPENER_INSTANCE_CAP + 2; // 2 instances beyond the cap
+  const els = [];
+  for (let i = 1; i <= N; i++) els.push({
+    templateId: 1, instanceId: 100 + i, templateSelector: 'button.nav', role: 'button',
+    name: 'Nav', instanceKey: `#${i}`, instanceSelector: `button.nav:nth-child(${i})`,
+  });
+  els.push({ templateId: 2, instanceId: 200, templateSelector: 'button.x', role: 'button', name: 'X', instanceKey: '#1', instanceSelector: 'button.x' });
+  mergeSnapshot(g, '/', els);
+  markOpener(g, 1);
+
+  const before = frontierInstanceStats(g);
+  assert.equal(before.walkable, OPENER_INSTANCE_CAP + 1, 'opener contributes CAP walkable + the 1 plain template');
+  assert.equal(before.cappedRemainder, 2, 'the 2 opener instances beyond the CAP are flagged, not hidden');
+  assert.equal(before.walked, 0, 'nothing walked yet');
+  assert.equal(before.remaining, OPENER_INSTANCE_CAP + 1, 'remaining = walkable while nothing is drained');
+
+  markInstanceExplored(g, 1, '#1');
+  markInstanceExplored(g, 1, '#2');
+  markInstanceExplored(g, 1, '#3');
+  markInstanceExplored(g, 2, '#1');
+  const after = frontierInstanceStats(g);
+  assert.equal(after.walked, 4, '3 opener siblings + the plain control walked');
+  assert.equal(after.remaining, OPENER_INSTANCE_CAP + 1 - 4, 'remaining drops per walked INSTANCE (not template-count)');
+  assert.equal(after.cappedRemainder, 2, 'the beyond-cap remainder is unchanged by walking within the cap');
 });

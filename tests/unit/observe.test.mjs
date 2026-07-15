@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { makeGraph, mergeSnapshot, saveGraph, loadGraph } from '../../lib/graph/graph-store.mjs';
+import { makeGraph, mergeSnapshot, saveGraph, loadGraph, markOpener } from '../../lib/graph/graph-store.mjs';
 import { frontierStats } from '../../lib/recon/frontier.mjs';
 import { observe } from '../../lib/recon/observe.mjs';
 import { emit } from '../../lib/recon/frontier-cli.mjs';
@@ -127,4 +127,34 @@ test('--state-change=false is recorded as false, not coerced to true', (t) => {
   observe({ template: 3, purpose: 'runs a search', danger: 'safe', effect: 'reveal', stateChange: 'false' });
   const g = loadGraph(graphPath);
   assert.equal(g.elements[3].semantics.stateChange, false, "the string 'false' must not become true");
+});
+
+// Guards: opener-drain — draining a PROVEN multi-instance opener template-level (no --instance)
+//   would mark the whole template explored while its OTHER instances stay un-drained, so the
+//   frontier re-emits them until the step cap (a silent budget burn). observe REFUSES it (USAGE) so
+//   the caller passes the --instance the frontier emitted; a plain single-instance control is
+//   unaffected (node.opener false). WITH --instance only the acted sibling drains.
+// FAIL-ON-REVERT: drop the opener-drain guard in observe.mjs → observe without --instance drains the
+//   opener template-level and returns ok → the assert.throws(USAGE) goes red.
+const navA = { templateId: 7, instanceId: 70, templateSelector: 'button.nav', role: 'button', name: 'Nav', instanceKey: '#1', instanceSelector: 'button.nav:nth-child(1)' };
+const navB = { templateId: 7, instanceId: 71, templateSelector: 'button.nav', role: 'button', name: 'Nav', instanceKey: '#2', instanceSelector: 'button.nav:nth-child(2)' };
+
+test('observe REFUSES draining a proven multi-instance opener without --instance', (t) => {
+  const { graphPath } = withState(t, [navA, navB]);
+  const g = loadGraph(graphPath);
+  markOpener(g, 7);
+  saveGraph(graphPath, g);
+
+  assert.throws(
+    () => observe({ template: 7, purpose: 'nav', danger: 'safe', effect: 'reveal' }),
+    (err) => err.code === 'USAGE',
+    'draining a multi-instance opener without --instance must be refused',
+  );
+
+  // WITH --instance only the acted sibling drains; the other stays in the frontier.
+  const ok = observe({ template: 7, instance: '#1', purpose: 'nav', danger: 'safe', effect: 'reveal' });
+  assert.equal(ok.explored, true);
+  const g2 = loadGraph(graphPath);
+  assert.equal(g2.elements[7].instances.find((i) => i.instanceKey === '#1').explored, true, 'the acted instance drains');
+  assert.ok(!g2.elements[7].instances.find((i) => i.instanceKey === '#2').explored, 'the sibling stays in the frontier');
 });
