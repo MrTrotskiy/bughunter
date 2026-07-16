@@ -12,6 +12,15 @@
 // FAIL-ON-REVERT (b): drop the `if (opts.anonymous) return base` short-circuit → anonymous
 //   returns { storageState } → "anonymous ignores the env storageState".
 // FAIL-ON-REVERT (c): drop `viewport` from the returned base → the fixed-viewport asserts go red.
+//
+// Also guards readSessionEndpoint() — the daemon-attach trust boundary. A published
+// session.json is trusted ONLY when its wsEndpoint host is loopback; a bracketed IPv6
+// loopback (ws://[::1]:PORT, the macOS launchServer form) MUST be accepted, and a LAN
+// endpoint MUST be refused (null → cold-launch).
+// FAIL-ON-REVERT (d): restore the bracket-blind `LOOPBACK.has(host) || host.startsWith('127.')`
+//   check → the '[::1]' endpoint returns null instead of the string → "a loopback [::1]
+//   endpoint must be trusted". Neuter isLoopbackHost to always-true → the LAN endpoint is
+//   trusted → "a non-loopback LAN endpoint must be refused".
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,7 +28,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { contextOptions } from '../../lib/browser/session.mjs';
+import { contextOptions, readSessionEndpoint } from '../../lib/browser/session.mjs';
 
 function withStorageEnv(t, value) {
   const prev = process.env.BUGHUNTER_STORAGE_STATE;
@@ -71,4 +80,30 @@ test('opts.anonymous forces a clean context regardless of the env', (t) => {
 test('opts.anonymous short-circuits before the existsSync check (a missing env path is fine)', (t) => {
   withStorageEnv(t, path.join(tmpdir(), 'bughunter-anon-missing-xyz.json'));
   assert.equal(contextOptions({ anonymous: true }).storageState, undefined, 'anonymous returns no storageState even when the env path is missing');
+});
+
+// readSessionEndpoint reads BUGHUNTER_STATE_DIR/session.json dynamically per call, so a
+// temp dir + this env is enough to drive it without a browser or a live daemon.
+function withStateDir(t) {
+  const dir = mkdtempSync(path.join(tmpdir(), 'bughunter-session-'));
+  const prev = process.env.BUGHUNTER_STATE_DIR;
+  process.env.BUGHUNTER_STATE_DIR = dir;
+  t.after(() => {
+    if (prev === undefined) delete process.env.BUGHUNTER_STATE_DIR; else process.env.BUGHUNTER_STATE_DIR = prev;
+    rmSync(dir, { recursive: true, force: true });
+  });
+  return dir;
+}
+
+test('readSessionEndpoint trusts a bracketed IPv6 loopback endpoint (the macOS launchServer form)', (t) => {
+  const dir = withStateDir(t);
+  const ws = 'ws://[::1]:50798/abc';
+  fs.writeFileSync(path.join(dir, 'session.json'), JSON.stringify({ wsEndpoint: ws }));
+  assert.equal(readSessionEndpoint(), ws, 'a loopback [::1] endpoint must be trusted, not force a cold launch');
+});
+
+test('readSessionEndpoint refuses a non-loopback LAN endpoint (trust boundary holds)', (t) => {
+  const dir = withStateDir(t);
+  fs.writeFileSync(path.join(dir, 'session.json'), JSON.stringify({ wsEndpoint: 'ws://192.168.1.50:9222/x' }));
+  assert.equal(readSessionEndpoint(), null, 'a non-loopback LAN endpoint must be refused (cold-launch)');
 });
