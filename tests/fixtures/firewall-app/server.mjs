@@ -20,11 +20,18 @@
 //     route guard must abort it even though GET is "safe" (M2).
 //   - #open-delete fires DELETE /api/item — a non-idempotent verb the graph recorded but which is
 //     NEVER allowlisted (only read-over-POST is, L2).
+//   - #open-offorigin fires a benign OFF-ORIGIN SAFE GET (a CDN image, to the ?off=<origin> second
+//     server), revealing #child-offorigin. The firewall must ABORT the cross-origin GET (offHits stays
+//     0) YET the reveal must COMPLETE — a safe-method off-origin sub-resource is a SOFT block that does
+//     not fail reach (failing on it broke stay-on-page reach on every real app with off-origin assets).
 //
 // FAIL-ON-REVERT levers (server-side counters, kept at 0 by the firewall): trackHits (remove the
 // firewall install → POST /api/track passes), itemWriteHits (revert H1 to pathname-only canon → the
 // smuggled DELETE passes; revert L2 to allowlist-every-non-GET → the hard DELETE passes), logoutHits
-// (revert M2 to unconditional safe-method continue → GET /logout passes).
+// (revert M2 to unconditional safe-method continue → GET /logout passes), offHits (drop the off-origin
+// abort → the cross-origin GET reaches the second server). The SOFT-block reach guard (a safe-method
+// off-origin sub-resource does NOT fail the reveal) reverts by re-hardening every block → #open-offorigin
+// throws REVEAL_WRITE_BLOCKED and #child-offorigin is absent.
 
 import http from 'node:http';
 
@@ -37,11 +44,13 @@ const PAGE = `<!doctype html>
   <button id="open-h1" type="button">Open (H1 query-smuggle)</button>
   <button id="open-logout" type="button">Open (logout side-effect)</button>
   <button id="open-delete" type="button">Open (hard delete)</button>
+  <button id="open-offorigin" type="button">Open (off-origin asset)</button>
   <div id="root-danger"></div>
   <div id="root-safe"></div>
   <div id="root-h1"></div>
   <div id="root-logout"></div>
   <div id="root-delete"></div>
+  <div id="root-offorigin"></div>
   <script>
     // #open-danger: a POST-nav opener whose REPLAY click fires an EXTRA write (/api/track) alongside
     // its allowlisted read (/api/list) and a safe GET. Reveals #child-danger (stay-on-page, no nav).
@@ -87,6 +96,17 @@ const PAGE = `<!doctype html>
       fetch('/api/item', { method: 'DELETE' }).catch(function () {});
       root.innerHTML = '<div class="modal"><button id="child-delete" type="button">Expand</button></div>';
     });
+    // #open-offorigin: replay fires a benign OFF-ORIGIN SAFE GET (a CDN image the revealed UI pulls in),
+    // to the second-server origin passed as ?off=<origin>. The firewall must ABORT it (leak prevented,
+    // offHits stays 0) YET the reveal must COMPLETE and reveal #child-offorigin — a safe-method off-origin
+    // sub-resource is a SOFT block that does not fail reach. Reveals #child-offorigin.
+    document.getElementById('open-offorigin').addEventListener('click', function () {
+      var root = document.getElementById('root-offorigin');
+      if (root.childElementCount) return;
+      var off = new URLSearchParams(location.search).get('off');
+      if (off) { fetch(off + '/offasset').catch(function () {}); } // benign off-origin CDN asset GET
+      root.innerHTML = '<div class="modal"><button id="child-offorigin" type="button">Expand</button></div>';
+    });
   </script>
 </body></html>`;
 
@@ -102,6 +122,7 @@ export function start(port = 0) {
   let trackHits = 0;
   let logoutHits = 0;
   let itemWriteHits = 0;
+  let offHits = 0;
   const server = http.createServer((req, res) => {
     const u = new URL(req.url, 'http://127.0.0.1');
     if (u.pathname === '/') {
@@ -120,6 +141,9 @@ export function start(port = 0) {
     if (u.pathname === '/api/item' && (req.method === 'DELETE' || (req.method === 'POST' && u.searchParams.has('_method')))) {
       itemWriteHits++; return sendJson(res, 200, { written: true });
     }
+    // The OFF-ORIGIN asset (a benign CDN image the revealed UI pulls in). A hit here means the firewall
+    // let a cross-origin SAFE GET through — it must ABORT it (leak prevented) while NOT failing the reveal.
+    if (u.pathname === '/offasset') { offHits++; return sendJson(res, 200, { asset: true }); }
     return sendJson(res, 404, { error: 'not found' });
   });
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => {
@@ -128,6 +152,7 @@ export function start(port = 0) {
     server.trackHits = () => trackHits;
     server.logoutHits = () => logoutHits;
     server.itemWriteHits = () => itemWriteHits;
+    server.offHits = () => offHits;
     resolve(server);
   }));
 }

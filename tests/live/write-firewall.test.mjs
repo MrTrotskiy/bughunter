@@ -22,6 +22,9 @@
 //       guard ABORTS it (logoutHits stays 0) so a replay can never self-logout, even on a GET.
 //   (5) L2 NON-POST NEVER ALLOWLISTED — a recorded DELETE /api/item (#open-delete) is never re-firable
 //       (only read-over-POST is) → ABORTED (itemWriteHits stays 0).
+//   (6) SOFT-BLOCK OFF-ORIGIN READ — a benign off-origin SAFE GET (#open-offorigin fires originB/offasset)
+//       is ABORTED (offHits stays 0, leak prevented) but does NOT fail the reveal — the child IS revealed.
+//       A safe-method off-origin sub-resource must not break reach (writes/danger still HARD-fail above).
 //
 // FAIL-ON-REVERT (each guard reds when its fix is reverted, then restored):
 //   (1) delete the `await page.route('**/*', firewall)` install (or the `if (blocked.length > blockedBefore)`
@@ -32,6 +35,10 @@
 //       GET /logout is waved through → logoutHits>0 + no throw.
 //   (5) L2: allowlist every non-GET in buildWriteAllowlist (drop the `method !== 'POST'` skip) → the recorded
 //       DELETE becomes allowlisted → itemWriteHits>0 + no throw. All verified red, then restored.
+//   (6) re-harden replayRevealPath (`find(b=>b.hard)` → `blocked.length > blockedBefore`) → the benign
+//       off-origin GET fails the reveal → replay REJECTS (reach half — the guard reds on the throw, since the
+//       child is set synchronously before the aborted fetch); drop the `|| offOrigin` clause in
+//       makeFirewallHandler → the GET reaches serverB → offHits>0 (leak half).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -179,4 +186,36 @@ test('L2: a recorded DELETE /api/item is never allowlisted (only read-over-POST 
     'the recorded DELETE is not re-firable → REVEAL_WRITE_BLOCKED',
   );
   assert.equal(server.itemWriteHits(), 0, 'DELETE /api/item was ABORTED — a non-idempotent verb is never allowlisted');
+});
+
+test('a benign off-origin SAFE-method sub-resource is aborted (leak prevented) but does NOT fail the reveal', async (t) => {
+  // Guards: a safe-method OFF-ORIGIN sub-resource (a CDN image/font/pixel the revealed UI pulls in) is a
+  // SOFT block — aborted to prevent the leak, yet the reveal COMPLETES and reveals its child. The old
+  // "any aborted request fails the reveal" broke stay-on-page reach on every real app with off-origin
+  // assets (found live on dev.rawcaster.com: composer + Live-events reveals died REVEAL_WRITE_BLOCKED on
+  // a benign GET /nuggets/Image_*.jpg served off-origin). Writes/danger-routes still HARD-fail (tests above).
+  // FAIL-ON-REVERT (reach): re-harden replayRevealPath (`blocked.slice(blockedBefore).find(b=>b.hard)` →
+  //   `blocked.length > blockedBefore`) → the off-origin GET fails the reveal → `replayRevealPath` REJECTS
+  //   (the child is set synchronously before the aborted fetch, so the guard reds on the throw, not on child absence).
+  // FAIL-ON-REVERT (leak): drop the `|| offOrigin` abort clause in makeFirewallHandler → the cross-origin
+  //   GET is waved through → serverB.offHits() > 0.
+  process.env.PW_ALLOW_PRIVATE = '1';
+  const serverA = await start(0); // serves the page
+  const serverB = await start(0); // the OFF-ORIGIN "CDN" (different port ⇒ different origin, RFC 6454)
+  const originB = `http://127.0.0.1:${serverB.address().port}`;
+  const url = `http://127.0.0.1:${serverA.address().port}/?off=${encodeURIComponent(originB)}`;
+  const { browser, page } = await launch();
+  t.after(async () => { await close(browser); serverA.close(); serverB.close(); });
+
+  await gotoGated(page, url);
+  await waitSettled(page);
+
+  // #open-offorigin fires only a benign cross-origin SAFE GET (originB/offasset) — no recorded triggers,
+  // so the allowlist is empty. The reveal must COMPLETE (not throw): the safe-method off-origin sub-resource
+  // is a SOFT block, aborted without failing reach.
+  await replayRevealPath(page, graphWith(600, '#open-offorigin', []), reveal(600));
+
+  const child = await page.$('#child-offorigin');
+  assert.ok(child, 'the reveal COMPLETED and revealed its child — a benign off-origin asset does not break reach');
+  assert.equal(serverB.offHits(), 0, 'the cross-origin GET /offasset was ABORTED — the off-origin leak is still prevented');
 });
