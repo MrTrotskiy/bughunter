@@ -1,9 +1,13 @@
 # Phase-1 Full-Collection Plan — authenticated SPA
 
-Status: **PLAN** (not yet built). Synthesised from three independent Fable passes — code-architect,
-industry-SOTA survey, and a code-vs-code validation against the abandoned reference `bughunt-agents`.
-Companion artifact (Russian, presentation form): the target-architecture page published this session.
-This file is the canonical, English, checked-in version.
+Status: **FIRST STONE BUILT** (2026-07-16, cto-validated D1–D5, code Opus); Layers 2–5 remain PLAN.
+The Layer-1 exhaustive-traversal engine + its fail-reason histogram ship: `/recon` runs until DRAINED-or-STALLED
+(not `cap 20`), `frontier-cli --emit` returns `frontierInstanceStats` + a `progress` verdict, `whats-new` writes
+the `act.failed` seam, and `report --unreached` renders the histogram (see `decisions.md` 2026-07-16 + CHANGELOG).
+The NEXT stone is chosen BY the histogram once a fresh authed run measures the dominant class (§6). Synthesised
+from three independent Fable passes — code-architect, industry-SOTA survey, and a code-vs-code validation against
+the abandoned reference `bughunt-agents`. Companion artifact (Russian, presentation form): the target-architecture
+page published this session. This file is the canonical, English, checked-in version.
 
 The goal: exhaustively collect the **whole reachable authenticated SPA** (dev.rawcaster.com — antd/React,
 the entire app under one URL, navigation swaps content client-side over POST), not a budget-bounded slice.
@@ -79,12 +83,19 @@ per context window) is preserved — there are simply many windows that continue
 novelty-first reorder are sub-details **inside** this engine, not the answer.
 
 ### Tool — Fail-Reason Histogram  *(first stone; threads all layers)*
-Read-only `report.mjs --unreached`: a pure function over `graph.json` + `runs/<id>/events.ndjson` →
-distribution over `{NOT_VISIBLE, NO_INSTANCE, REVEAL_STALE, REVEAL_TOO_DEEP, REVEAL_CYCLE, DANGER_FLOOR,
-unflagged-POST-opener, never-discovered, cappedRemainder}`. **It MUST also distinguish route-collapse-UNEXPLORED
-(POST-nav pages collapsed under one `routeKey`) from budget-UNEXPLORED** — otherwise the operator cannot see
-that on rawcaster the dominant class is the INC.3 frontier-key class, not the L1 budget class. This is the
-go/no-go artifact the project's empirical discipline requires before L2/L3/L4. It does not exist yet.
+Read-only `report.mjs --unreached`: a read over `graph.json` + the run's `runs/<id>/events.ndjson` →
+distribution over `{unexplored, not-visible, NO_INSTANCE, REVEAL_STALE, REVEAL_TOO_DEEP, REVEAL_CYCLE,
+danger-floor, cappedRemainder}`. NOT a pure function of the graph alone: on the AGENT path (the only path
+`/recon` drives) the graph holds only the COARSE `observe` effect (`unreachable-coldstart`/`not-visible`); the
+granular reason codes live ONLY in the trail. So a PREREQUISITE seam is an `act.failed` trail event written
+at throw time in `whats-new` (a failed act otherwise writes to neither graph nor trail) — the histogram reads
+its granular half from those events, its coverage half from the graph. `never-discovered` is structurally
+uncountable (you cannot enumerate what was never found) — the histogram names the limit, never invents a count.
+On the route-collapse axis it must **FLAG** route-collapse-UNEXPLORED (POST-nav locations collapsed under one
+`routeKey`) as `pending-INC.3` — it CANNOT split it from budget-UNEXPLORED before INC.3, because the graph
+carries no location identity beyond `routeKey`; any split now would be a heuristic the invariants forbid. That
+honest flag is itself the signal that on rawcaster the dominant class is the INC.3 frontier-key class, not the
+L1 budget class. This is the go/no-go artifact the project's empirical discipline requires before L2/L3/L4.
 
 ### Layer 2 — Resilience at Scale  *(new · measure-gated)*
 `resolveHandle(page, inst)` tries the already-derived durable `locator` (testid > stable-id > role-name > css)
@@ -191,8 +202,11 @@ The plan reaches / exceeds the reference IF:
   gap the reference exposes (it capped `DRILL_PER_LIST=1`).
 
 Open items to resolve on a fixture before the plan leans on "mechanism ready":
-- The **doc contradiction** "depth-2 chain built" (`decisions.md`, 2026-07-15) vs "still-unbuilt" (`CLAUDE.md`)
-  — verify against `panel-reach.test.mjs` / a fixture and self-heal whichever line is stale.
+- The **"depth-2" doc contradiction** is a NAMING collision, not a functional one (resolved 2026-07-16, verified
+  against `cdc9605` + `panel-reach.test.mjs`): "depth-2 panel reach" — uncovering a control PRESENT at baseline
+  but hidden behind ONE opener (an antd "…more" → tab) — IS built and fixture-proven. What CLAUDE.md lists as
+  "still unbuilt" is the "depth-2 CHAIN" = TWO sequential in-app hops (open-panel → tab → content) plus per-row
+  instance reveal-paths. Both statements are consistent under that distinction; no line is stale.
 
 ## 10. Provenance & invariants
 

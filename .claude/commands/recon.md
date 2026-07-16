@@ -3,7 +3,7 @@ description: Run a full Phase-1 recon on a target — daemon + AI loop until the
 argument-hint: <url>
 ---
 
-Run a complete Phase-1 recon of the target below by orchestrating the `recon` subagent over a shared browser daemon. You are the RUN DRIVER: you bracket the daemon and re-invoke the recon worker until the frontier drains. Follow this procedure exactly.
+Run a complete Phase-1 recon of the target below by orchestrating the `recon` subagent over a shared browser daemon. You are the RUN DRIVER: you bracket the daemon and re-invoke the recon worker until the frontier is DRAINED or STALLED (not a fixed iteration budget). Follow this procedure exactly.
 
 Target: $ARGUMENTS
 
