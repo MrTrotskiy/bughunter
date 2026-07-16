@@ -15,6 +15,9 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { toUrlPattern, makeGraph, mergeSnapshot, recordSemantics, loadGraph, saveGraph, SCHEMA_VERSION } from '../../lib/graph/graph-store.mjs';
+import { makeLedger } from '../../lib/graph/ids.mjs';
+import { idify } from '../../lib/recon/step.mjs';
+import { diffIdentity } from '../../lib/graph/identity-diff.mjs';
 
 test('query value is masked to :param, key is kept', () => {
   assert.equal(toUrlPattern('/api/search?q=hello'), '/api/search?q=:param');
@@ -105,6 +108,72 @@ test('the reveal fill protects genuine coverage, fills only a drained/unacted hi
   assert.equal(drained.explored, false, 'drained instance is reopened for a genuine attempt');
   assert.equal(drained.unreachable, undefined, 'drained instance shed its unreachable flag');
   assert.ok(res.filled.some((f) => f.instanceKey === '#drained'), 'drained instance IS in filled');
+});
+
+// Guards (DRILL_PER_LIST honesty): mergeSnapshot sets a write-once node.listRow when an instance's
+//   element sits in a list row (el.inRow === true) — a template with ANY row-resident instance is a
+//   list-of-rows, so frontier.drillSkipped can count its non-representative rows. inRow:false / absent
+//   (older snapshot) leaves listRow UNSET (safe default), and once true it never flips back to false.
+// FAIL-ON-REVERT: (a) drop the `if (el.inRow === true) node.listRow = true` line → the row-resident
+//   template's `listRow === true` assertion reds; (b) change it to `node.listRow = el.inRow === true`
+//   (not write-once) → a later inRow:false instance flips it → the "stays true" assertion reds.
+test('mergeSnapshot sets node.listRow write-once for a row-resident instance; false/absent inRow leaves it unset', () => {
+  const g = makeGraph();
+  const rowEl = (i) => ({
+    templateId: 1, instanceId: 100 + i, templateSelector: 'li button.edit', role: 'button',
+    name: 'Edit', instanceKey: `#${i}`, instanceSelector: `li:nth-child(${i}) button.edit`, inRow: true,
+  });
+  mergeSnapshot(g, '/', [rowEl(1), rowEl(2)]);
+  assert.equal(g.elements[1].listRow, true, 'a row-resident instance flags the template listRow');
+
+  // Write-once: a LATER inRow:false instance of the SAME template must NOT flip listRow back to false.
+  mergeSnapshot(g, '/', [{ ...rowEl(3), inRow: false }]);
+  assert.equal(g.elements[1].listRow, true, 'listRow is write-once — a later non-row instance never clears it');
+
+  // A NON-row template (inRow:false) → listRow stays unset (safe default, not false).
+  mergeSnapshot(g, '/', [{
+    templateId: 2, instanceId: 200, templateSelector: 'button.x', role: 'button', name: 'X',
+    instanceKey: '#1', instanceSelector: 'button.x', inRow: false,
+  }]);
+  assert.equal(g.elements[2].listRow, undefined, 'inRow:false leaves listRow unset');
+
+  // Absent inRow (older snapshot, no field) → listRow stays unset, exactly like hiddenWhenSeen.
+  mergeSnapshot(g, '/', [{
+    templateId: 3, instanceId: 300, templateSelector: 'button.y', role: 'button', name: 'Y',
+    instanceKey: '#1', instanceSelector: 'button.y',
+  }]);
+  assert.equal(g.elements[3].listRow, undefined, 'absent inRow leaves listRow unset');
+});
+
+// Guards (INVARIANT #2): inRow/listRow are ADDITIVE reporting fields — never identity inputs. Feeding
+//   the SAME elements once WITHOUT and once WITH inRow must mint IDENTICAL template/instance ids (idify
+//   keys on the selector strings + instanceKey only) and add ZERO edge churn — diffIdentity ok:true.
+// FAIL-ON-REVERT: fold inRow into an identity key (e.g. idify keying on it, or mergeSnapshot minting a
+//   new id when inRow differs) → the two ledgers diverge and diffIdentity reports churn → the
+//   deepEqual(ledger maps) + ok:true assertions go red.
+test('inRow/listRow add ZERO identity churn (ledger maps identical; diffIdentity ok)', () => {
+  const rowEls = () => [
+    { templateSelector: 'li button.edit', role: 'button', name: 'Edit', instanceKey: '#1', instanceSelector: 'li:nth-child(1) button.edit' },
+    { templateSelector: 'li button.edit', role: 'button', name: 'Edit', instanceKey: '#2', instanceSelector: 'li:nth-child(2) button.edit' },
+  ];
+  // Run A: merge the elements WITHOUT inRow.
+  const gA = makeGraph(); const ledgerA = makeLedger();
+  mergeSnapshot(gA, '/', idify(ledgerA, rowEls()));
+  // Run B: merge the SAME elements WITH inRow:true (flags listRow).
+  const gB = makeGraph(); const ledgerB = makeLedger();
+  mergeSnapshot(gB, '/', idify(ledgerB, rowEls().map((e) => ({ ...e, inRow: true }))));
+
+  // The flag actually took effect in B and not A — the churn proof is not vacuous.
+  assert.equal(gB.elements[1].listRow, true, 'run B flagged listRow');
+  assert.equal(gA.elements[1].listRow, undefined, 'run A has no listRow');
+
+  // The append-only ledger keys on the selector strings ONLY — inRow must never enter it.
+  assert.deepEqual(ledgerB.ids, ledgerA.ids, 'template/instance ids identical with and without inRow');
+  const d = diffIdentity({ ledger: ledgerA, graph: gA }, { ledger: ledgerB, graph: gB });
+  assert.equal(d.ok, true, 'identity-diff reports no churn from inRow/listRow');
+  assert.deepEqual(d.churnedTemplates, [], 'no template ids churned');
+  assert.deepEqual(d.churnedInstances, [], 'no instance ids churned');
+  assert.deepEqual(d.droppedEdges, [], 'no edges dropped');
 });
 
 // Guards (INC.1): the schemaVersion gate — a graph minted under a DIFFERENT identity scheme

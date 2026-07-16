@@ -5,18 +5,27 @@
 // Guards: (1) the emitted denominator does not collapse — discovered stays constant as
 //   templates are explored (honest coverage through the tool boundary); (2) the batch
 //   is capped at the receptive-field ceiling so a bad --size can't blow the agent's
-//   context (the founding failure of bughunt-agents).
+//   context (the founding failure of bughunt-agents); (3) emit surfaces instanceStats + a
+//   progress verdict, drains to a DRAINED verdict, and writes instanceStats onto the
+//   frontier.emit trail ONLY under --tick so the stall detector's MONOTONE progress signal
+//   (walked + unreachable + walkable) flows back through readFrontierProgress as ONE sample
+//   per DRIVER iteration — a non-tick emit (the subagent's own call) is history-neutral.
 // FAIL-ON-REVERT: drop the `Math.min(size, MAX_SIZE)` clamp in frontier-cli.mjs → a
 //   --size=50 request returns the whole frontier → "batch exceeded receptive-field
-//   ceiling".
+//   ceiling". Remove `instanceStats` from the traceEvent payload in frontier-cli.mjs →
+//   readFrontierProgress goes blind → the tick trail-progress assertion reds ([] != [4]). Sum
+//   only `walkable` (or read `remaining`) in readFrontierProgress → [3] / [2] != [4]. Remove
+//   the `if (opts.tick)` gate (always write instanceStats) → a non-tick emit carries
+//   instanceStats and readFrontierProgress returns [4] → the history-neutral assertion reds.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { makeGraph, mergeSnapshot, markExplored, saveGraph } from '../../lib/graph/graph-store.mjs';
 import { emit } from '../../lib/recon/frontier-cli.mjs';
+import { runDir, readFrontierProgress } from '../../lib/debug/trace.mjs';
 
 function withStateDir(t, n) {
   const dir = mkdtempSync(path.join(tmpdir(), 'bughunter-fcli-'));
@@ -54,4 +63,67 @@ test('batch is capped at the receptive-field ceiling regardless of --size', (t) 
   saveGraph(graphPath, g);
   const batch = emit({ size: 50 }).batch;
   assert.ok(batch.length <= 5, `batch exceeded receptive-field ceiling: ${batch.length}`);
+});
+
+test('emit returns instanceStats and a progress verdict', (t) => {
+  const { g, graphPath } = withStateDir(t, 3);
+  saveGraph(graphPath, g);
+  const res = emit();
+  assert.ok(res.instanceStats, 'instanceStats present');
+  assert.equal(res.instanceStats.remaining, 3, '3 plain templates → 3 walkable instances remaining');
+  assert.ok(res.progress, 'progress verdict present');
+  // 3 remaining, non-empty batch, no runId ⇒ no history ⇒ never stalled ⇒ continue.
+  assert.equal(res.progress.action, 'continue');
+});
+
+test('drained verdict on a fully-explored graph', (t) => {
+  const { g, graphPath } = withStateDir(t, 1);
+  markExplored(g, 1);
+  saveGraph(graphPath, g);
+  const res = emit();
+  assert.equal(res.batch.length, 0, 'nothing left to hand out');
+  assert.equal(res.progress.action, 'drained');
+});
+
+// The --tick GATE: with a runId set, emit records instanceStats onto the frontier.emit trail — the
+// per-window MONOTONE progress signal readFrontierProgress serves back to the stall detector — ONLY
+// when the DRIVER passes --tick. Without --tick (the recon subagent's own --emit, on the SAME runId
+// BEFORE it acts), the event carries candidates+stats but NO instanceStats, so it is history-neutral
+// (readFrontierProgress skips it). This is the false-stall fix: if the subagent's --emit ALSO wrote a
+// sample, one dead iteration would stamp TWO flat samples and trip STALL_WINDOWS=3 after a single
+// dead pass. A discriminating fixture (one of 3 plain templates explored → walked=1) makes progress
+// (walked+unreachable+walkable = 1+0+3 = 4) differ from remaining (2), so the tick assertion proves
+// the SUM flows, not `remaining`. Removing the `if (opts.tick)` gate (always writing instanceStats)
+// reds the history-neutral assertion; removing instanceStats entirely reds the tick assertion.
+test('emit writes instanceStats onto the frontier.emit trail ONLY under --tick (else history-neutral)', (t) => {
+  const { g, graphPath } = withStateDir(t, 3);
+  markExplored(g, 1); // walked=1, so progress (4) != remaining (2) — the tick assertion distinguishes them
+  saveGraph(graphPath, g);
+  const runId = 'r-fcli-trail-test';
+  const prev = process.env.BUGHUNTER_RUN_ID;
+  process.env.BUGHUNTER_RUN_ID = runId;
+  t.after(() => {
+    if (prev === undefined) delete process.env.BUGHUNTER_RUN_ID; else process.env.BUGHUNTER_RUN_ID = prev;
+  });
+
+  const file = path.join(runDir(runId), 'events.ndjson');
+  const readEvents = () => readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+
+  // Non-tick emit (the subagent path): a frontier.emit event with NO instanceStats → history-neutral.
+  emit();
+  const nonTick = readEvents().find((e) => e.kind === 'frontier.emit');
+  assert.ok(nonTick, 'a frontier.emit event was written on a non-tick emit');
+  assert.equal(nonTick.payload.instanceStats, undefined, 'a non-tick emit carries NO instanceStats');
+  assert.ok(nonTick.payload.stats, 'a non-tick emit still carries the template stats');
+  assert.deepEqual(readFrontierProgress(runId), [], 'a non-tick emit is history-neutral (no progress sample)');
+
+  // Tick emit (the DRIVER path): instanceStats present + readFrontierProgress surfaces the progress.
+  emit({ tick: true });
+  const tickEv = readEvents().reverse().find((e) => e.kind === 'frontier.emit' && e.payload.instanceStats);
+  assert.ok(tickEv, 'a --tick emit writes a frontier.emit event carrying instanceStats');
+  assert.equal(tickEv.payload.instanceStats.walked, 1, 'one template explored → walked=1');
+  assert.equal(tickEv.payload.instanceStats.remaining, 2, 'remaining (2) differs from progress (4)');
+  // The trail reader surfaces THIS window's PROGRESS (walked+unreachable+walkable = 4), the monotone
+  // signal the stall detector reads — NOT the flat-prone `remaining` (2). Only the tick sample counts.
+  assert.deepEqual(readFrontierProgress(runId), [4], 'exactly one progress sample — the driver tick');
 });

@@ -16,7 +16,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeGraph, mergeSnapshot, markExplored, markUnreachable, markOpener, markInstanceExplored } from '../../lib/graph/graph-store.mjs';
-import { nextBatch, frontierStats, frontierInstanceStats, OPENER_INSTANCE_CAP } from '../../lib/recon/frontier.mjs';
+import { nextBatch, frontierStats, frontierInstanceStats, OPENER_INSTANCE_CAP, DRILL_PER_LIST } from '../../lib/recon/frontier.mjs';
 
 // Build a graph with n distinct single-instance templates (ids 1..n), as ids.mjs
 // would have minted them, then merged.
@@ -118,4 +118,95 @@ test('frontierInstanceStats: opener siblings + beyond-cap remainder are honest, 
   assert.equal(after.walked, 4, '3 opener siblings + the plain control walked');
   assert.equal(after.remaining, OPENER_INSTANCE_CAP + 1 - 4, 'remaining drops per walked INSTANCE (not template-count)');
   assert.equal(after.cappedRemainder, 2, 'the beyond-cap remainder is unchanged by walking within the cap');
+});
+
+// Guards: the LOCATION DENOMINATOR — the honest "how many sections did we discover" number a
+//   single-URL SPA hides under one routeKey. Two controls under the SAME route but reached via
+//   DIFFERENT reveal.statePath are two locations; a baseline (reveal-less) control is the root
+//   location → 3 distinct locations. locationKey never touches identity (see the identity-proof test
+//   in report-unreached.test.mjs), only this tally.
+// FAIL-ON-REVERT: count instances instead of DISTINCT locationKeys (drop the Set) → the two
+//   different-statePath controls under one route would count the root location twice / miscount → the
+//   `locations.discovered === 3` assertion reds; key on `route` alone (ignore statePath) → the two
+//   POST-nav sections collapse to 1 with the root → discovered reads 1, reds.
+test('frontierInstanceStats: locations.discovered counts DISTINCT reveal-path sections, not routeKeys', () => {
+  const g = makeGraph();
+  // Baseline control — no reveal → the route's ROOT location ('/').
+  mergeSnapshot(g, '/', [{
+    templateId: 1, instanceId: 100, templateSelector: 'button.base', role: 'button',
+    name: 'Base', instanceKey: '#1', instanceSelector: 'button.base',
+  }]);
+  // Control B behind opener path P1 (template 10) — location '/|10:#1'.
+  mergeSnapshot(g, '/', [{
+    templateId: 2, instanceId: 200, templateSelector: 'button.b', role: 'button',
+    name: 'B', instanceKey: '#1', instanceSelector: 'button.b',
+  }], { revealPath: [{ templateId: 10, instanceKey: '#1' }] });
+  // Control C behind a DIFFERENT opener path P2 (template 20) — location '/|20:#1'.
+  mergeSnapshot(g, '/', [{
+    templateId: 3, instanceId: 300, templateSelector: 'button.c', role: 'button',
+    name: 'C', instanceKey: '#1', instanceSelector: 'button.c',
+  }], { revealPath: [{ templateId: 20, instanceKey: '#1' }] });
+
+  const stats = frontierInstanceStats(g);
+  assert.equal(stats.locations.discovered, 3, 'root + two distinct reveal-path sections = 3 locations under ONE routeKey');
+  // The location tally is ADDITIVE — every pre-existing instance-frontier field is unchanged.
+  assert.equal(stats.walkable, 3, 'three single-instance templates are walkable');
+  assert.equal(stats.cappedRemainder, 0, 'no opener → no beyond-cap remainder');
+});
+
+// Build a NON-opener template whose n instances all live in a LIST ROW (node.listRow), as
+// mergeSnapshot would flag from dom-snapshot's per-element inRow. A 50-row data list = 50 instances
+// of ONE template; the frontier drills the representative (instance[0]) and must COUNT the rest.
+function listRowTemplate(g, templateId, n, { inRow = true } = {}) {
+  const els = [];
+  for (let i = 1; i <= n; i++) els.push({
+    templateId, instanceId: templateId * 1000 + i, templateSelector: `li.row button.edit${templateId}`,
+    role: 'button', name: 'Edit', instanceKey: `#${i}`,
+    instanceSelector: `li.row:nth-child(${i}) button.edit${templateId}`, inRow,
+  });
+  mergeSnapshot(g, '/', els);
+}
+
+// Guards: DRILL_PER_LIST honesty — a 50-row data list is 50 instances of ONE non-opener template.
+//   nextBatch hands out only instance[0] (the representative), so the other 49 rows are NEITHER
+//   walked NOR counted anywhere pre-increment — they silently vanish from the honest denominator.
+//   frontierInstanceStats now counts them in `drillSkipped` (the non-opener analog of cappedRemainder:
+//   counted, flagged, never walked), while `walkable`/`remaining` stay the DRILL_PER_LIST=1 representative.
+// FAIL-ON-REVERT: drop the `else if (node.listRow) drillSkipped += ...` accumulation in
+//   frontierInstanceStats → the 49 rows are un-counted → `drillSkipped === 49` reads 0, reds.
+test('frontierInstanceStats: a 50-row non-opener list flags 49 drill-skipped, walks 1 representative', () => {
+  const g = makeGraph();
+  listRowTemplate(g, 1, 50);
+  const s = frontierInstanceStats(g);
+  assert.equal(s.drillSkipped, 50 - DRILL_PER_LIST, 'the 49 non-representative rows are counted+flagged, not hidden');
+  assert.equal(s.walkable, DRILL_PER_LIST, 'only the representative row (instance[0]) is walkable — nextBatch unchanged');
+  assert.equal(s.remaining, DRILL_PER_LIST, 'remaining is the representative alone (nothing drained yet), unchanged by the flag');
+  assert.equal(s.cappedRemainder, 0, 'a non-opener list uses drillSkipped, never cappedRemainder');
+});
+
+// Guards: the flag is SCOPED — a non-listRow non-opener template (a lone control, no list-row ancestor)
+//   contributes ZERO drillSkipped, so the increment never mis-counts an ordinary multi-instance template.
+// FAIL-ON-REVERT: drop the `node.listRow` guard (accumulate for every non-opener) → a non-listRow
+//   template's extra instances leak into drillSkipped → `drillSkipped === 0` reds.
+test('frontierInstanceStats: a non-listRow non-opener template contributes 0 drillSkipped', () => {
+  const g = makeGraph();
+  listRowTemplate(g, 1, 50, { inRow: false }); // present-but-not-in-a-row → node.listRow stays unset
+  const s = frontierInstanceStats(g);
+  assert.equal(s.drillSkipped, 0, 'a non-listRow template drills nothing extra — unchanged behavior');
+  assert.equal(s.walkable, 1, 'still only instance[0] walkable (non-opener)');
+});
+
+// Guards: opener vs list-row are MUTUALLY EXCLUSIVE — a list-row template that IS a proven opener uses
+//   cappedRemainder (its siblings ARE walked up to the CAP), NOT drillSkipped. The `else if` ordering
+//   ensures an opener never double-counts its beyond-cap remainder as drill-skipped.
+// FAIL-ON-REVERT: change the `else if` to a plain `if` (accumulate drillSkipped for openers too) →
+//   an opener list's beyond-cap rows land in BOTH buckets → `drillSkipped === 0` reds.
+test('frontierInstanceStats: an opener list uses cappedRemainder, not drillSkipped', () => {
+  const g = makeGraph();
+  const N = OPENER_INSTANCE_CAP + 2;
+  listRowTemplate(g, 1, N); // a list-row template …
+  markOpener(g, 1);          // … that ALSO opens (its instances reveal controls)
+  const s = frontierInstanceStats(g);
+  assert.equal(s.cappedRemainder, 2, 'an opener beyond the CAP is counted in cappedRemainder');
+  assert.equal(s.drillSkipped, 0, 'an opener is NOT double-counted as drill-skipped');
 });
