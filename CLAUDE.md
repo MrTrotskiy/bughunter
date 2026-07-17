@@ -22,6 +22,7 @@ Status: the keystone (`whats-new`), the Phase-1 loop CORE, the semantic recon la
 npm test                                                                       # node --test tests/**/*.test.mjs
 node lib/recon/whats-new.mjs --url=<url> [--act-template=<id> --fill=<text>]    # keystone: single snapshot + act + report
 node lib/recon/recon-run.mjs --url=<url> [--steps=<n>]                          # Phase-1 loop: baseline → drive frontier → report
+node lib/recon/certify-loop.mjs --url=<url> [--target=0.95 --max-runs=<n> --steps=<n>]  # GOAL 5: autonomous self-terminating loop — re-crawl (rotating BUGHUNTER_SEED) until Chao2 certifies completeness (Q1→0 / C≥target) or an honest cap
 node lib/recon/frontier-cli.mjs --emit [--size=<2-5>]                           # recon agent tool: emit the next receptive-field batch (+ pendingRoutes/routeFrontierStats)
 node lib/recon/route-cli.mjs --visit-next --url=<url>                            # /recon route driver (INC.1b): snapshot-visit ONE pending route (agent-path twin of the node-loop refill)
 node lib/recon/observe.mjs --template=<id> --purpose=<s> --danger=<e> --effect=<e> [--acted=<bool>]  # recon agent tool: record semantics + mark explored
