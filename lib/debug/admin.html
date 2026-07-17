@@ -51,12 +51,26 @@
   .runrow .top { display: flex; align-items: center; gap: 6px; }
   .runrow .id { font-size: 12px; font-weight: 600; } .runrow .sub { color: var(--dim); font-size: 11px; margin-top: 2px; word-break: break-all; }
   .sdot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--good); } .sdot.run { background: var(--accent); }
+  /* Прогоны left panel: pages drilled down under the SELECTED run — click a page to walk the run by page */
+  .runpages { background: rgba(0,0,0,.16); border-bottom: 1px solid var(--line); }
+  .runrow .runx { margin-left: auto; display: inline-flex; align-items: center; color: var(--mut); background: none; border: none; padding: 0 2px; line-height: 0; opacity: 0; }
+  .runrow:hover .runx, .runrow.sel .runx { opacity: .75; } .runrow .runx:hover { color: var(--bad); border-color: transparent; opacity: 1; } .runrow .runx svg { display: block; }
+  .pagerow { display: flex; align-items: baseline; gap: 8px; padding: 5px 12px 5px 24px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.03); font-size: 12px; }
+  .pagerow:hover { background: var(--panel2); } .pagerow.sel { background: rgba(88,166,255,.14); box-shadow: inset 3px 0 0 var(--accent); }
+  .pagerow .pnm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+  .pagerow.sel .pnm { color: var(--accent); }
+  .pagerow .pc { color: var(--mut); font-size: 11px; flex: 0 0 auto; }
   /* steps list */
   .steprow { padding: 6px 12px; cursor: pointer; border-bottom: 1px solid var(--line); }
   .steprow:hover { background: var(--panel2); } .steprow.sel { background: rgba(88,166,255,.10); box-shadow: inset 3px 0 0 var(--accent); }
   .steprow .line { display: flex; gap: 8px; align-items: baseline; }
   .steprow .n { color: var(--mut); font-size: 11px; min-width: 18px; } .steprow .lbl { flex: 1; min-width: 0; }
-  .steprow.err .lbl { color: var(--bad); }
+  .steprow.err .lbl { color: var(--dim); }
+  /* a blocked/failed act is a CALM categorized outcome, not an alarm — a small tone chip carries the reason */
+  .ochip { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+           padding: 0 6px; border-radius: 999px; background: var(--panel2); color: var(--mut); flex: 0 0 auto; }
+  .ochip.tone-guard { color: var(--warn); background: rgba(210,153,34,.14); }
+  .ochip.tone-bad { color: var(--bad); background: rgba(248,81,73,.14); }
   .routelbl { padding: 5px 12px 2px; color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; border-top: 1px solid var(--line); }
   .stepdetail { margin: 8px 0 2px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
   .stepdetail h5 { margin: 8px 0 4px; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--dim); }
@@ -74,13 +88,28 @@
   .stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
   .stagebar { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
   .stagebar .title { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .stagebar .spacer { flex: 1; }
+  .pfilter { background: rgba(88,166,255,.14); color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; font-size: 11px; padding: 2px 9px; cursor: pointer; white-space: nowrap; }
+  .pfilter:hover { border-color: var(--accent); filter: brightness(1.12); }
   .stagewrap { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px; background: #0b0e13; }
   .frame { position: relative; line-height: 0; max-width: 100%; max-height: 100%; }
   .frame img { max-width: 100%; max-height: calc(100vh - 320px); display: block; border: 1px solid var(--line); border-radius: 4px; cursor: zoom-in; }
   .frame .box { position: absolute; border: 2px solid var(--bad); box-shadow: 0 0 0 2px rgba(248,81,73,.3); pointer-events: none; display: none; }
   .placard { color: var(--dim); text-align: center; padding: 40px; } .placard.err { color: var(--bad); }
-  /* filmstrip */
-  .strip { flex: 0 0 auto; border-top: 1px solid var(--line); background: var(--panel); padding: 10px 14px 14px; display: flex; align-items: center; gap: 12px; }
+  /* failed/blocked act stage: a calm outcome card (never red-crash) + the before-frame when it was captured */
+  .outcome { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 100%; max-height: 100%; }
+  .ocard { border: 1px solid var(--line); border-left: 3px solid var(--mut); border-radius: 8px; background: var(--panel);
+           padding: 12px 16px; max-width: 560px; }
+  .outcome.tone-guard .ocard { border-left-color: var(--warn); } .outcome.tone-bad .ocard { border-left-color: var(--bad); }
+  .octag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+           padding: 2px 9px; border-radius: 999px; background: var(--panel2); color: var(--mut); }
+  .tone-guard .octag { color: var(--warn); background: rgba(210,153,34,.14); }
+  .tone-bad .octag { color: var(--bad); background: rgba(248,81,73,.14); }
+  .octitle { font-weight: 600; margin: 8px 0 3px; } .ocwhy { color: var(--dim); font-size: 12px; }
+  .ocerr { color: var(--mut); font-size: 11px; margin-top: 8px; word-break: break-word; }
+  .outcome .frame img { max-height: calc(100vh - 440px); opacity: .92; }
+  .noshot { color: var(--mut); font-size: 12px; }
+  /* filmstrip — lives INSIDE the stage column, so it spans the screenshot width and sits above the footer */
+  .strip { flex: 0 0 auto; border-top: 1px solid var(--line); background: var(--panel); padding: 8px 12px 10px; display: flex; align-items: center; gap: 12px; }
   .strip .tbtn { font-size: 15px; line-height: 1; padding: 4px 10px; }
   .track { position: relative; flex: 1; height: 40px; cursor: pointer; touch-action: none; }
   .rail-line { position: absolute; left: 0; right: 0; top: 26px; height: 2px; background: var(--line); border-radius: 2px; }
@@ -88,6 +117,7 @@
   .sep .rl { position: absolute; top: -4px; left: 3px; font-size: 9px; color: var(--dim); white-space: nowrap; }
   .pdot { position: absolute; top: 20px; width: 13px; height: 13px; margin-left: -6.5px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
   .pdot.error { background: var(--bad); } .pdot.danger { box-shadow: 0 0 0 2px var(--warn); }
+  .pdot.guard { background: var(--warn); } .pdot.miss { background: var(--mut); } /* by-design refusal / expected miss — not alarm-red */
   .pdot.cur { width: 19px; height: 19px; margin-left: -9.5px; top: 17px; z-index: 2; box-shadow: 0 0 0 3px rgba(88,166,255,.25); }
   .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); margin-left: -1px; z-index: 1; pointer-events: none; }
   .readout { min-width: 150px; text-align: right; color: var(--dim); font-size: 12px; }
@@ -95,13 +125,62 @@
   .empty { color: var(--dim); padding: 40px; text-align: center; }
   #lb { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; z-index: 50; align-items: center; justify-content: center; padding: 24px; }
   #lb.open { display: flex; } #lb img { max-width: 96vw; max-height: 92vh; border: 1px solid var(--line); }
+  /* connectome graph view: page → UI elements → endpoints */
+  #graphView { flex: 1; min-height: 0; display: flex; flex-direction: column; background:
+      radial-gradient(900px 500px at 80% -10%, rgba(88,166,255,.06), transparent 60%), #0b0e13; }
+  .gbar { display: flex; align-items: center; gap: 8px 16px; padding: 8px 14px; border-bottom: 1px solid var(--line); flex: 0 0 auto; flex-wrap: wrap; }
+  .gbar .gc { font-size: 12px; color: var(--dim); } .gbar .gc b { color: var(--fg); font-family: ui-monospace, Menlo, monospace; }
+  .gbar .leg { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--dim); }
+  .gbar .leg i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .gpages { display: flex; gap: 6px; padding: 7px 14px; border-bottom: 1px solid var(--line); flex: 0 0 auto; overflow-x: auto; }
+  .gpage { padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel2); color: var(--dim);
+           cursor: pointer; white-space: nowrap; font-size: 12px; flex: 0 0 auto; }
+  .gpage:hover { border-color: var(--accent); } .gpage.on { border-color: var(--accent); color: var(--fg); background: rgba(88,166,255,.12); }
+  .gpage .nm { font-family: ui-monospace, Menlo, monospace; } .gpage .pc { color: var(--mut); margin-left: 7px; }
+  .gwrap { flex: 1; min-height: 0; overflow: auto; }
+  #gcanvas { display: block; width: 100%; }
+  .gempty { padding: 60px; text-align: center; color: var(--dim); }
+  /* Прогоны: pick a page (route) of the run and jump the walk to it */
+  .stagesel { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim); }
+  .stagesel select { max-width: 260px; }
+  /* Граф: click a node → its data as a modal (page / control / endpoint) */
+  #nodeModal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; z-index: 60; align-items: center; justify-content: center; padding: 24px; }
+  #nodeModal.open { display: flex; }
+  .nm-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; max-width: 560px; width: 100%;
+             max-height: 82vh; overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+  .nm-hd { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line);
+           position: sticky; top: 0; background: var(--panel); z-index: 1; }
+  .nm-kind { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 3px 8px; border-radius: 999px; flex: 0 0 auto; }
+  .nm-kind.pg { color: var(--accent); background: rgba(88,166,255,.14); }
+  .nm-kind.el { color: var(--good); background: rgba(63,185,80,.14); }
+  .nm-kind.ep { color: var(--bad); background: rgba(248,81,73,.14); }
+  .nm-title { font-weight: 600; word-break: break-all; flex: 1; min-width: 0; }
+  .nm-title .r { color: var(--dim); font-weight: 400; font-size: 12px; margin-top: 2px; }
+  .nm-x { cursor: pointer; color: var(--dim); font-size: 17px; line-height: 1; background: none; border: none; padding: 2px 6px; }
+  .nm-x:hover { color: var(--fg); border-color: transparent; }
+  .nm-body { padding: 12px 16px 16px; }
+  .nm-body h6 { margin: 14px 0 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--dim); } .nm-body h6:first-child { margin-top: 0; }
+  .nm-row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 12px; }
+  .nm-row .k { color: var(--dim); min-width: 100px; flex: 0 0 auto; } .nm-row .v { min-width: 0; word-break: break-word; }
+  .nm-list { display: flex; flex-wrap: wrap; gap: 0; }
+  .nm-pill { display: inline-block; padding: 1px 7px; border-radius: 5px; background: var(--panel2); border: 1px solid var(--line); font-size: 11px; margin: 0 4px 4px 0; }
+  .nm-pill .method { min-width: 34px; }
+  .nm-empty { color: var(--mut); font-size: 12px; }
+  /* confirm dialog for a destructive action (delete a run) */
+  #confirmModal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; z-index: 70; align-items: center; justify-content: center; padding: 24px; }
+  #confirmModal.open { display: flex; }
+  .cm-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; max-width: 420px; width: 100%; padding: 18px 18px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+  .cm-msg { font-size: 14px; margin-bottom: 4px; } .cm-sub { color: var(--dim); font-size: 12px; word-break: break-all; margin-bottom: 14px; }
+  .cm-btns { display: flex; justify-content: flex-end; gap: 8px; }
+  .cm-btns .danger { background: var(--bad); border-color: var(--bad); color: #0b0e13; font-weight: 600; }
+  .cm-btns .danger:hover { border-color: var(--bad); filter: brightness(1.08); }
   .hide { display: none !important; }
 </style>
 </head>
 <body>
 <header>
   <h1>bughunter</h1><span class="sub">Phase-1 debug</span>
-  <span class="tabbar" id="tabs"><button data-tab="runs" class="on">Прогоны</button><button data-tab="tests">Тесты</button></span>
+  <span class="tabbar" id="tabs"><button data-tab="runs" class="on">Прогоны</button><button data-tab="graph">Граф</button><button data-tab="tests">Тесты</button></span>
   <span id="runTarget" class="sub mono"></span>
   <span id="runStatus"></span>
   <span style="flex:1"></span>
@@ -117,22 +196,51 @@
     <div class="stagebar">
       <span class="title" id="stageTitle">—</span>
       <span class="spacer"></span>
+      <button class="pfilter hide" id="pageFilterTag" title="показать все шаги прогона"></button>
       <span class="seg" id="frameSel"><button data-frame="before" class="on">before</button><button data-frame="after">after</button></span>
     </div>
     <div class="stagewrap" id="stageWrap"></div>
+    <div class="strip" id="strip">
+      <button class="tbtn" id="prev" title="prev (←)">‹</button>
+      <div class="track" id="track" tabindex="0" role="slider" aria-label="run timeline">
+        <div class="rail-line"></div><div class="playhead" id="playhead" style="display:none"></div><div class="tip" id="tip"></div>
+      </div>
+      <button class="tbtn" id="next" title="next (→)">›</button>
+      <div class="readout" id="readout">—</div>
+    </div>
   </div>
   <div class="col right"><div class="hd">шаги</div><div id="stepsList"></div></div>
 </div>
-<div class="strip" id="strip">
-  <button class="tbtn" id="prev" title="prev (←)">‹</button>
-  <div class="track" id="track" tabindex="0" role="slider" aria-label="run timeline">
-    <div class="rail-line"></div><div class="playhead" id="playhead" style="display:none"></div><div class="tip" id="tip"></div>
-  </div>
-  <button class="tbtn" id="next" title="next (→)">›</button>
-  <div class="readout" id="readout">—</div>
-</div>
 <div id="testsView" class="hide"><div class="empty" style="padding-top:80px">Phase-2 тест-кейсы для этого прогона ещё не сняты.<br>Этот раздел переиспользует ту же сцену + полосу, когда появится <span class="mono">/gen</span>.</div></div>
+<div id="graphView" class="hide">
+  <div class="gbar">
+    <span class="gc"><b id="gPage">0</b> страниц</span>
+    <span class="gc"><b id="gCtrl">0</b> UI-элементов</span>
+    <span class="gc"><b id="gEp">0</b> эндпоинтов</span>
+    <span class="gc"><b id="gEdge">0</b> связей</span>
+    <span style="flex:1"></span>
+    <span class="leg"><i style="background:var(--accent)"></i> страница</span>
+    <span class="leg"><i style="background:var(--good)"></i> UI-элемент</span>
+    <span class="leg"><i style="background:var(--bad)"></i> endpoint</span>
+    <span class="leg"><i style="background:var(--mut)"></i> unreachable</span>
+    <span class="leg" style="margin-left:6px"><i style="background:#a371f7"></i> навигация</span>
+    <span class="leg"><i style="background:#d29922"></i> вызов</span>
+    <span class="leg"><i style="background:var(--dim)"></i> владение</span>
+  </div>
+  <div class="gpages" id="gPages">
+    <span class="seg" id="gSub"><button data-vm="force" class="on">Obsidian</button><button data-vm="bipartite">Схема</button></span>
+    <label class="gsel" style="margin-left:6px">Фильтр:&nbsp;<select id="gFilter"></select></label>
+    <span class="sub mono" id="gModeHint" style="color:var(--dim)"></span>
+  </div>
+  <div class="gwrap"><canvas id="gcanvas"></canvas><div class="gempty hide" id="gEmpty">на этой точке прогона ещё нет элементов — двигай полосу вправо</div></div>
+</div>
 <div id="lb"><img id="lbImg" alt=""></div>
+<div id="nodeModal"><div class="nm-card" id="nmCard" role="dialog" aria-modal="true"></div></div>
+<div id="confirmModal"><div class="cm-card" role="alertdialog" aria-modal="true" aria-labelledby="cmMsg" aria-describedby="cmSub">
+  <div class="cm-msg" id="cmMsg">Вы точно уверены, что хотите удалить прогон?</div>
+  <div class="cm-sub" id="cmSub"></div>
+  <div class="cm-btns"><button id="cmCancel">Отмена</button><button id="cmOk" class="danger">Удалить</button></div>
+</div></div>
 <script type="module">
 import { deriveSteps, clampIndex, dotLeftPct, indexFromClientX, boxFromRect, dotClass } from './scrub-math.mjs';
 
@@ -142,36 +250,89 @@ const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const api = (p) => p + (p.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(TOKEN);
 async function jget(url) { const r = await fetch(api(url)); if (!r.ok) throw new Error(r.status); return r.json(); }
 
-const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before' };
+const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before', pageFilter: null };
+
+// The steps VISIBLE under the current page filter, as indices into S.steps. No filter → every step; a page
+// filter → only that route's acts. The strip, the steps list, and prev/next all walk THIS view, so picking a
+// page shows just its steps (n0fz). S.i stays a real S.steps index; its position in the view is view.indexOf(S.i).
+function viewIdx() {
+  if (!S.pageFilter) return S.steps.map((_, i) => i);
+  const out = []; S.steps.forEach((s, i) => { if ((s.route || '—') === S.pageFilter) out.push(i); });
+  return out;
+}
+// Pull S.i into the current page-filtered view (nearest visible index). Used by setStep and by loadRun's
+// live-refresh, where an auto-advance to the run's last step could otherwise land outside the active filter.
+function snapToView() {
+  const view = viewIdx();
+  if (view.length && !view.includes(S.i)) S.i = view.reduce((best, si) => Math.abs(si - S.i) < Math.abs(best - S.i) ? si : best, view[0]);
+}
+
+// Classify a blocked/failed act into a CALM, EXPECTED outcome (not a crash). Returns null on success.
+// `tone` drives a non-alarm color: 'guard' (by-design refusal — safety floor / write-firewall), 'muted'
+// (an expected coverage miss — the instance could not be resolved), 'bad' (a genuine unexpected fault).
+// This is what "mark it properly" means: a refused mutation or a churned selector is a handled result,
+// not the viewer breaking.
+function outcomeOf(s) {
+  if (!s || !s.error) return null;
+  const e = String(s.error);
+  if (/refus|mutation-named|read-only|destructive|payment|\bauth\b|danger/i.test(e))
+    return { kind: 'safety', label: 'защита', tone: 'guard', why: 'предохранитель не дал сработать контролу (мутация / logout / оплата) — так и задумано' };
+  if (/firewall/i.test(e))
+    return { kind: 'firewall', label: 'файрвол', tone: 'guard', why: 'reveal-клик попытался отправить запись — запрос заблокирован write-firewall, аккаунт не тронут' };
+  if (/cannot resolve instance|no instance|not visible|stale|not found/i.test(e))
+    return { kind: 'missing', label: 'не найден', tone: 'muted', why: 'инстанс контрола не удалось найти на странице (churn / скрыт) — честно учтён как unreachable' };
+  return { kind: 'failed', label: 'сбой', tone: 'bad', why: 'акт не выполнился' };
+}
 
 async function loadRuns() {
   const { runs } = await jget('/api/runs');
   S.runs = runs || [];
-  if (!S.runs.length) { $('#runsList').innerHTML = '<div class="empty">Пусто — запусти /recon.</div>'; $('#kpis').innerHTML = ''; return; }
+  if (!S.runs.length) { // no runs (e.g. the last one was just deleted): clear the CENTER too, not only the list
+    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null;
+    $('#runsList').innerHTML = '<div class="empty">Пусто — запусти /recon.</div>'; $('#kpis').innerHTML = '';
+    renderHeader(); renderSteps(); renderStrip(); renderStage(); return;
+  }
   renderRunsList();
-  if (!S.runId || !S.runs.some((r) => r.id === S.runId)) { S.runId = S.runs[0].id; await loadRun(true); }
-  else if (S.run && S.run.status === 'running') await loadRun(false); // live-refresh the open run
+  if (!S.runId || !S.runs.some((r) => r.id === S.runId)) {
+    if (!S.userCleared) { S.runId = S.runs[0].id; await loadRun(true); } // auto-open the newest — unless the operator deselected
+  } else if (S.run && S.run.status === 'running') await loadRun(false); // live-refresh the open run
 }
 
 function renderRunsList() {
   $('#runsList').innerHTML = S.runs.map((r) => {
-    const st = r.stats || {};
-    return `<div class="runrow ${r.id === S.runId ? 'sel' : ''}" data-id="${esc(r.id)}">
-      <div class="top"><span class="sdot ${r.status === 'running' ? 'run' : ''}"></span><span class="id mono">${esc(r.id)}</span></div>
+    const st = r.stats || {}, sel = r.id === S.runId;
+    const row = `<div class="runrow ${sel ? 'sel' : ''}" data-id="${esc(r.id)}">
+      <div class="top"><span class="sdot ${r.status === 'running' ? 'run' : ''}"></span><span class="id mono">${esc(r.id)}</span>
+        <span style="flex:1"></span><button class="runx" data-del="${esc(r.id)}" title="удалить прогон" aria-label="удалить прогон"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6 4V2.8c0-.45.35-.8.8-.8h2.4c.45 0 .8.35.8.8V4M12 4l-.5 8.6c-.03.5-.45.9-1 .9H5.5c-.55 0-.97-.4-1-.9L4 4M6.5 6.6v4.6M9.5 6.6v4.6"/></svg></button></div>
       <div class="sub">${esc(r.target || '')}</div>
       <div class="sub">${st.explored ?? '–'}/${st.discovered ?? '–'} explored · ${st.routes ?? '–'} routes</div></div>`;
+    return row + (sel ? runPagesHtml() : ''); // the SELECTED run drills down into its pages (toggle to collapse)
   }).join('');
-  $('#runsList').querySelectorAll('.runrow').forEach((el) => el.onclick = () => { if (el.dataset.id !== S.runId) { S.runId = el.dataset.id; loadRun(true); } });
+  $('#runsList').querySelectorAll('.runrow').forEach((el) => el.onclick = () => toggleRun(el.dataset.id));
+  $('#runsList').querySelectorAll('.pagerow').forEach((el) => el.onclick = (e) => { e.stopPropagation(); selectPage(el.dataset.route, Number(el.dataset.idx)); });
+  $('#runsList').querySelectorAll('.runx').forEach((b) => b.onclick = (e) => { e.stopPropagation(); askDeleteRun(b.dataset.del); });
 }
 
 async function loadRun(reset) {
+  if (reset) { S.pageFilter = null; if (typeof G !== 'undefined' && G.cache) G.cache.clear(); } // fresh run: drop the filter + the per-run graph cache
   const data = await jget('/api/runs/' + S.runId);
   S.run = data.run; S.events = data.events || [];
   const steps = deriveSteps(S.events);
   const atEnd = reset || S.i >= S.steps.length - 1 || !S.steps.length;
   S.steps = steps;
   S.i = atEnd ? Math.max(0, steps.length - 1) : clampIndex(S.i, steps.length);
+  snapToView(); // live-refresh with an active page filter must not strand S.i outside the filtered view
   renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage();
+  if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView();
+}
+
+// Click a run to TOGGLE it: select (open its pages + load the walk) or, if already selected, deselect
+// (collapse pages + clear the walk). userCleared stops the live-refresh tick from re-opening the newest.
+function toggleRun(id) {
+  if (S.runId === id) {
+    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.userCleared = true;
+    renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage();
+  } else { S.userCleared = false; S.runId = id; loadRun(true); }
 }
 
 function renderHeader() {
@@ -201,50 +362,85 @@ function stepDetailHtml(s) {
     <div class="bar-row"><span class="nm">snapshot</span><div class="bar snap" style="width:${w(t.snapMs)}px"></div><span class="muted">${t.snapMs}ms</span></div>` : '<div class="muted">—</div>';
   const o = s.observe;
   const obs = o ? `<span class="tag ${esc(o.danger)}">danger: ${esc(o.danger)}</span><span class="tag">effect: ${esc(o.effect)}</span>${o.unreachable ? '<span class="tag" style="color:var(--bad)">unreachable</span>' : ''}<div>${esc(o.purpose) || '<span class="muted">—</span>'}</div>` : '<div class="muted">no observation (node-loop run)</div>';
-  const err = s.error ? `<h5>error</h5><div class="mono" style="color:var(--bad)">${esc(s.error)}</div>` : '';
+  const oc = outcomeOf(s);
+  const err = oc ? `<h5>исход · ${esc(oc.label)}</h5><div style="color:var(--dim);font-size:12px">${esc(oc.why)}</div><div class="mono" style="color:var(--mut);font-size:11px;margin-top:4px">${esc(s.error)}</div>` : '';
   return `<div class="stepdetail">${err}<h5>caused · control → endpoint</h5>${reqs}<div class="muted" style="margin-top:4px">revealed ${s.revealed} instance(s)${s.external ? ' · external link, not fired' : ''}</div>
     <h5>speed</h5>${bars}<h5>observation</h5>${obs}</div>`;
 }
 function renderSteps() {
-  const list = $('#stepsList');
-  if (!S.steps.length) { list.innerHTML = '<div class="empty">нет актов</div>'; return; }
-  list.innerHTML = S.steps.map((s, idx) => {
-    const sep = s.routeStart ? `<div class="routelbl">${esc(s.route)}</div>` : '';
-    const lbl = `${esc(s.role || '?')} ${esc(JSON.stringify(s.name || ''))}${s.error ? ' · ' + esc(s.error.split(':')[0]) : ''}`;
-    const det = idx === S.i ? stepDetailHtml(s) : '';
-    return `${sep}<div class="steprow ${idx === S.i ? 'sel' : ''} ${s.error ? 'err' : ''}" data-i="${idx}">
-      <div class="line"><span class="n">${idx + 1}</span><span class="lbl">${lbl}</span></div>${det}</div>`;
+  const list = $('#stepsList'), view = viewIdx();
+  if (!view.length) { list.innerHTML = '<div class="empty">нет актов</div>'; return; }
+  list.innerHTML = view.map((si, pos) => {
+    const s = S.steps[si];
+    // route label at the top of the view, or wherever the route changes vs the previous VISIBLE step
+    const prev = pos > 0 ? S.steps[view[pos - 1]] : null;
+    const sep = (!prev || (prev.route || '—') !== (s.route || '—')) ? `<div class="routelbl">${esc(s.route)}</div>` : '';
+    const oc = outcomeOf(s);
+    const chip = oc ? `<span class="ochip tone-${oc.tone}" title="${esc(oc.why)}">${esc(oc.label)}</span>` : '';
+    const lbl = `${esc(s.role || '?')} ${esc(JSON.stringify(s.name || ''))}`;
+    const det = si === S.i ? stepDetailHtml(s) : '';
+    return `${sep}<div class="steprow ${si === S.i ? 'sel' : ''} ${s.error ? 'err' : ''}" data-i="${si}">
+      <div class="line"><span class="n">${si + 1}</span><span class="lbl">${lbl}</span>${chip}</div>${det}</div>`;
   }).join('');
   list.querySelectorAll('.steprow').forEach((el) => el.onclick = () => setStep(Number(el.dataset.i)));
   const sel = list.querySelector('.steprow.sel'); if (sel) sel.scrollIntoView({ block: 'nearest' });
 }
 
+// Прогоны LEFT panel: the pages of the SELECTED run, drilled down UNDER its row. distinctRoutes maps each
+// route to its first act's index + act count, in walk order. Click a page → jump to its first act.
+function distinctRoutes() {
+  const seen = new Map();
+  S.steps.forEach((s, i) => { const r = s.route || '—'; if (!seen.has(r)) seen.set(r, { count: 0, idx: i }); seen.get(r).count++; });
+  return seen;
+}
+function currentPage() { return S.pageFilter || (S.steps[S.i] ? (S.steps[S.i].route || '—') : ''); }
+function runPagesHtml() {
+  if (!S.steps.length) return '';
+  const cur = currentPage();
+  const rows = [...distinctRoutes()].map(([r, info]) => `<div class="pagerow ${r === cur ? 'sel' : ''}" data-idx="${info.idx}" data-route="${esc(r)}" title="${esc(r)}">
+    <span class="pnm">${esc(shortRoute(r))}</span><span class="pc">${info.count}</span></div>`).join('');
+  return `<div class="runpages">${rows}</div>`;
+}
+function syncRunPages() { const cur = currentPage();
+  document.querySelectorAll('#runsList .pagerow').forEach((el) => el.classList.toggle('sel', el.dataset.route === cur)); }
+
 function renderStrip() {
-  const track = $('#track'), count = S.steps.length;
+  const track = $('#track'), view = viewIdx(), count = view.length;
   track.querySelectorAll('.pdot, .sep').forEach((n) => n.remove());
-  S.steps.forEach((s, idx) => {
-    if (s.routeStart && idx > 0) {
-      const mid = (dotLeftPct(idx, count) + dotLeftPct(idx - 1, count)) / 2;
+  view.forEach((si, pos) => {
+    const s = S.steps[si];
+    const prev = pos > 0 ? S.steps[view[pos - 1]] : null;
+    if (prev && (prev.route || '—') !== (s.route || '—')) { // route separator between VISIBLE steps
+      const mid = (dotLeftPct(pos, count) + dotLeftPct(pos - 1, count)) / 2;
       const sep = document.createElement('div'); sep.className = 'sep'; sep.style.left = mid + '%';
       sep.innerHTML = `<span class="rl">${esc(s.route)}</span>`; track.appendChild(sep);
     }
     const d = document.createElement('div');
-    d.className = 'pdot ' + dotClass(s) + (idx === S.i ? ' cur' : '');
-    d.style.left = dotLeftPct(idx, count) + '%'; d.dataset.i = idx;
-    d.onclick = (e) => { e.stopPropagation(); setStep(idx); };
+    const oc = outcomeOf(s); // by-design refusal → amber (guard), expected miss → gray (miss); red only for a genuine fault
+    const cls = oc ? (oc.tone === 'guard' ? 'guard' : oc.tone === 'muted' ? 'miss' : 'error') : dotClass(s);
+    d.className = 'pdot ' + cls + (si === S.i ? ' cur' : '');
+    d.style.left = dotLeftPct(pos, count) + '%'; d.dataset.i = si;
+    d.onclick = (e) => { e.stopPropagation(); setStep(si); };
     track.appendChild(d);
   });
-  renderCursor(); renderReadout();
+  updatePageFilterTag(); renderCursor(); renderReadout();
+}
+// The stagebar tag showing the active page filter; click it (or the ✕) to clear and show all steps again.
+function updatePageFilterTag() {
+  const t = $('#pageFilterTag'); if (!t) return;
+  if (S.pageFilter) { t.classList.remove('hide'); t.innerHTML = `страница: ${esc(shortRoute(S.pageFilter))} ✕`; }
+  else { t.classList.add('hide'); t.innerHTML = ''; }
 }
 function renderCursor() {
-  const count = S.steps.length, ph = $('#playhead');
+  const view = viewIdx(), count = view.length, ph = $('#playhead');
   if (!count) { ph.style.display = 'none'; return; }
-  ph.style.display = 'block'; ph.style.left = dotLeftPct(S.i, count) + '%';
+  const pos = Math.max(0, view.indexOf(S.i));
+  ph.style.display = 'block'; ph.style.left = dotLeftPct(pos, count) + '%';
   $('#track').querySelectorAll('.pdot').forEach((d) => d.classList.toggle('cur', Number(d.dataset.i) === S.i));
 }
 function renderReadout() {
-  const s = S.steps[S.i];
-  $('#readout').textContent = s ? `seq ${s.seq} · t${s.templateId} · ${S.i + 1}/${S.steps.length}` : '—';
+  const s = S.steps[S.i], view = viewIdx(), pos = view.indexOf(S.i);
+  $('#readout').textContent = s ? `seq ${s.seq} · t${s.templateId} · ${pos + 1}/${view.length}` : '—';
 }
 
 function shotUrl(rel) { return api(`/api/runs/${S.runId}/${rel}`); }
@@ -252,7 +448,16 @@ function renderStage() {
   const wrap = $('#stageWrap'), s = S.steps[S.i];
   $('#stageTitle').textContent = s ? `act [${s.templateId}] ${JSON.stringify(s.name || '')} · ${s.route}` : '—';
   if (!s) { wrap.innerHTML = '<div class="empty">нет шага</div>'; return; }
-  if (s.error) { wrap.innerHTML = `<div class="placard err">акт упал<br><span class="mono">${esc(s.error)}</span><br><span class="muted">кадр не снят · засчитан unreachable</span></div>`; return; }
+  const oc = outcomeOf(s);
+  if (oc) { // a blocked/failed act — calm categorized card + the before-frame if it was captured (so it is never blank)
+    const sh = s.shots || {}, rel = sh.before || sh.after;
+    const shot = rel ? `<div class="frame"><img id="stageImg" src="${shotUrl(rel)}" alt="frame"></div>` : '<div class="noshot">кадр не снят для этого шага</div>';
+    wrap.innerHTML = `<div class="outcome tone-${oc.tone}"><div class="ocard"><span class="octag">${esc(oc.label)}</span>
+      <div class="octitle">${esc(s.role || '')} ${esc(JSON.stringify(s.name || ''))}</div>
+      <div class="ocwhy">${esc(oc.why)}</div><div class="ocerr mono">${esc(s.error)}</div></div>${shot}</div>`;
+    const img = $('#stageImg'); if (img) img.onclick = () => { $('#lbImg').src = img.src; $('#lb').classList.add('open'); };
+    return;
+  }
   const sh = s.shots || {}, rel = S.frame === 'after' ? sh.after : sh.before;
   if (!rel) { wrap.innerHTML = '<div class="placard">нет скриншота для этого кадра</div>'; return; }
   wrap.innerHTML = `<div class="frame"><div class="box" id="rbox"></div><img id="stageImg" src="${shotUrl(rel)}" alt="frame"></div>`;
@@ -269,26 +474,39 @@ function placeBox() {
   box.style.left = b.left + 'px'; box.style.top = b.top + 'px'; box.style.width = b.width + 'px'; box.style.height = b.height + 'px'; box.style.display = 'block';
 }
 
-function setStep(i) { S.i = clampIndex(i, S.steps.length); renderCursor(); renderReadout(); renderSteps(); renderStage(); }
+function setStep(i) {
+  S.i = clampIndex(i, S.steps.length); snapToView();
+  renderCursor(); renderReadout(); renderSteps(); syncRunPages(); renderStage(); if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView();
+}
+// Move by ±1 WITHIN the current page-filtered view (not the raw S.steps array).
+function stepBy(delta) { const view = viewIdx(); if (!view.length) return; let pos = view.indexOf(S.i); if (pos < 0) pos = 0; setStep(view[clampIndex(pos + delta, view.length)]); }
+// Toggle a page filter from the drill-down: select a page → strip+steps show only its acts; re-click → clear.
+function selectPage(route, firstIdx) {
+  S.pageFilter = (S.pageFilter === route) ? null : route;
+  if (S.pageFilter && (S.steps[S.i] || {}).route !== route) S.i = firstIdx; // land on the page's first act
+  renderStrip(); renderSteps(); renderCursor(); renderReadout(); syncRunPages(); renderStage();
+  if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView();
+}
 
 /* ---- scrub interaction ---- */
 let dragging = false, raf = 0;
 function scrubTo(clientX) {
+  const view = viewIdx(); if (!view.length) return;
   const rect = $('#track').getBoundingClientRect();
-  const i = indexFromClientX(clientX, rect.left, rect.width, S.steps.length);
-  if (i === S.i) return;
-  S.i = i; renderCursor(); renderReadout();
+  const si = view[indexFromClientX(clientX, rect.left, rect.width, view.length)];
+  if (si === S.i) return;
+  S.i = si; renderCursor(); renderReadout();
   if (raf) cancelAnimationFrame(raf);
-  raf = requestAnimationFrame(() => { renderSteps(); renderStage(); });
+  raf = requestAnimationFrame(() => { renderSteps(); renderStage(); if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView(); });
 }
 const track = $('#track');
 track.addEventListener('pointerdown', (e) => { if (!S.steps.length) return; dragging = true; track.setPointerCapture(e.pointerId); scrubTo(e.clientX); $('#tip').style.display = 'none'; });
 track.addEventListener('pointermove', (e) => {
   if (dragging) { scrubTo(e.clientX); return; }
-  if (!S.steps.length) return;
-  const rect = track.getBoundingClientRect(), i = indexFromClientX(e.clientX, rect.left, rect.width, S.steps.length), s = S.steps[i];
-  const tip = $('#tip'); tip.style.display = 'block'; tip.style.left = dotLeftPct(i, S.steps.length) + '%';
-  tip.textContent = `${i + 1}. t${s.templateId} ${s.name || s.role} · ${s.route}`;
+  const view = viewIdx(); if (!view.length) return;
+  const rect = track.getBoundingClientRect(), pos = indexFromClientX(e.clientX, rect.left, rect.width, view.length), s = S.steps[view[pos]];
+  const tip = $('#tip'); tip.style.display = 'block'; tip.style.left = dotLeftPct(pos, view.length) + '%';
+  tip.textContent = `${pos + 1}. t${s.templateId} ${s.name || s.role} · ${s.route}`;
 });
 track.addEventListener('pointerup', () => { dragging = false; });
 track.addEventListener('pointerleave', () => { $('#tip').style.display = 'none'; });
@@ -297,15 +515,46 @@ track.addEventListener('pointerleave', () => { $('#tip').style.display = 'none';
 function setTab(t) {
   S.tab = t;
   $('#tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-  const tests = t === 'tests';
-  ['#bodyGrid', '#strip', '#kpis'].forEach((sel) => $(sel).classList.toggle('hide', tests));
+  const graph = t === 'graph', tests = t === 'tests';
+  $('#bodyGrid').classList.toggle('hide', graph || tests);
+  $('#kpis').classList.toggle('hide', graph || tests);
+  $('#strip').classList.toggle('hide', graph || tests); // scrubber strip lives only under the Прогоны walk
   $('#testsView').classList.toggle('hide', !tests);
+  $('#graphView').classList.toggle('hide', !graph);
+  if (graph) { G.hover = null; requestAnimationFrame(drawGraphView); }
 }
 $('#tabs').querySelectorAll('button').forEach((b) => b.onclick = () => setTab(b.dataset.tab));
-$('#prev').onclick = () => setStep(S.i - 1);
-$('#next').onclick = () => setStep(S.i + 1);
+$('#gSub').querySelectorAll('button').forEach((b) => b.onclick = () => {   // Obsidian (force) vs Схема (bipartite) sub-tab
+  G.viewMode = b.dataset.vm; G.hover = null;
+  $('#gSub').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+  drawGraphView();
+});
+$('#prev').onclick = () => stepBy(-1);
+$('#next').onclick = () => stepBy(1);
+$('#pageFilterTag').onclick = () => { S.pageFilter = null; renderStrip(); renderSteps(); renderCursor(); renderReadout(); syncRunPages(); renderStage(); if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView(); };
 $('#refresh').onclick = loadRuns;
 $('#lb').onclick = () => $('#lb').classList.remove('open');
+
+/* ---- delete a run: ✕ on a run row → confirm → server DELETE of its trail dir ---- */
+let pendingDelete = null;
+function askDeleteRun(id) { pendingDelete = id; $('#cmMsg').textContent = 'Вы точно уверены, что хотите удалить прогон?'; $('#cmSub').textContent = id; $('#confirmModal').classList.add('open'); $('#cmCancel').focus(); }
+function closeConfirm() { pendingDelete = null; $('#confirmModal').classList.remove('open'); }
+async function doDeleteRun() {
+  const id = pendingDelete; if (!id) return; // keep pendingDelete set until SUCCESS, so an error leaves "Удалить" a real retry
+  try {
+    const r = await fetch(api('/api/runs/' + id), { method: 'DELETE' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    closeConfirm();
+    if (S.runId === id) { S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; }
+    S.runs = S.runs.filter((x) => x.id !== id);
+    if (typeof G !== 'undefined' && G.cache) G.cache.clear();
+    await loadRuns();
+  } catch (e) { $('#cmMsg').textContent = 'Не удалось удалить — нажмите «Удалить» ещё раз'; $('#cmSub').textContent = esc(String((e && e.message) || e)); }
+}
+$('#cmCancel').onclick = closeConfirm;
+$('#cmOk').onclick = doDeleteRun;
+$('#confirmModal').onclick = (e) => { if (e.target.id === 'confirmModal') closeConfirm(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#confirmModal').classList.contains('open')) closeConfirm(); });
 $('#tLeft').onclick = () => $('#bodyGrid').classList.toggle('no-left');
 $('#tRight').onclick = () => $('#bodyGrid').classList.toggle('no-right');
 $('#frameSel').querySelectorAll('button').forEach((b) => b.onclick = () => {
@@ -313,13 +562,489 @@ $('#frameSel').querySelectorAll('button').forEach((b) => b.onclick = () => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || S.tab !== 'runs') return;
-  if (e.key === 'ArrowLeft') { setStep(S.i - 1); e.preventDefault(); }
-  else if (e.key === 'ArrowRight') { setStep(S.i + 1); e.preventDefault(); }
-  else if (e.key === 'Home') { setStep(0); e.preventDefault(); }
-  else if (e.key === 'End') { setStep(S.steps.length - 1); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { stepBy(-1); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { stepBy(1); e.preventDefault(); }
+  else if (e.key === 'Home') { const v = viewIdx(); if (v.length) setStep(v[0]); e.preventDefault(); }
+  else if (e.key === 'End') { const v = viewIdx(); if (v.length) setStep(v[v.length - 1]); e.preventDefault(); }
   else if (e.key === 'f') { S.frame = S.frame === 'before' ? 'after' : 'before'; $('#frameSel').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.frame === S.frame)); renderStage(); }
 });
 window.addEventListener('resize', placeBox);
+
+/* ---- connectome graph: page (route) → its UI elements → the endpoints those elements fire ---- */
+const G = { cache: new Map(), model: null, hover: null, focus: null, sim: null, raf: null, modelSeq: null };
+G.viewMode = 'force'; G.radialPage = null; // 'force' = connected web (Граф tab); 'radial' = one page's solar system (Страница tab)
+window.G = G; // debug handle: inspect the live graph model / sim from the console
+const gcanvas = $('#gcanvas'), gctx = gcanvas.getContext('2d');
+const gcol = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const WRITE_RE = /\b(follow|unfollow|like|unlike|delete|create|remove|update|save|block|report|vote|pay|subscribe|checkout|addnugget|post_)/i;
+const ICON_RE = /(phone_iphone|desktop_mac|more_horiz|expand_more|expand_less|arrow_forward|arrow_back|chevron_right|check_circle|open_in_new)/g;
+function classifyEp(key) {
+  const method = key.split(' ')[0], p = key.replace(/^\S+\s+/, '');
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return 'read';
+  return WRITE_RE.test(p) ? 'write' : 'read';
+}
+const epLabel = (k) => k.replace(/^\S+\s+/, '').replace('/rawcaster/', '').replace('/api/', '').split('?')[0];
+// Human-readable page name from a route. Known routes get a curated label; unknown ones are prettified
+// (separators / camelCase → words, title-cased). An opaque trailing id (a profile hash) is dropped, but a
+// short 4-char tag is kept so two different profiles stay distinguishable rather than collapsing to one name.
+const ROUTE_NAMES = {
+  '/': 'Home', '/dashboard': 'Dashboard', '/profile': 'Profile', '/editprofile': 'Edit profile',
+  '/viewprofile': 'View profile', '/setting': 'Settings', '/settings': 'Settings', '/earnings': 'Earnings',
+  '/membership': 'Membership', '/referel': 'Referrals', '/referral': 'Referrals', '/support': 'Support',
+  '/call': 'Call', '/announcements': 'Announcements', '/community-signup': 'Community signup',
+  '/termsandconditions': 'Terms & conditions', '/payment_overview': 'Payment overview', '/post_ad': 'Post ad',
+  '/track_ad': 'Track ad', '/selectinfluencers': 'Select influencers', '/deletemyaccount': 'Delete my account',
+  '/dev': 'Dev', '/chat': 'Chat', '/notifications': 'Notifications', '/blocking': 'Blocking', '/stream': 'Stream',
+};
+function prettify(s) {
+  return String(s || '').replace(/[-_]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ').trim().replace(/^\w/, (c) => c.toUpperCase());
+}
+function shortRoute(route) {
+  if (!route || route === '—') return route || '—';
+  const clean = route.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
+  if (ROUTE_NAMES[clean]) return ROUTE_NAMES[clean];
+  const segs = clean.split('/').filter(Boolean);
+  const base = ROUTE_NAMES['/' + (segs[0] || '')] || prettify(segs[0] || clean);
+  const tail = segs[segs.length - 1];
+  if (segs.length > 1 && /^[A-Za-z0-9=_-]{6,}$/.test(tail)) return base + ' ·' + tail.slice(0, 4); // opaque id → short tag
+  return base;
+}
+function elLabel(el) { let n = String(el.name || '').replace(ICON_RE, ' ').replace(/\s+/g, ' ').trim(); return n || (el.role || ('#' + el.id)); }
+function isBlocked(el) { return el.danger === 'destructive' || el.danger === 'auth' || el.danger === 'payment'
+  || /refused|firewall|mutation|skipped as|OAuth|account-creation/i.test(el.purpose || ''); }
+function isGap(el) { return el.unreachable || /unreachable|not-visible/.test(el.effect || ''); }
+function elColor(el) {
+  if (isGap(el)) return gcol('--mut');
+  if (isBlocked(el)) return gcol('--warn');
+  if (el.effect === 'navigate') return '#a371f7';
+  if (el.effect === 'reveal') return '#2dd4bf';
+  if (el.effect === 'request') return gcol('--accent');
+  return gcol('--dim');
+}
+
+async function graphAtSeq(seq) {
+  const ck = S.runId + ':' + seq;
+  if (G.cache.has(ck)) return G.cache.get(ck);
+  let g = null;
+  try { g = await jget(`/api/runs/${S.runId}/graph/${seq}`); } catch { g = null; }
+  G.cache.set(ck, g); return g;
+}
+function buildModel(g) {
+  const elsRaw = g.elements || {}, reqs = g.requests || {};
+  const els = {};
+  for (const [id, e] of Object.entries(elsRaw)) els[id] = { id: +id, route: e.route || '—', role: e.role || '', name: e.name || '',
+    danger: (e.semantics && e.semantics.danger) || '', effect: (e.semantics && e.semantics.effect) || '', purpose: (e.semantics && e.semantics.purpose) || '',
+    unreachable: !!e.unreachable, insts: (e.instances || []).length };
+  const triggers = (g.edges || []).filter((e) => e.type === 'triggers')
+    .map((e) => ({ c: +String(e.from).replace('element:', ''), ep: String(e.to).replace('request:', '') }));
+  const elEps = {}, epEls = {};
+  triggers.forEach((t) => { (elEps[t.c] ||= new Set()).add(t.ep); (epEls[t.ep] ||= new Set()).add(t.c); });
+  // pages, in the order routes first appear (dashboard, then the rest)
+  const pageMap = {};
+  Object.values(els).forEach((el) => { const p = (pageMap[el.route] ||= { route: el.route, els: [], eps: new Set(), walked: 0 });
+    p.els.push(el.id); if (!isGap(el) && !isBlocked(el)) p.walked++; });
+  triggers.forEach((t) => { const el = els[t.c]; if (el && pageMap[el.route]) pageMap[el.route].eps.add(t.ep); });
+  // page→page navigation edges (structural a[href] links; how you get from one page to another)
+  const nav = (g.edges || []).filter((e) => e.type === 'nav')
+    .map((e) => ({ from: String(e.from).replace('route:', ''), to: String(e.to).replace('route:', '') }))
+    .filter((e) => e.from && e.to && e.from !== e.to);
+  // a link TARGET we never collected still becomes a (linked-only) page node, so the backbone is whole
+  nav.forEach((e) => [e.from, e.to].forEach((r) => { if (!pageMap[r]) pageMap[r] = { route: r, els: [], eps: new Set(), walked: 0, linkedOnly: true }; }));
+  const routeOrder = [...new Set([...Object.values(els).map((e) => e.route), ...nav.flatMap((e) => [e.from, e.to])])];
+  const pages = routeOrder.map((r) => pageMap[r]).filter(Boolean);
+  const navAdj = {}; nav.forEach((e) => { (navAdj[e.from] ||= new Set()).add(e.to); (navAdj[e.to] ||= new Set()).add(e.from); });
+  const endpoints = [...new Set(triggers.map((t) => t.ep))];
+  const epInfo = {}; endpoints.forEach((k) => { const r = reqs[k] || {}; epInfo[k] = { cls: classifyEp(k), statuses: r.statuses || null,
+    method: r.method || k.split(' ')[0], rtype: r.resourceType || '', pattern: r.urlPattern || k.replace(/^\S+\s+/, ''),
+    mime: r.mimeType || '', dur: r.durationMs || r.duration || null }; });
+  return { els, pages, endpoints, epInfo, triggers, elEps, epEls, nav, navAdj };
+}
+
+// ONE connected force-directed connectome (Obsidian-style): pages, UI elements, and endpoints are all
+// nodes in a SINGLE network. Edges: page→element (contains) and element→endpoint (fires). Endpoints
+// fired from several pages are shared hubs, so the whole app pulls into one connected web — that is how
+// the pages relate to each other. A spring+repulsion simulation lays it out; warm-started across live
+// refreshes so it doesn't jump. Click a page to light its neighbourhood (its elements, its endpoints,
+// and the OTHER pages that share those endpoints — the page-to-page links).
+function buildSim(m, W, H, prev) {
+  const cx = W / 2, cy = H / 2, nodes = [], pgIdx = {}, elIdx = {}, epIdx = {};
+  const old = {}; if (prev) for (const a of prev.nodes) old[a.t + '\0' + a.key] = a;
+  const warm = (t, key, sx, sy) => { const o = old[t + '\0' + key];
+    return o ? { x: o.x, y: o.y, vx: o.vx, vy: o.vy } : { x: sx, y: sy, vx: 0, vy: 0 }; };
+  m.pages.forEach((p, i) => { const a = -Math.PI / 2 + i / Math.max(m.pages.length, 1) * 2 * Math.PI, rr = Math.min(W, H) * 0.26;
+    pgIdx[p.route] = nodes.length;
+    nodes.push({ t: 'pg', key: p.route, r: 9 + Math.min(16, Math.sqrt(p.els.length) * 1.6), page: p, ...warm('pg', p.route, cx + rr * Math.cos(a), cy + rr * Math.sin(a)) }); });
+  for (const id in m.els) { const el = m.els[id], pg = nodes[pgIdx[el.route]], a = (+id) * 2.399963, rr = 44 + (+id * 17 % 34);
+    elIdx[id] = nodes.length;
+    nodes.push({ t: 'el', key: +id, r: 3.4, el, ...warm('el', +id, (pg ? pg.x : cx) + rr * Math.cos(a), (pg ? pg.y : cy) + rr * Math.sin(a)) }); }
+  m.endpoints.forEach((k, i) => { const callers = [...(m.epEls[k] || [])].map((id) => nodes[elIdx[id]]).filter(Boolean);
+    const ax = callers.length ? callers.reduce((s, nn) => s + nn.x, 0) / callers.length : cx;
+    const ay = callers.length ? callers.reduce((s, nn) => s + nn.y, 0) / callers.length : cy;
+    epIdx[k] = nodes.length;
+    nodes.push({ t: 'ep', key: k, r: 4 + Math.min(7, Math.sqrt((m.epEls[k] || new Set()).size)), info: m.epInfo[k], ...warm('ep', k, ax + (i % 7 - 3) * 7, ay + (i % 5 - 2) * 7) }); });
+  const edges = [];
+  (m.nav || []).forEach((e) => { if (pgIdx[e.from] != null && pgIdx[e.to] != null) edges.push({ a: pgIdx[e.from], b: pgIdx[e.to], type: 'nav' }); });
+  for (const id in m.els) { const el = m.els[id]; if (pgIdx[el.route] != null) edges.push({ a: pgIdx[el.route], b: elIdx[id], type: 'contains' }); }
+  m.triggers.forEach((t) => { if (elIdx[t.c] != null && epIdx[t.ep] != null) edges.push({ a: elIdx[t.c], b: epIdx[t.ep], type: 'fires' }); });
+  return { nodes, edges, pgIdx, elIdx, epIdx, W, H, alpha: prev ? 0.55 : 1 };
+}
+function tickSim(s) {
+  const n = s.nodes, N = n.length, K_REP = 1600, GRAV = 0.013, cx = s.W / 2, cy = s.H / 2;
+  for (let i = 0; i < N; i++) { const a = n[i]; let fx = (cx - a.x) * GRAV, fy = (cy - a.y) * GRAV;
+    for (let j = 0; j < N; j++) { if (i === j) continue; const b = n[j];
+      let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+      if (d2 > 190000) continue; if (d2 < 1) { d2 = 1; dx = (i - j) || 1; dy = 1; }
+      const d = Math.sqrt(d2), f = K_REP / d2; fx += f * dx / d; fy += f * dy / d; }
+    a.fx = fx; a.fy = fy; }
+  for (const e of s.edges) { const a = n[e.a], b = n[e.b], L0 = e.type === 'nav' ? 132 : e.type === 'contains' ? 46 : 84, k = e.type === 'nav' ? 0.022 : 0.032;
+    let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01; const f = k * (d - L0), ux = dx / d, uy = dy / d;
+    a.fx += f * ux; a.fy += f * uy; b.fx -= f * ux; b.fy -= f * uy; }
+  const damp = 0.86, mv = 16;
+  for (const a of n) { if (a.fixed) { a.vx = a.vy = 0; continue; }        // dragged / pinned nodes stay put
+    a.vx = Math.max(-mv, Math.min(mv, (a.vx + a.fx) * damp)); a.vy = Math.max(-mv, Math.min(mv, (a.vy + a.fy) * damp)); a.x += a.vx; a.y += a.vy; }
+}
+function animate() {
+  if ((S.tab !== 'graph' && S.tab !== 'page') || !G.sim) { G.raf = null; return; }
+  for (let k = 0; k < 2; k++) tickSim(G.sim);
+  G.sim.alpha *= 0.986; drawGraph();
+  G.raf = G.sim.alpha > 0.04 ? requestAnimationFrame(animate) : null;
+}
+function focusEps() { if (!G.focus) return null; const p = G.model.pages.find((x) => x.route === G.focus); return p ? p.eps : new Set(); }
+function nodeOn(t, key) { // lit vs dimmed under the current hover / focus
+  if (G.hover && !inChain(t, key)) return false;
+  if (G.focus) { const fe = focusEps();
+    if (t === 'pg') { if (key === G.focus) return true;
+      if ((G.model.navAdj[G.focus] || new Set()).has(key)) return true;                 // page linked to/from focus
+      const p = G.model.pages.find((x) => x.route === key); return !!(p && fe && [...p.eps].some((k) => fe.has(k))); }
+    if (t === 'el') return G.model.els[key] && G.model.els[key].route === G.focus;
+    if (t === 'ep') return fe.has(key); }
+  return true;
+}
+function inChain(kind, key) { // is this node connected to the current hover?
+  const h = G.hover, m = G.model; if (!h) return true;
+  if (kind === 'el') { const id = key;
+    if (h.t === 'el') return h.id === id;
+    if (h.t === 'ep') return (m.epEls[h.k] || new Set()).has(id);
+    if (h.t === 'pg') return m.els[id] && m.els[id].route === h.route; }
+  if (kind === 'ep') { const k = key;
+    if (h.t === 'ep') return h.k === k;
+    if (h.t === 'el') return (m.elEps[h.id] || new Set()).has(k);
+    if (h.t === 'pg') return m.pages.find((p) => p.route === h.route)?.eps.has(k); }
+  if (kind === 'pg') { const route = key;
+    if (h.t === 'pg') return h.route === route;
+    if (h.t === 'el') return m.els[h.id] && m.els[h.id].route === route;
+    if (h.t === 'ep') return [...(m.epEls[h.k] || [])].some((id) => m.els[id] && m.els[id].route === route); }
+  return false;
+}
+function drawGraph() {
+  const m = G.model, s = G.sim; if (!m || !s) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  gcanvas.style.height = s.H + 'px'; gcanvas.width = s.W * dpr; gcanvas.height = s.H * dpr;
+  gctx.setTransform(dpr, 0, 0, dpr, 0, 0); gctx.clearRect(0, 0, s.W, s.H); gctx.textBaseline = 'middle';
+  if (s.bipartite) { drawBipartite(s); return; }         // Схема sub-tab: two-column causal graph
+  // node palette (per operator): PAGE = blue, UI element = green, endpoint = red. Edges split by TYPE:
+  // page↔page navigation = violet, element→endpoint call = amber, page→element ownership = faint gray.
+  const n = s.nodes, settled = s.alpha < 0.22, NAV = '#a371f7', FIRE = '#d29922', PAGE = gcol('--accent'), ELEM = gcol('--good'), EP = gcol('--bad');
+  if (s.single) { gctx.strokeStyle = gcol('--line'); gctx.globalAlpha = 0.5; gctx.lineWidth = 1;  // orbit-ring guides (Страница)
+    [s.rIn, s.rOut].forEach((rr) => { gctx.beginPath(); gctx.arc(s.cx, s.cy, rr, 0, 7); gctx.stroke(); }); gctx.globalAlpha = 1; }
+  // page→element ownership + element→endpoint call edges (dimmed when off the focus/hover set)
+  for (const e of s.edges) { if (e.type === 'nav') continue; const a = n[e.a], b = n[e.b], fires = e.type === 'fires';
+    const on = nodeOn(a.t, a.key) && nodeOn(b.t, b.key);
+    gctx.beginPath(); gctx.moveTo(a.x, a.y); gctx.lineTo(b.x, b.y);
+    gctx.lineWidth = on && fires ? 1.1 : 0.7;
+    gctx.strokeStyle = fires ? FIRE : gcol('--dim');                          // call = amber, ownership = faint
+    gctx.globalAlpha = on ? (fires ? 0.5 : 0.2) : 0.06; gctx.stroke(); }
+  // page→page navigation edges LAST so the backbone sits on top (violet, thicker)
+  for (const e of s.edges) { if (e.type !== 'nav') continue; const a = n[e.a], b = n[e.b];
+    const on = nodeOn(a.t, a.key) && nodeOn(b.t, b.key);
+    gctx.beginPath(); gctx.moveTo(a.x, a.y); gctx.lineTo(b.x, b.y);
+    gctx.lineWidth = on ? 1.8 : 1; gctx.strokeStyle = NAV; gctx.globalAlpha = on ? 0.7 : 0.14; gctx.stroke(); }
+  gctx.globalAlpha = 1;
+  // nodes
+  for (const a of n) { const on = nodeOn(a.t, a.key);
+    gctx.globalAlpha = on ? 1 : 0.3;
+    if (a.t === 'pg') { const grd = gctx.createRadialGradient(a.x, a.y, 1, a.x, a.y, a.r * 2.6);
+      grd.addColorStop(0, 'rgba(88,166,255,.4)'); grd.addColorStop(1, 'rgba(88,166,255,0)');
+      gctx.fillStyle = grd; gctx.beginPath(); gctx.arc(a.x, a.y, a.r * 2.6, 0, 7); gctx.fill(); }
+    if (a.t === 'pg' && a.page.linkedOnly) {                                    // linked-but-not-collected: hollow ring
+      gctx.beginPath(); gctx.arc(a.x, a.y, a.r, 0, 7); gctx.lineWidth = 2; gctx.strokeStyle = PAGE; gctx.stroke();
+      gctx.fillStyle = gcol('--bg'); gctx.fill(); continue; }
+    // PAGE = blue · UI element = green (gray if unreachable) · endpoint = red
+    const fill = a.t === 'pg' ? PAGE : a.t === 'el' ? (isGap(a.el) ? gcol('--mut') : ELEM) : EP;
+    gctx.beginPath(); gctx.arc(a.x, a.y, a.r, 0, 7); gctx.fillStyle = fill; gctx.fill();
+    if (a.t === 'pg') { gctx.strokeStyle = gcol('--bg'); gctx.lineWidth = 2; gctx.stroke(); }
+    if (a.t === 'ep' && a.info && a.info.cls === 'write') { gctx.strokeStyle = gcol('--bg'); gctx.lineWidth = 1.2; // write endpoint keeps a ✕
+      gctx.beginPath(); gctx.moveTo(a.x - 2.5, a.y - 2.5); gctx.lineTo(a.x + 2.5, a.y + 2.5); gctx.moveTo(a.x + 2.5, a.y - 2.5); gctx.lineTo(a.x - 2.5, a.y + 2.5); gctx.stroke(); } }
+  gctx.globalAlpha = 1;
+  // labels: pages always; endpoints once settled or lit; elements on hover only
+  const label = (a, txt, font, dy, sub) => { const on = nodeOn(a.t, a.key);
+    gctx.font = font; const w = Math.min(gctx.measureText(txt).width, a.t === 'pg' ? 220 : 168), tx = a.x, ty = a.y + dy;
+    gctx.textAlign = 'center'; gctx.globalAlpha = on ? 0.82 : 0.28; gctx.fillStyle = gcol('--bg');
+    gctx.fillRect(tx - w / 2 - 3, ty - 7, w + 6, sub ? 26 : 14);
+    gctx.globalAlpha = on ? 1 : 0.4; gctx.fillStyle = on ? gcol('--fg') : gcol('--dim');
+    gctx.fillText(fit(txt, a.t === 'pg' ? 220 : 168), tx, ty);
+    if (sub) { gctx.font = '10px ui-monospace, Menlo, monospace'; gctx.fillStyle = gcol('--mut'); gctx.fillText(sub, tx, ty + 13); } };
+  const hovKey = (a) => G.hover && G.hover.t === a.t && (a.t === 'el' ? G.hover.id === a.key : a.t === 'ep' ? G.hover.k === a.key : G.hover.route === a.key);
+  const radial = !!s.single;
+  // radial (Страница) label: every element + endpoint labelled, placed OUTWARD along its orbit angle
+  const radLabel = (a, txt) => { const on = nodeOn(a.t, a.key), right = Math.cos(a.a || 0) >= 0;
+    gctx.font = a.t === 'ep' ? '11px ui-monospace, Menlo, monospace' : '11px -apple-system, "Segoe UI", sans-serif';
+    gctx.textAlign = right ? 'left' : 'right'; gctx.globalAlpha = on ? 1 : 0.4; gctx.fillStyle = on ? gcol('--fg') : gcol('--dim');
+    gctx.fillText(fit(txt, 150), a.x + (right ? a.r + 5 : -(a.r + 5)), a.y); };
+  // force (Граф) overview: endpoint labels only on hover / focused page — keeps the web clean
+  const epLabelOn = (a) => hovKey(a) || (G.focus && nodeOn(a.t, a.key));
+  for (const a of n) {
+    if (a.t === 'pg') label(a, shortRoute(a.key), '600 12px ui-monospace, Menlo, monospace', a.r + 12, `${a.page.els.length} эл · ${a.page.eps.size} эп`);
+    else if (radial) { const hits = a.t === 'ep' && a.info && a.info.statuses ? ' ·' + Object.values(a.info.statuses).reduce((x, y) => x + y, 0) : '';
+      radLabel(a, (a.t === 'ep' ? epLabel(a.key) + hits : elLabel(a.el))); }
+    else if (a.t === 'ep' && epLabelOn(a)) {
+      const hits = a.info && a.info.statuses ? ' ·' + Object.values(a.info.statuses).reduce((x, y) => x + y, 0) : (a.info && a.info.cls === 'write' ? ' ·⊘' : '');
+      label(a, epLabel(a.key) + hits, '11px ui-monospace, Menlo, monospace', -(a.r + 8));
+    } else if (a.t === 'el' && hovKey(a)) label(a, elLabel(a.el), '11px -apple-system, "Segoe UI", sans-serif', -(a.r + 8));
+  }
+  gctx.globalAlpha = 1;
+}
+// Схема renderer: PAGES (blue, left) │ CONTROLS (green, middle) │ ENDPOINTS (red, ✕=write, right).
+// Edges: page→control ownership (faint) + control→endpoint call (amber read / red write).
+function drawBipartite(s) {
+  const n = s.nodes, FIRE = '#d29922', midPC = (s.pageX + s.ctrlX) / 2, midCE = (s.ctrlX + s.epX) / 2;
+  const pill = (x, y, w, on) => { gctx.globalAlpha = on ? 0.8 : 0.25; gctx.fillStyle = gcol('--bg'); gctx.fillRect(x, y - 8, w, 16); gctx.globalAlpha = 1; };
+  // page → control ownership edges (faint)
+  for (const e of s.edges) { if (e.type !== 'contains') continue; const a = n[e.a], b = n[e.b];
+    const on = nodeOn('pg', a.key) && nodeOn('el', b.key);
+    gctx.beginPath(); gctx.moveTo(a.x + a.r, a.y); gctx.bezierCurveTo(midPC, a.y, midPC, b.y, b.x - b.r, b.y);
+    gctx.lineWidth = 0.7; gctx.strokeStyle = gcol('--dim'); gctx.globalAlpha = on ? 0.16 : 0.03; gctx.stroke(); }
+  // control → endpoint call edges (amber read / red write)
+  for (const e of s.edges) { if (e.type !== 'fires') continue; const a = n[e.a], b = n[e.b];
+    const on = nodeOn('el', a.key) && nodeOn('ep', b.key), isW = b.info && b.info.cls === 'write';
+    const strong = G.hover && ((G.hover.t === 'el' && G.hover.id === a.key) || (G.hover.t === 'ep' && G.hover.k === b.key));
+    gctx.beginPath(); gctx.moveTo(a.x + a.r, a.y); gctx.bezierCurveTo(midCE, a.y, midCE, b.y, b.x - b.r, b.y);
+    gctx.lineWidth = strong ? 2 : 1; gctx.strokeStyle = isW ? gcol('--bad') : FIRE;
+    gctx.globalAlpha = !on ? 0.05 : (strong ? 0.95 : 0.4); gctx.stroke(); }
+  gctx.globalAlpha = 1;
+  // pages (left, blue) + right-aligned label
+  for (const a of n) { if (a.t !== 'pg') continue; const on = nodeOn('pg', a.key), txt = shortRoute(a.key), maxW = s.pageX - 18;
+    gctx.font = '600 12px ui-monospace, Menlo, monospace'; const w = Math.min(gctx.measureText(fit(txt, maxW)).width, maxW);
+    pill(a.x - 14 - w, a.y, w + 6, on);
+    gctx.globalAlpha = on ? 1 : 0.25; gctx.beginPath(); gctx.arc(a.x, a.y, a.r, 0, 7); gctx.fillStyle = gcol('--accent'); gctx.fill();
+    gctx.textAlign = 'right'; gctx.fillStyle = on ? gcol('--fg') : gcol('--dim'); gctx.fillText(fit(txt, maxW), a.x - 13, a.y); }
+  // controls (middle, green) + right-aligned label sitting in the page→control gap
+  for (const a of n) { if (a.t !== 'el') continue; const on = nodeOn('el', a.key), maxW = s.ctrlX - s.pageX - 30;
+    gctx.font = '12px -apple-system, "Segoe UI", sans-serif'; const w = Math.min(gctx.measureText(fit(elLabel(a.el), maxW)).width, maxW);
+    pill(a.x - 12 - w, a.y, w + 6, on);
+    gctx.globalAlpha = on ? 1 : 0.25; gctx.beginPath(); gctx.arc(a.x, a.y, a.r, 0, 7); gctx.fillStyle = isGap(a.el) ? gcol('--mut') : gcol('--good'); gctx.fill();
+    gctx.textAlign = 'right'; gctx.fillStyle = on ? gcol('--fg') : gcol('--dim'); gctx.fillText(fit(elLabel(a.el), maxW), a.x - 11, a.y); }
+  // endpoints (right, red) + left-aligned label + write ✕
+  for (const a of n) { if (a.t !== 'ep') continue; const on = nodeOn('ep', a.key), isW = a.info && a.info.cls === 'write';
+    gctx.globalAlpha = on ? 1 : 0.25; gctx.beginPath(); gctx.arc(a.x, a.y, a.r, 0, 7); gctx.fillStyle = gcol('--bad'); gctx.fill();
+    if (isW) { gctx.strokeStyle = gcol('--bg'); gctx.lineWidth = 1.2; gctx.beginPath();
+      gctx.moveTo(a.x - 2.5, a.y - 2.5); gctx.lineTo(a.x + 2.5, a.y + 2.5); gctx.moveTo(a.x + 2.5, a.y - 2.5); gctx.lineTo(a.x - 2.5, a.y + 2.5); gctx.stroke(); }
+    gctx.textAlign = 'left'; gctx.font = '12px ui-monospace, Menlo, monospace'; gctx.fillStyle = on ? gcol('--fg') : gcol('--dim');
+    const hits = a.info && a.info.statuses ? ' ·' + Object.values(a.info.statuses).reduce((x, y) => x + y, 0) : (isW ? ' ·⊘' : '');
+    gctx.fillText(fit(epLabel(a.key) + hits, s.W - a.x - 16), a.x + 10, a.y); }
+  // column headers
+  gctx.globalAlpha = 0.65; gctx.font = '600 11px ui-monospace, Menlo, monospace'; gctx.fillStyle = gcol('--dim');
+  gctx.textAlign = 'right'; gctx.fillText('СТРАНИЦЫ', s.pageX - 13, 15); gctx.fillText('КОНТРОЛЫ', s.ctrlX - 11, 15);
+  gctx.textAlign = 'left'; gctx.fillText('ENDPOINTS', s.epX + 10, 15); gctx.globalAlpha = 1;
+}
+function roundRect(x, y, w, h, r) { gctx.beginPath(); gctx.moveTo(x + r, y); gctx.arcTo(x + w, y, x + w, y + h, r);
+  gctx.arcTo(x + w, y + h, x, y + h, r); gctx.arcTo(x, y + h, x, y, r); gctx.arcTo(x, y, x + w, y, r); gctx.closePath(); }
+function fit(s, maxW) { if (gctx.measureText(s).width <= maxW) return s; let t = s; while (t.length > 1 && gctx.measureText(t + '…').width > maxW) t = t.slice(0, -1); return t + '…'; }
+
+function renderFilter() {
+  const m = G.model, sel = $('#gFilter'); if (!sel) return;
+  if (!m) { sel.innerHTML = ''; $('#gModeHint').textContent = ''; return; }
+  const sorted = m.pages.slice().sort((a, b) => b.els.length - a.els.length);
+  const radial = G.viewMode === 'radial';
+  if (radial && !G.radialPage && sorted[0]) G.radialPage = sorted[0].route;
+  const cur = radial ? G.radialPage : (G.focus || '');
+  const allOpt = radial ? '' : '<option value="">— все страницы —</option>';
+  sel.innerHTML = allOpt + sorted.map((p) => `<option value="${esc(p.route)}"${cur === p.route ? ' selected' : ''}>${esc(shortRoute(p.route))}  ·  ${p.els.length} эл · ${p.eps.size} эп</option>`).join('');
+  $('#gModeHint').textContent = G.viewMode === 'bipartite' ? 'фильтр подсвечивает контролы и endpoints выбранной страницы' : radial ? 'вокруг страницы — её UI-элементы и endpoints' : 'подсвечивает выбранную страницу и её связи';
+  sel.onchange = () => { if (radial) G.radialPage = sel.value || null; else G.focus = sel.value || null; G.hover = null; drawGraphView(); };
+}
+// ONE page's solar system (Страница tab): the page at centre, its UI elements on an inner ring, the
+// endpoints they fire on an outer ring. Static positions (all fixed → no physics). Sim-shaped so the
+// same drawGraph / hover / drag machinery renders it.
+function radialLayout(m, W, H) {
+  const route = G.radialPage || (m.pages.slice().sort((a, b) => b.els.length - a.els.length)[0] || {}).route;
+  const page = m.pages.find((p) => p.route === route);
+  const nodes = [], edges = [], pgIdx = {}, elIdx = {}, epIdx = {};
+  if (!page) return { nodes, edges, W, H, alpha: 0, single: route };
+  const elIds = page.els.slice().sort((a, b) => a - b), eps = [...page.eps];
+  const rIn = Math.max(120, Math.min(elIds.length * 7 + 40, Math.min(W, 1100) / 2 - 210)), rOut = rIn + 145;
+  const cx = W / 2, cy = rOut + 70; H = Math.max(H, cy + rOut + 70);
+  pgIdx[route] = nodes.length; nodes.push({ t: 'pg', key: route, r: 30, page, x: cx, y: cy, vx: 0, vy: 0, fixed: true });
+  const elA = {};
+  elIds.forEach((id, i) => { const a = -Math.PI / 2 + i / Math.max(elIds.length, 1) * 2 * Math.PI; elA[id] = a;
+    elIdx[id] = nodes.length; nodes.push({ t: 'el', key: id, r: 5, el: m.els[id], x: cx + rIn * Math.cos(a), y: cy + rIn * Math.sin(a), vx: 0, vy: 0, fixed: true, a }); });
+  const want = eps.map((k) => { const conn = [...(m.epEls[k] || [])].filter((id) => elA[id] != null);
+    let ax = 0, ay = 0; conn.forEach((id) => { ax += Math.cos(elA[id]); ay += Math.sin(elA[id]); });
+    return { k, a: conn.length ? Math.atan2(ay, ax) : -Math.PI / 2 }; }).sort((x, y) => x.a - y.a);
+  const minA = eps.length ? 2 * Math.PI / eps.length * 0.7 : 0; let prev = -1e9;
+  want.forEach((d) => { let a = d.a < prev + minA ? prev + minA : d.a; prev = a;
+    epIdx[d.k] = nodes.length; nodes.push({ t: 'ep', key: d.k, r: 6, info: m.epInfo[d.k], x: cx + rOut * Math.cos(a), y: cy + rOut * Math.sin(a), vx: 0, vy: 0, fixed: true, a }); });
+  elIds.forEach((id) => edges.push({ a: pgIdx[route], b: elIdx[id], type: 'contains' }));
+  eps.forEach((k) => [...(m.epEls[k] || [])].forEach((id) => { if (elIdx[id] != null) edges.push({ a: elIdx[id], b: epIdx[k], type: 'fires' }); }));
+  return { nodes, edges, pgIdx, elIdx, epIdx, W, H, alpha: 0, single: route, rIn, rOut, cx, cy };
+}
+// Схема sub-tab: a THREE-tier causal graph — PAGES (left) │ CONTROLS that fired >=1 endpoint (middle,
+// grouped under their page) │ ENDPOINTS (right, reads grouped, writes last). Edges: page→control
+// (ownership) + control→endpoint (call). Static fixed positions; sim-shaped so hover/pick reuse. No physics.
+function bipartiteLayout(m, W, H) {
+  const deg = {}; m.triggers.forEach((t) => { deg[t.c] = (deg[t.c] || 0) + 1; });
+  const ctrlIds = [...new Set(m.triggers.map((t) => t.c))].filter((id) => m.els[id]);
+  const routeOrder = [...new Set(ctrlIds.map((id) => m.els[id].route))];   // pages that own >=1 firing control
+  ctrlIds.sort((a, b) => (routeOrder.indexOf(m.els[a].route) - routeOrder.indexOf(m.els[b].route)) || (deg[b] - deg[a]) || (a - b));
+  const eps = [...new Set(m.triggers.map((t) => t.ep))].sort((a, b) => {
+    const wa = m.epInfo[a] && m.epInfo[a].cls === 'write' ? 1 : 0, wb = m.epInfo[b] && m.epInfo[b].cls === 'write' ? 1 : 0;
+    return wa - wb || epLabel(a).localeCompare(epLabel(b));
+  });
+  const nodes = [], edges = [], elIdx = {}, epIdx = {}, pgIdx = {};
+  const padY = 34, pageX = Math.max(90, W * 0.12), ctrlX = W * 0.50, epX = W - Math.max(180, W * 0.20);
+  H = Math.max(H, padY * 2 + Math.max(ctrlIds.length, eps.length, 1) * 22);
+  const yAt = (i, nn) => nn <= 1 ? H / 2 : padY + i * ((H - 2 * padY) / (nn - 1));
+  ctrlIds.forEach((id, i) => { elIdx[id] = nodes.length; nodes.push({ t: 'el', key: id, el: m.els[id], x: ctrlX, y: yAt(i, ctrlIds.length), r: 5, fixed: true }); });
+  eps.forEach((k, i) => { epIdx[k] = nodes.length; nodes.push({ t: 'ep', key: k, info: m.epInfo[k], x: epX, y: yAt(i, eps.length), r: 6, fixed: true }); });
+  routeOrder.forEach((r) => {                                             // page Y = centroid of its controls' rows
+    const ys = ctrlIds.filter((id) => m.els[id].route === r).map((id) => nodes[elIdx[id]].y);
+    pgIdx[r] = nodes.length; nodes.push({ t: 'pg', key: r, page: m.pages.find((p) => p.route === r), x: pageX, y: ys.reduce((a, b) => a + b, 0) / ys.length, r: 9, fixed: true });
+  });
+  ctrlIds.forEach((id) => { const r = m.els[id].route; if (pgIdx[r] != null) edges.push({ a: pgIdx[r], b: elIdx[id], type: 'contains' }); });
+  m.triggers.forEach((t) => { if (elIdx[t.c] != null && epIdx[t.ep] != null) edges.push({ a: elIdx[t.c], b: epIdx[t.ep], type: 'fires' }); });
+  return { nodes, edges, elIdx, epIdx, pgIdx, W, H, alpha: 0, bipartite: true, pageX, ctrlX, epX };
+}
+async function drawGraphView() {
+  if ((S.tab !== 'graph' && S.tab !== 'page')) return;
+  // pick the newest step seq that actually has a snapshot — walk back over gaps (failed acts write no
+  // snapshot) so a tail gap never shows a black screen; then forward as a fallback.
+  let g = null, seq = null, start = Math.min(S.i, S.steps.length - 1);
+  for (let j = start; j >= 0 && !g; j--) { const sq = S.steps[j] && S.steps[j].seq; if (sq == null) continue;
+    const gg = await graphAtSeq(sq); if (gg && Object.keys(gg.elements || {}).length) { g = gg; seq = sq; } }
+  for (let j = start + 1; j < S.steps.length && !g; j++) { const sq = S.steps[j] && S.steps[j].seq; if (sq == null) continue;
+    const gg = await graphAtSeq(sq); if (gg && Object.keys(gg.elements || {}).length) { g = gg; seq = sq; } }
+  if ((S.tab !== 'graph' && S.tab !== 'page')) return;
+  if (!g) { G.model = null; G.sim = null; if (G.raf) { cancelAnimationFrame(G.raf); G.raf = null; }
+    renderFilter(); gctx.clearRect(0, 0, gcanvas.width, gcanvas.height); $('#gEmpty').classList.remove('hide');
+    $('#gPage').textContent = $('#gCtrl').textContent = $('#gEp').textContent = $('#gEdge').textContent = '0'; return; }
+  const changed = G.modelSeq !== seq;
+  G.model = buildModel(g); G.modelSeq = seq;
+  if (G.focus && !G.model.pages.some((p) => p.route === G.focus)) G.focus = null;
+  $('#gPage').textContent = G.model.pages.length; $('#gCtrl').textContent = Object.keys(G.model.els).length;
+  $('#gEp').textContent = G.model.endpoints.length; $('#gEdge').textContent = G.model.triggers.length;
+  $('#gEmpty').classList.add('hide'); renderFilter();
+  const gwrap = gcanvas.parentElement, W = gwrap.clientWidth || 900, H = Math.max(gwrap.clientHeight || 600, 600);
+  if (G.viewMode === 'bipartite') {                     // Схема sub-tab: static two-column causal graph, no physics
+    if (G.raf) { cancelAnimationFrame(G.raf); G.raf = null; }
+    G.sim = bipartiteLayout(G.model, W, H); drawGraph(); return;
+  }
+  if (G.viewMode === 'radial') {                        // dormant one-page solar system (no tab currently mounts it)
+    if (G.raf) { cancelAnimationFrame(G.raf); G.raf = null; }
+    G.sim = radialLayout(G.model, W, H); drawGraph(); return;
+  }
+  const staticPrev = G.sim && (G.sim.single || G.sim.bipartite);
+  if (changed || !G.sim || staticPrev) { if (G.raf) cancelAnimationFrame(G.raf); G.sim = buildSim(G.model, W, H, G.sim && changed && !staticPrev ? G.sim : null); G.raf = requestAnimationFrame(animate); }
+  else drawGraph();
+}
+function xy(ev) { const r = gcanvas.getBoundingClientRect(); return { mx: ev.clientX - r.left, my: ev.clientY - r.top }; }
+function pickNode(ev) { // nearest sim node under the cursor, or null
+  if (!G.sim) return null; const { mx, my } = xy(ev); let best = null, bd = 1e9;
+  for (const a of G.sim.nodes) { const d = Math.hypot(mx - a.x, my - a.y); if (d <= a.r + 6 && d < bd) { bd = d; best = a; } }
+  return best;
+}
+const hoverRef = (a) => a && (a.t === 'el' ? { t: 'el', id: a.key } : a.t === 'ep' ? { t: 'ep', k: a.key } : { t: 'pg', route: a.key });
+function kick() { if (G.sim) { G.sim.alpha = Math.max(G.sim.alpha, 0.5); if (!G.raf) G.raf = requestAnimationFrame(animate); } }
+
+/* ---- node detail modal: click a graph node → its data (page / control / endpoint) ---- */
+const methodPill = (k) => { const info = G.model.epInfo[k] || {}; return `<span class="nm-pill"><span class="method m-${esc(info.method || '')}">${esc(info.method || '')}</span> ${esc(epLabel(k))}</span>`; };
+function nodeModalHtml(a) {
+  const m = G.model; if (!m || !a) return '';
+  const close = '<button class="nm-x" id="nmX" title="закрыть (Esc)">✕</button>';
+  const empty = '<span class="nm-empty">—</span>';
+  if (a.t === 'pg') {                                       // PAGE: its controls, the endpoints it fires, links out
+    const p = m.pages.find((x) => x.route === a.key) || { els: [], eps: new Set() };
+    const ctrls = p.els.map((id) => m.els[id]).filter(Boolean);
+    const acts = ctrls.filter((e) => !isGap(e) && !isBlocked(e)).length, gaps = ctrls.filter(isGap).length;
+    const eps = [...p.eps], links = [...(m.navAdj[a.key] || [])];
+    const ctrlList = ctrls.length ? ctrls.map((e) => `<span class="nm-pill" style="color:${isGap(e) ? 'var(--mut)' : 'var(--good)'}">${esc(elLabel(e))}</span>`).join('') : empty;
+    const epList = eps.length ? eps.map(methodPill).join('') : '<span class="nm-empty">эндпоинтов не зафиксировано</span>';
+    const linkList = links.length ? links.map((r) => `<span class="nm-pill mono">${esc(shortRoute(r))}</span>`).join('') : empty;
+    return `<div class="nm-hd"><span class="nm-kind pg">страница</span><span class="nm-title">${esc(shortRoute(a.key))}<div class="r mono">${esc(a.key)}</div></span>${close}</div>
+      <div class="nm-body">
+        <div class="nm-row"><span class="k">контролов</span><span class="v">${ctrls.length} · <span style="color:var(--good)">${acts} доступно</span> · <span style="color:var(--mut)">${gaps} unreachable</span></span></div>
+        <div class="nm-row"><span class="k">эндпоинтов</span><span class="v">${eps.length}</span></div>
+        <h6>интерактивные контролы</h6><div class="nm-list">${ctrlList}</div>
+        <h6>вызывает endpoints</h6><div class="nm-list">${epList}</div>
+        <h6>переходы на страницы</h6><div class="nm-list">${linkList}</div></div>`;
+  }
+  if (a.t === 'el') {                                        // CONTROL: which page it is on + the endpoints it fires
+    const e = m.els[a.key]; if (!e) return '';
+    const eps = [...(m.elEps[a.key] || [])];
+    const epList = eps.length ? eps.map(methodPill).join('') : '<span class="nm-empty">endpoints не вызывал (навигация / reveal / недоступен)</span>';
+    const row = (k, v) => v ? `<div class="nm-row"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>` : '';
+    return `<div class="nm-hd"><span class="nm-kind el">контрол</span><span class="nm-title">${esc(elLabel(e))}<div class="r">${esc(e.role || '')}</div></span>${close}</div>
+      <div class="nm-body">
+        <div class="nm-row"><span class="k">страница</span><span class="v mono">${esc(e.route)}</span></div>
+        ${row('эффект', e.effect)}${row('danger', e.danger)}${e.unreachable ? '<div class="nm-row"><span class="k">статус</span><span class="v" style="color:var(--mut)">unreachable</span></div>' : ''}${row('инстансов', e.insts)}
+        ${e.purpose ? `<h6>назначение</h6><div style="font-size:12px">${esc(e.purpose)}</div>` : ''}
+        <h6>вызывает endpoints</h6><div class="nm-list">${epList}</div></div>`;
+  }
+  if (a.t === 'ep') {                                        // ENDPOINT: method, class, statuses, the controls/pages that call it
+    const info = m.epInfo[a.key] || {}, isW = info.cls === 'write';
+    const callers = [...(m.epEls[a.key] || [])].map((id) => m.els[id]).filter(Boolean);
+    const pages = [...new Set(callers.map((e) => e.route))];
+    const statuses = info.statuses ? Object.entries(info.statuses).map(([s, n]) => `<span class="nm-pill">${esc(s)} ·${n}</span>`).join('') : '<span class="nm-empty">не зафиксированы</span>';
+    const callerList = callers.length ? callers.map((e) => `<span class="nm-pill" style="color:var(--good)">${esc(elLabel(e))}</span>`).join('') : empty;
+    const pageList = pages.length ? pages.map((r) => `<span class="nm-pill mono">${esc(shortRoute(r))}</span>`).join('') : empty;
+    return `<div class="nm-hd"><span class="nm-kind ep">endpoint</span><span class="nm-title mono">${esc(info.method || '')} ${esc(info.pattern || epLabel(a.key))}</span>${close}</div>
+      <div class="nm-body">
+        <div class="nm-row"><span class="k">метод</span><span class="v"><span class="method m-${esc(info.method || '')}">${esc(info.method || '')}</span></span></div>
+        <div class="nm-row"><span class="k">тип</span><span class="v" style="color:${isW ? 'var(--bad)' : 'var(--warn)'}">${isW ? 'запись — мутация ⊘' : 'чтение'}</span></div>
+        <div class="nm-row"><span class="k">ресурс</span><span class="v">${esc(info.rtype || '—')}${info.mime ? ' · ' + esc(info.mime) : ''}</span></div>
+        <div class="nm-row"><span class="k">статусы</span><span class="v">${statuses}</span></div>
+        <h6>вызывается контролами</h6><div class="nm-list">${callerList}</div>
+        <h6>со страниц</h6><div class="nm-list">${pageList}</div></div>`;
+  }
+  return '';
+}
+function openNodeModal(a) { if (!a || !G.model) return; $('#nmCard').innerHTML = nodeModalHtml(a);
+  $('#nodeModal').classList.add('open'); const x = $('#nmX'); if (x) { x.onclick = closeNodeModal; x.focus(); } }
+function closeNodeModal() { $('#nodeModal').classList.remove('open'); }
+$('#nodeModal').onclick = (e) => { if (e.target.id === 'nodeModal') closeNodeModal(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#nodeModal').classList.contains('open')) closeNodeModal(); });
+let dragNode = null, dragMoved = false, downX = 0, downY = 0;
+gcanvas.addEventListener('mousedown', (ev) => { const a = pickNode(ev); if (!a) { dragNode = null; return; }
+  dragNode = a; dragMoved = false; const p = xy(ev); downX = p.mx; downY = p.my; gcanvas.style.cursor = 'grabbing'; ev.preventDefault(); });
+gcanvas.addEventListener('mousemove', (ev) => {
+  if (!G.sim) return;
+  if (dragNode) { const { mx, my } = xy(ev);
+    if (!dragMoved && Math.hypot(mx - downX, my - downY) > 3) dragMoved = true;
+    dragNode.x = mx; dragNode.y = my; dragNode.vx = dragNode.vy = 0; dragNode.fixed = true;
+    kick(); if (!G.raf) drawGraph(); return; }
+  const best = hoverRef(pickNode(ev));
+  if (JSON.stringify(best) !== JSON.stringify(G.hover)) { G.hover = best; if (!G.raf) drawGraph(); }
+  gcanvas.style.cursor = best ? 'grab' : 'default';
+});
+window.addEventListener('mouseup', (ev) => {
+  if (!dragNode) return; const node = dragNode; dragNode = null; gcanvas.style.cursor = 'grab';
+  if (!dragMoved) { // a click, not a drag → open the node's detail modal (+ in the force web, toggle page focus/unpin)
+    if (G.viewMode === 'force') { node.fixed = false;
+      if (node.t === 'pg') { G.focus = G.focus === node.key ? null : node.key; G.hover = null; renderFilter(); } }
+    openNodeModal(node);
+    if (!G.raf) drawGraph();
+  } // a real drag keeps node.fixed = true (pinned where dropped)
+});
+gcanvas.addEventListener('click', (ev) => { if (!G.sim || dragMoved) return;   // empty-space click clears focus
+  if (!pickNode(ev) && G.focus) { G.focus = null; renderFilter(); if (!G.raf) drawGraph(); } });
+gcanvas.addEventListener('mouseleave', () => { if (!dragNode && G.hover) { G.hover = null; if (!G.raf) drawGraph(); } });
+new ResizeObserver(() => { if ((S.tab !== 'graph' && S.tab !== 'page') || !G.model) return;
+  const gwrap = gcanvas.parentElement, W = gwrap.clientWidth || 900, H = Math.max(gwrap.clientHeight || 600, 600);
+  if (G.viewMode === 'bipartite') { G.sim = bipartiteLayout(G.model, W, H); drawGraph(); return; }
+  if (G.viewMode === 'radial') { G.sim = radialLayout(G.model, W, H); drawGraph(); return; }
+  if (G.sim && !G.sim.single && !G.sim.bipartite && (Math.abs(G.sim.W - W) > 4 || Math.abs(G.sim.H - H) > 4)) { if (G.raf) cancelAnimationFrame(G.raf); G.sim = buildSim(G.model, W, H, G.sim); G.raf = requestAnimationFrame(animate); }
+  else drawGraph();
+}).observe($('#graphView'));
 
 function tick() { if ($('#autoref').checked) loadRuns().catch(() => {}); }
 loadRuns().catch((e) => { $('#runsList').innerHTML = `<div class="empty">ошибка: ${esc(e.message)}</div>`; });
