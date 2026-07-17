@@ -148,7 +148,7 @@ test('route-manifest: a seeded crawl reaches declared sections, redirect→unrea
   assert.ok(rc.declaredManifest >= 5, `the manifest expanded the denominator (declaredManifest=${rc.declaredManifest})`);
   assert.equal(rc.paramPatterns, 1, 'the param pattern is counted apart');
   const text = report({ routeCoverage: true });
-  assert.match(text, /Route coverage: \d+ of \d+ declared sections collected \(own content\)/);
+  assert.match(text, /Route coverage: \d+ of \d+ collectable sections collected \(own content\)/);
   assert.match(text, /Not yet reached:/);
 
   // REVERT-LEVER / DIFFERENTIAL: the SAME crawl with the seeder OFF collapses the denominator to the
