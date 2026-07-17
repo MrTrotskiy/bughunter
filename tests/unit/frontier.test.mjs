@@ -15,7 +15,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeGraph, mergeSnapshot, markExplored, markUnreachable, markOpener, markInstanceExplored } from '../../lib/graph/graph-store.mjs';
+import { makeGraph, mergeSnapshot, markExplored, markUnreachable, markOpener, markInstanceExplored, markInstanceChurned } from '../../lib/graph/graph-store.mjs';
 import { nextBatch, frontierStats, frontierInstanceStats, OPENER_INSTANCE_CAP, DRILL_PER_LIST } from '../../lib/recon/frontier.mjs';
 
 // Build a graph with n distinct single-instance templates (ids 1..n), as ids.mjs
@@ -209,4 +209,29 @@ test('frontierInstanceStats: an opener list uses cappedRemainder, not drillSkipp
   const s = frontierInstanceStats(g);
   assert.equal(s.cappedRemainder, 2, 'an opener beyond the CAP is counted in cappedRemainder');
   assert.equal(s.drillSkipped, 0, 'an opener is NOT double-counted as drill-skipped');
+});
+
+// Guards (blocker-6 Part B): the churnSkipped PEEL — a re-rendering feed's vanished representative
+//   (markInstanceChurned, UNEXPLORED by design) is peeled OUT of walkable/remaining and QUANTIFIED in
+//   churnSkipped, so the STABLE control set can reach remaining===0 while the churn is counted, never
+//   hidden and never conflated into `unreachable`. The arithmetic invariant `remaining = walkable −
+//   walked − unreachable` still holds because churned instances never enter `walkable`.
+// FAIL-ON-REVERT: remove the `if (inst.churned) { churnSkipped++; continue; }` peel in
+//   frontierInstanceStats → the churned (unexplored) representative re-enters `walkable` → it counts as
+//   un-walked → `remaining === 1` (not 0) → the "remaining === 0" assertion reds, and churnSkipped reads 0.
+test('frontierInstanceStats: a churned feed representative is peeled into churnSkipped, letting the stable set drain', () => {
+  const g = makeGraph();
+  // A stable single-instance control (walked) + a NON-opener list-row feed of 4 rows whose representative
+  // (instance[0]) churned away UNEXPLORED (markInstanceChurned does not mark it explored, by design).
+  const stable = { templateId: 1, instanceId: 100, templateSelector: 'button#stable', role: 'button', name: 'Show', instanceKey: '#1', instanceSelector: 'button#stable' };
+  mergeSnapshot(g, '/', [stable]);
+  markInstanceExplored(g, 1, '#1');       // the stable control is genuine coverage
+  listRowTemplate(g, 2, 4);               // feed: instances "#1".."#4" of one list-row template
+  markInstanceChurned(g, 2, '#1');        // its representative re-rendered away (unexplored churn)
+
+  const s = frontierInstanceStats(g);
+  assert.equal(s.churnSkipped, 1, 'the vanished representative is counted in churnSkipped');
+  assert.equal(s.remaining, 0, 'the STABLE set drains to remaining===0 — the peeled churn never blocks it');
+  assert.equal(s.walked, 1, 'only the stable control counts as walked (the churned row is NOT inflated into walked)');
+  assert.equal(s.drillSkipped, 3, 'the other 3 feed rows are the usual DRILL_PER_LIST remainder (churn is separate)');
 });

@@ -15,7 +15,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dangerFloor, routeRefused } from '../../lib/recon/danger-floor.mjs';
+import { dangerFloor, mutationFloor, routeRefused } from '../../lib/recon/danger-floor.mjs';
 
 test('destructive control names classify destructive', () => {
   for (const name of ['Delete', 'Delete row', 'Remove item', 'Discard changes', 'Reset', 'Purge cache']) {
@@ -90,4 +90,24 @@ test('routeRefused stops danger routes and passes ordinary ones', () => {
   assert.equal(routeRefused('/products'), false, 'an ordinary route is not refused');
   assert.equal(routeRefused('/dashboard'), false, 'the dashboard is not refused');
   assert.equal(routeRefused(''), false, 'an empty route is not refused (nothing to classify)');
+});
+
+// mutationFloor — the ADDITIVE name-level mutation gate (read-only firewall defense-in-depth). It does NOT
+// widen REFUSED (a benign Follow/Like is NOT refused on the default crawl); it is a separate predicate the
+// read-only path opts into. Covers the write the URL-path firewall cannot see (a mutation-NAMED control
+// firing a benign-named endpoint), while an ICON control (no name) stays 'unknown' → the network gate
+// handles it and the causal edge is preserved.
+// Guards: a control literally named Follow/Like/Submit classifies 'mutation' (so refuseMutations can refuse
+//   it at click time), an ordinary control classifies 'safe', and an icon (no name) classifies 'unknown'
+//   (never refused here — it falls through to the network firewall).
+// FAIL-ON-REVERT: neuter MUTATION_NAME_RE (or drop the mutationFloor export's test) → 'Follow' falls to
+//   'safe' → "Follow must classify mutation" reds.
+test('mutationFloor classifies mutation-named controls, spares ordinary ones, and leaves an icon unknown', () => {
+  for (const name of ['Follow', 'Unfollow', 'Like', 'Submit', 'Publish', 'Subscribe', 'Delete', 'followUser', 'like_post']) {
+    assert.equal(mutationFloor({ name }), 'mutation', `${name} must classify mutation`);
+  }
+  assert.equal(mutationFloor({ name: 'Search' }), 'safe', 'an ordinary control is safe');
+  assert.equal(mutationFloor({ name: 'Next page' }), 'safe', 'a navigation control is safe');
+  assert.equal(mutationFloor({ name: '', route: '/profile' }), 'safe', 'a bland-route icon page is safe (no verb)');
+  assert.equal(mutationFloor({ name: '', route: '' }), 'unknown', 'an icon control with nothing to classify is unknown, never mutation');
 });

@@ -60,6 +60,16 @@ test('every context carries a fixed desktop viewport (reproducible NOT_VISIBLE d
   assert.deepEqual(contextOptions({ anonymous: true }).viewport, vp, 'anonymous context has the same fixed viewport');
 });
 
+// serviceWorkers:'block' (security M2): Playwright's page.route does NOT intercept SW-originated
+// requests, so a service worker's background-sync POST would bypass the read-only write-firewall.
+// Blocking service workers at the single context builder closes that hole on BOTH newContext sites.
+// FAIL-ON-REVERT (e): drop `serviceWorkers:'block'` from base → these asserts go red.
+test('every context blocks service workers so a SW request cannot bypass the write-firewall', (t) => {
+  withStorageEnv(t, undefined);
+  assert.equal(contextOptions().serviceWorkers, 'block', 'the default context blocks service workers');
+  assert.equal(contextOptions({ anonymous: true }).serviceWorkers, 'block', 'anonymous (login) contexts block them too');
+});
+
 test('a set-but-MISSING state file fails loud (STORAGE_STATE_MISSING), never silent', (t) => {
   withStorageEnv(t, path.join(tmpdir(), 'bughunter-does-not-exist-xyz.json'));
   assert.throws(() => contextOptions(), (err) => err?.envelope?.code === 'STORAGE_STATE_MISSING',

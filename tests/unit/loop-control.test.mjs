@@ -79,3 +79,63 @@ test('drained-with-cappedRemainder: the verdict flags beyond-cap opener siblings
   assert.match(v.reason, /12/);
   assert.equal(v.cappedRemainder, 12);
 });
+
+// (f) VISIT-ROUTE (INC.1b) — an EMPTY template batch with routes still QUEUED must drain the BFS
+// route frontier (route-cli --visit-next), NOT declare the crawl drained. 'drained' is reserved for
+// BOTH frontiers empty. Backward-compat: no pendingRoutes (default 0) → an empty batch is 'drained'
+// exactly as before.
+// Guards: the agent-path route drain — an empty template frontier with pending routes yields a
+//   'visit-route' verdict so the /recon driver visits queued pages instead of stopping early.
+// FAIL-ON-REVERT: remove the `batchLen === 0 && pendingRoutes > 0` visit-route branch in
+//   loop-control.mjs → an empty batch with routes pending falls through to 'drained' →
+//   "empty batch + pending routes must visit-route, not drain" reds.
+test('visit-route: empty batch with routes pending drains the route queue, not the crawl', () => {
+  const queued = decideProgress({ batchLen: 0, remaining: 0, pendingRoutes: 3 });
+  assert.equal(queued.action, 'visit-route', 'empty batch + pending routes must visit-route, not drain');
+  assert.equal(queued.pendingRoutes, 3);
+  assert.match(queued.reason, /3 route\(s\) queued/);
+
+  // pendingRoutes === 0 → the honest whole-site terminal: BOTH frontiers empty → drained (unchanged).
+  const done = decideProgress({ batchLen: 0, remaining: 0, pendingRoutes: 0 });
+  assert.equal(done.action, 'drained');
+  assert.equal(done.reason, 'frontier drained');
+});
+
+// (g) TYPED TERMINAL — CHURN-FLAT RELEASE GATE (blocker-6 Part B). On a re-rendering feed the stable set
+// can drain (empty batch) while `churnSkipped` keeps GROWING as fresh rows vanish. Declaring DONE then
+// would be dishonest — the feed is still spawning churn. So DRAINED releases only when the stable set is
+// drained AND churnSkipped has FLATTENED over K windows. churnSkipped rides through EVERY verdict for the
+// driver/report. K is a window count, never a clock.
+// Guards: the release gate — an empty template batch with churnSkipped STILL GROWING yields 'continue'
+//   (one more window), and only flattened churn releases 'drained'; and the residual is carried through.
+// FAIL-ON-REVERT: remove the churn-flat gate in loop-control.mjs (the `if (churnSkipped > 0) { … !churnFlat
+//   → continue }` block in the batchLen===0 branch) → the growing-churn case falls straight through to
+//   'drained' → "churn still growing must NOT drain" reds.
+test('typed terminal: growing churn does NOT release drained; flat churn does', () => {
+  // Growing churn over a full K-window run ([3,6] prior + 9 now) with the stable set drained → NOT done.
+  const growing = decideProgress({ batchLen: 0, remaining: 0, churnSkipped: 9, churnHistory: [3, 6] });
+  assert.notEqual(growing.action, 'drained', 'churn still growing must NOT drain (feed not yet stable)');
+  assert.equal(growing.action, 'continue');
+  assert.match(growing.reason, /churn still growing \(9\)/);
+  assert.equal(growing.churnSkipped, 9, 'churnSkipped is carried into the verdict');
+
+  // Flat churn over a full K-window run ([9,9] prior + 9 now), stable set drained → DONE (feed stabilized).
+  const flat = decideProgress({ batchLen: 0, remaining: 0, churnSkipped: 9, churnHistory: [9, 9] });
+  assert.equal(flat.action, 'drained', 'flattened churn releases drained');
+  assert.match(flat.reason, /9 feed row\(s\) churnSkipped/);
+  assert.equal(flat.churnSkipped, 9);
+});
+
+// (h) CONSERVATIVE with thin history / no churn. With churnSkipped>0 but fewer than K windows seen we
+// keep going one more window (cannot yet confirm flat); with NO churn at all we drain immediately (the
+// unchanged terminal). Reds if the `churnSkipped > 0` guard is dropped (no-churn would spuriously continue)
+// or the `recentChurn.length >= stallWindows` full-window guard is dropped (thin history would drain).
+test('typed terminal: thin churn history continues one more window; zero churn drains immediately', () => {
+  const thin = decideProgress({ batchLen: 0, remaining: 0, churnSkipped: 5, churnHistory: [] });
+  assert.equal(thin.action, 'continue', 'churn present but < K windows of history → one more window');
+
+  const noChurn = decideProgress({ batchLen: 0, remaining: 0, churnSkipped: 0, churnHistory: [] });
+  assert.equal(noChurn.action, 'drained', 'no churn → drain immediately (unchanged terminal)');
+  assert.equal(noChurn.reason, 'frontier drained');
+  assert.equal(noChurn.churnSkipped, 0);
+});

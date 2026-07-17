@@ -9,7 +9,10 @@
 //   progress verdict, drains to a DRAINED verdict, and writes instanceStats onto the
 //   frontier.emit trail ONLY under --tick so the stall detector's MONOTONE progress signal
 //   (walked + unreachable + walkable) flows back through readFrontierProgress as ONE sample
-//   per DRIVER iteration — a non-tick emit (the subagent's own call) is history-neutral.
+//   per DRIVER iteration — a non-tick emit (the subagent's own call) is history-neutral;
+//   (4) INC.1b — emit surfaces the BFS route-queue depth (pendingRoutes/routeFrontierStats)
+//   and threads it into the verdict, so an empty template batch with a queued page yields
+//   'visit-route' (drain the route queue) instead of a premature 'drained'.
 // FAIL-ON-REVERT: drop the `Math.min(size, MAX_SIZE)` clamp in frontier-cli.mjs → a
 //   --size=50 request returns the whole frontier → "batch exceeded receptive-field
 //   ceiling". Remove `instanceStats` from the traceEvent payload in frontier-cli.mjs →
@@ -83,6 +86,30 @@ test('drained verdict on a fully-explored graph', (t) => {
   const res = emit();
   assert.equal(res.batch.length, 0, 'nothing left to hand out');
   assert.equal(res.progress.action, 'drained');
+});
+
+// INC.1b: emit surfaces the BFS route-frontier queue (pendingRoutes + routeFrontierStats) so the
+// /recon driver and decideProgress can drain queued PAGES after the template frontier empties. A
+// fully-explored template frontier with a route still queued yields a 'visit-route' verdict, NOT
+// 'drained' — the crawl is not done while a page waits to be snapshotted.
+// Guards: the emit envelope carries the route-frontier queue depth (pendingRoutes/routeFrontierStats)
+//   and threads it into the verdict so an empty batch + pending route → visit-route.
+// FAIL-ON-REVERT: drop `pendingRoutes` from the decideProgress call in frontier-cli.mjs → an empty
+//   batch with a pending route returns 'drained' → "an empty batch with a queued route must
+//   visit-route" reds.
+test('emit surfaces pendingRoutes + routeFrontierStats and yields a visit-route verdict', (t) => {
+  const { g, graphPath } = withStateDir(t, 1);
+  markExplored(g, 1); // template frontier empty
+  // A page the BFS harvest discovered but has not yet snapshot-visited.
+  g.routes['/beyond'] = { type: 'route', url: '/beyond', pending: true, pattern: '/beyond', siblings: 0 };
+  saveGraph(graphPath, g);
+
+  const res = emit();
+  assert.equal(res.batch.length, 0, 'template frontier is empty');
+  assert.equal(res.pendingRoutes, 1, 'the queued route is surfaced as pendingRoutes');
+  assert.ok(res.routeFrontierStats, 'routeFrontierStats present in the emit envelope');
+  assert.equal(res.routeFrontierStats.pending, 1, 'routeFrontierStats.pending counts the queued page');
+  assert.equal(res.progress.action, 'visit-route', 'an empty batch with a queued route must visit-route, not drain');
 });
 
 // The --tick GATE: with a runId set, emit records instanceStats onto the frontier.emit trail — the
