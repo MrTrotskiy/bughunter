@@ -15,7 +15,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dangerFloor, mutationFloor, routeRefused, REFUSED } from '../../lib/recon/danger-floor.mjs';
+import { dangerFloor, mutationFloor, routeRefused, REFUSED, isAccountDeletion, requiresOwnership } from '../../lib/recon/danger-floor.mjs';
 
 test('destructive control names classify destructive', () => {
   for (const name of ['Delete', 'Delete row', 'Remove item', 'Discard changes', 'Reset', 'Purge cache']) {
@@ -151,4 +151,29 @@ test('mutationFloor classifies mutation-named controls, spares ordinary ones, an
   assert.equal(mutationFloor({ name: 'Next page' }), 'safe', 'a navigation control is safe');
   assert.equal(mutationFloor({ name: '', route: '/profile' }), 'safe', 'a bland-route icon page is safe (no verb)');
   assert.equal(mutationFloor({ name: '', route: '' }), 'unknown', 'an icon control with nothing to classify is unknown, never mutation');
+});
+
+// WRITE-HUNT predicates — the deterministic rails step.mjs consumes to relax read-only SAFELY.
+// isAccountDeletion carves account-scoped destruction out of destructive (gated on run-created, never the
+// item marker); requiresOwnership marks the modify/destroy verbs that need the HUNT ownership proof.
+// FAIL-ON-REVERT: neuter ACCOUNT_DELETION → "Delete account" is not account-scoped → the account-rail gate
+//   in step.mjs never fires → a persistent test account could be deleted. Neuter OWNERSHIP_REQUIRED_RE →
+//   "Delete" is not ownership-gated → the ownsTarget rail never runs → others' content deletable.
+test('isAccountDeletion flags account-scoped destruction, spares a plain post delete', () => {
+  for (const name of ['Delete account', 'Close account', 'Deactivate account', 'Delete my account', 'Close your account', 'Cancel membership', 'Delete profile']) {
+    assert.equal(isAccountDeletion({ name }), true, `${name} must be account-deletion`);
+  }
+  assert.equal(isAccountDeletion({ route: '/settings/account/delete' }), true, 'an account-delete route classifies');
+  for (const name of ['Delete', 'Delete post', 'Remove item', 'Delete comment', 'Discard draft']) {
+    assert.equal(isAccountDeletion({ name }), false, `${name} is a content delete, NOT account-deletion`);
+  }
+});
+
+test('requiresOwnership flags modify/destroy verbs, spares additive create/comment/like', () => {
+  for (const name of ['Edit', 'Update', 'Save changes', 'Delete', 'Remove', 'Discard', 'Archive', 'Unpublish', 'Drop', 'Terminate', 'editPost', 'delete_comment']) {
+    assert.equal(requiresOwnership({ name }), true, `${name} must require ownership (modify/destroy existing)`);
+  }
+  for (const name of ['Create post', 'Add', 'Compose', 'New message', 'Comment', 'Reply', 'Like', 'Follow', 'Share', 'Pay now', 'Search']) {
+    assert.equal(requiresOwnership({ name }), false, `${name} is additive/create — no ownership needed`);
+  }
 });

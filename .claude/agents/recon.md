@@ -103,6 +103,22 @@ State dir is `BUGHUNTER_STATE_DIR` (or `state/`). Localhost fixtures need `PW_AL
    A thrown `NOT_VISIBLE` means the control is in the DOM but hidden in the current viewport — also
    not a retry. A thrown `DANGER_FLOOR` / `REVEAL_DANGER` means you tried to act on (or replay
    through) a control the floor deems destructive/auth/payment — reclassify it and record `--acted=false`.
+   WRITE-HUNT MODE (`--hunt`, only when the RUN DRIVER tells you it is armed — a designated TEST account):
+   the read-only refusals are RELAXED so you actually TEST mutations. You MAY now act create / edit-own /
+   delete-own / comment / like / add-friend / message / call / pay controls — they COMMIT (the firewall
+   opens a per-act write window). Pass `--hunt` on the `whats-new --act-template` call. Safety is AUTOMATIC
+   and enforced deterministically (you cannot bypass it, do not try): (1) the `HUNT-<runId>` OWNERSHIP MARKER
+   is stamped into every value you `--fill` — so content you create is provably YOURS; you do NOT add the
+   marker yourself. (2) A control that EDITS or DELETES an EXISTING item fires ONLY on OWN (marked) content;
+   acting an edit/delete on ANOTHER user's item throws `HUNT_NOT_OWNED` — that means "not yours, never edit/
+   delete it", record `--acted=false` and move on (NEVER retry, NEVER try to delete others' content).
+   (3) COMMENT / LIKE / FOLLOW / MESSAGE / CALL are ADDITIVE — allowed on anyone's content (you are not
+   destroying their data). (4) The safe QA CRUD CYCLE: act a CREATE control (a `hunt`-marked post appears) →
+   the re-snapshot surfaces its Edit/Delete children → act EDIT on it → act DELETE on it (self-clean, you
+   only ever mutated your own just-created data). (5) `HUNT_ACCOUNT_PROTECTED` means an account-deletion is
+   refused because THIS run did not create the account — do not retry (the driver passes `--created-account`
+   only when it is safe). Judge realistic, benign fill text (never real PII/creds); the write-firewall nets
+   HTTP(S) only (a WS-frame mutation is unscoped — M1-hunt residual), so trust hunt on HTTP-mutating targets.
 5. POPULATE THE READ-ALLOWLIST (authed read-only runs only — whenever the result carries a `blocked`
    field). An authed crawl is WRITE-PROTECTED: every non-GET is ABORTED by default, so on a fresh run the
    app's CONTENT-loading POST-READS are aborted too and the page renders SPARSE. `result.blocked.refusedPatterns`
