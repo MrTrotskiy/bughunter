@@ -125,6 +125,12 @@ State dir is `BUGHUNTER_STATE_DIR` (or `state/`). Localhost fixtures need `PW_AL
 ## Danger taxonomy (classify from role + name + route)
 
 - `safe` — read-only or additive: search, open, view, expand, next, filter, add-to-list.
+  - MUTATION-NAMED FORM-OPENER (`Create post` / `Add` / `Compose` / `Share` / `New` / `New message`
+    / `Create group` / `Start chat`) that OPENS a form/modal rather than SUBMITTING → still classify
+    `--danger=safe`, but ACT it with `--reveal-opener=true` (step 4) to COLLECT the composer as a read;
+    the write-firewall aborts any write the click fires. WITHOUT the flag a mutation name is refused
+    (MUTATION_FLOOR) on an authed read-only run and its composer is never mapped. Do NOT flag the
+    SUBMIT control inside the form (`Post`/`Send`/`Save`/`Create` that commits) — leave it refused.
 - `destructive` — delete / remove / discard / reset / purge / drop. Record `--acted=false`.
 - `auth` — logout / sign out / log off. Record `--acted=false` (would end the session).
 - `payment` — pay / checkout / purchase / subscribe / place order. Record `--acted=false`.
