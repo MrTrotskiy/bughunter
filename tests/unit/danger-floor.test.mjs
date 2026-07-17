@@ -15,7 +15,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dangerFloor, mutationFloor, routeRefused } from '../../lib/recon/danger-floor.mjs';
+import { dangerFloor, mutationFloor, routeRefused, REFUSED } from '../../lib/recon/danger-floor.mjs';
 
 test('destructive control names classify destructive', () => {
   for (const name of ['Delete', 'Delete row', 'Remove item', 'Discard changes', 'Reset', 'Purge cache']) {
@@ -32,6 +32,35 @@ test('logout / signout classify auth', () => {
 test('payment controls classify payment', () => {
   for (const name of ['Pay now', 'Checkout', 'Place order', 'Subscribe', 'Buy']) {
     assert.equal(dangerFloor({ name }), 'payment', `${name} must be payment`);
+  }
+});
+
+// COMMUNICATION / MEDIA side-effect — initiating a real-time call / livestream / meeting is an
+// irreversible OUTWARD side-effect that does NOT ride the abortable HTTP layer (WebRTC/media), so the
+// network write-firewall cannot stop it. It is a HARD refusal (in REFUSED) that reveal-opener never
+// exempts — the control is still mapped, but never fired.
+// FAIL-ON-REVERT: neuter the COMMUNICATION branch → "Video Call" falls to 'safe' → the agent would fire
+//   a real call → "Video Call must be communication" reds. Drop 'communication' from REFUSED → the click
+//   gate would no longer hard-refuse it → the REFUSED.has assertion reds.
+test('communication / media controls classify communication and are hard-refused', () => {
+  for (const name of [
+    'Video Call', 'Voice Call', 'Audio Call', 'Start Call', 'Go Live', 'Start Meeting', 'Join Meeting',
+    'Live Stream', 'Start Broadcast', 'Dial',
+    // article + host variants — real rawcaster labels ("Join a meeting" / "Host a meeting") that the
+    // first regex missed, so "Host a meeting" fell to 'safe' and WOULD have been fired (host a real call).
+    'Join a meeting', 'Host a meeting', 'Join the meeting', 'Host a call', 'Make a call',
+  ]) {
+    assert.equal(dangerFloor({ name }), 'communication', `${name} must be communication`);
+  }
+  assert.equal(REFUSED.has('communication'), true, 'communication must be in the hard-refused set');
+});
+
+// A bare "call" is too ambiguous to refuse — refusing "Call to action" / "Recall" / "Callback" would
+// bleed coverage on benign controls. The class requires a medium (video/voice/audio) or an explicit
+// start/join/host/go-live phrasing, so these — and non-meeting join/host labels — stay non-communication.
+test('ambiguous call-like and non-meeting join/host names are NOT over-refused', () => {
+  for (const name of ['Call to action', 'Recall', 'Callback settings', 'Install', 'Recall notice', 'Join a group', 'Host name', 'Meeting notes']) {
+    assert.notEqual(dangerFloor({ name }), 'communication', `${name} must not be communication`);
   }
 });
 
@@ -90,6 +119,18 @@ test('routeRefused stops danger routes and passes ordinary ones', () => {
   assert.equal(routeRefused('/products'), false, 'an ordinary route is not refused');
   assert.equal(routeRefused('/dashboard'), false, 'the dashboard is not refused');
   assert.equal(routeRefused(''), false, 'an empty route is not refused (nothing to classify)');
+});
+
+// routeRefused EXCLUDES communication: navigating to a livestream/meeting VIEWING page is a READ
+// (watching), not initiating a broadcast — so it must NOT be nav-refused (that would drop real coverage).
+// Initiating a call is a CLICK, gated by the full REFUSED set (dangerFloor→'communication'), not here.
+// FAIL-ON-REVERT: point routeRefused back at the full REFUSED set → '/livestream/123' becomes refused →
+//   the "communication route is navigable" assertion reds.
+test('routeRefused does NOT block navigation to a communication (viewing) route', () => {
+  assert.equal(dangerFloor({ route: '/livestream/123' }), 'communication', 'the route path itself classifies communication');
+  assert.equal(routeRefused('/livestream/123'), false, 'a livestream VIEWING page is navigable (watching is a read)');
+  assert.equal(routeRefused('/dial'), false, 'a communication route is not nav-refused (the CLICK to initiate is)');
+  assert.equal(routeRefused('/account/delete'), true, 'destructive/auth/payment routes ARE still nav-refused');
 });
 
 // mutationFloor — the ADDITIVE name-level mutation gate (read-only firewall defense-in-depth). It does NOT

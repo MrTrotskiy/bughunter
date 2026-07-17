@@ -86,6 +86,18 @@ State dir is `BUGHUNTER_STATE_DIR` (or `state/`). Localhost fixtures need `PW_AL
    create/update/delete/save/like/follow/vote POST is a MUTATION — do NOT pass the flag (its
    children stay honestly unreachable, never re-fired). When unsure, OMIT it. GET openers never
    need it (they are replayable by default). NEVER pass it for a destructive/auth/payment control.
+   `--reveal-opener=true` — pass this ONLY when a control literally NAMED with a mutation verb
+   (`Create post`, `Add`, `Compose`, `Share`) OPENS a form/modal you want to COLLECT (a read that
+   reveals UI) rather than SUBMITTING. Without it a mutation-named control is refused BEFORE the
+   click (MUTATION_FLOOR), so its composer/form is never captured. WITH it the click is allowed, the
+   revealed modal is collected, and the network write-firewall still ABORTS any actual write the
+   click fires (server side-effect prevented). Do NOT pass it for the SUBMIT control inside the form
+   (the `Post`/`Submit`/`Save` that commits) — leave that refused. NEVER a substitute for judgment on
+   a destructive/auth/payment/COMMUNICATION control: those are HARD-refused (DANGER_FLOOR) and the
+   flag does not exempt them. A `Video Call`/`Voice Call`/`Go Live`/`Start Meeting` control is now
+   classed `communication` and refused — record `--acted=false`, `danger=communication`; the map
+   keeps the control, you never initiate the call. SAFETY: `--reveal-opener` trusts the write-firewall,
+   which nets HTTP(S) writes only — sound on HTTP-mutating targets (rawcaster is POST-based).
    A thrown `NO_INSTANCE` means the control is behind in-app state the reveal replay could not
    reconstruct (no recorded reveal path, or a stale/too-deep/cyclic one) — not an error you retry.
    A thrown `NOT_VISIBLE` means the control is in the DOM but hidden in the current viewport — also
