@@ -43,6 +43,7 @@ function pageHtml() {
           + '<button class="edit" type="button">Edit</button>'
           + '<button class="del" type="button">Delete</button>'
           + '<button class="idel" type="button"></button>'  // ICON-only delete: NO accessible name (H1)
+          + '<button class="rpcdel" type="button"></button>' // NAMELESS delete via a BENIGN method+path (POST /api/rpc) — slips the name gate AND the firewall method/path gate (security H1, node-loop)
           + '<button class="like" type="button">Like</button>'
           + '<button class="comment" type="button">Comment</button>'
           + '</article>';
@@ -53,6 +54,8 @@ function pageHtml() {
         api('DELETE', '/api/posts/' + idOf(b)).then(load); }; });
       feed.querySelectorAll('.idel').forEach(function (b) { b.onclick = function () {  // icon delete → same DELETE
         api('DELETE', '/api/posts/' + idOf(b)).then(load); }; });
+      feed.querySelectorAll('.rpcdel').forEach(function (b) { b.onclick = function () {  // BENIGN-path RPC delete
+        api('POST', '/api/rpc', { action: 'delete', id: idOf(b) }).then(load); }; });
       feed.querySelectorAll('.like').forEach(function (b) { b.onclick = function () {
         api('POST', '/api/posts/' + idOf(b) + '/like').then(load); }; });
       feed.querySelectorAll('.comment').forEach(function (b) { b.onclick = function () {
@@ -83,15 +86,17 @@ function readBody(req) {
   });
 }
 
-export function start(port = 0, { marker = '' } = {}) {
+export function start(port = 0, { marker = '', otherFirst = false } = {}) {
   let seq = 0;
   // self-1: OUR post — text CONTAINS the marker (as if this run created it) → ownsTarget proves ownership.
   // other-1: another user's post — NO marker → ownsTarget fails → edit/delete refused (the safety rail).
-  const posts = [
-    { id: 'self-1', owner: 'self', text: `My own hunt post ${marker}`.trim(), likes: 0 },
-    { id: 'other-1', owner: 'other', text: 'A post by someone else', likes: 0 },
-  ];
-  const counters = { createHits: 0, editHits: 0, deleteHits: {}, commentHits: 0, likeHits: 0, forbiddenHits: 0, accountDeleted: 0, loggedOut: 0 };
+  // otherFirst renders other-1 FIRST so it is the node-loop's DRILL_PER_LIST representative row — the case
+  // where the judge-free loop acts on ANOTHER user's controls, which is exactly what the ownership rail must
+  // survive (a same-order feed would let self-1 be the representative and never exercise the rail).
+  const self = { id: 'self-1', owner: 'self', text: `My own hunt post ${marker}`.trim(), likes: 0 };
+  const other = { id: 'other-1', owner: 'other', text: 'A post by someone else', likes: 0 };
+  const posts = otherFirst ? [other, self] : [self, other];
+  const counters = { createHits: 0, editHits: 0, deleteHits: {}, rpcDeleteHits: {}, commentHits: 0, likeHits: 0, forbiddenHits: 0, accountDeleted: 0, loggedOut: 0 };
   const findById = (id) => posts.find((p) => p.id === id);
 
   const server = http.createServer(async (req, res) => {
@@ -105,6 +110,18 @@ export function start(port = 0, { marker = '' } = {}) {
     if (u.pathname === '/api/feed' && req.method === 'GET') return json(res, 200, { posts });
     if (u.pathname === '/api/account' && req.method === 'DELETE') { counters.accountDeleted++; return json(res, 200, { ok: true }); }
     if (u.pathname === '/api/logout' && req.method === 'POST') { counters.loggedOut++; return json(res, 200, { ok: true }); }
+    if (u.pathname === '/api/rpc' && req.method === 'POST') {           // BENIGN method+path — the H1 shape
+      const body = await readBody(req);
+      if (body.action === 'delete') {
+        const post = findById(body.id);
+        if (!post) return json(res, 404, { error: 'not found' });
+        if (post.owner !== 'self') { counters.forbiddenHits++; return json(res, 403, { error: 'not owner' }); }
+        posts.splice(posts.indexOf(post), 1);
+        counters.rpcDeleteHits[body.id] = (counters.rpcDeleteHits[body.id] || 0) + 1;
+        return json(res, 200, { ok: true });
+      }
+      return json(res, 200, { ok: true });
+    }
     if (u.pathname === '/api/posts' && req.method === 'POST') {         // CREATE — always owned by self
       const body = await readBody(req);
       const id = 'self-new-' + (++seq);
