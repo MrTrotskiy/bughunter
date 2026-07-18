@@ -2,7 +2,16 @@
 
 Founding architectural decisions for `bughunter`. Rejected alternatives logged more than accepted ones.
 
-### 2026-07-18 — NODE-LOOP HUNT (additive-only) — the scriptable mutation-collection loop (CTO/Fable-validated; RE-SCOPES the 2026-07-18 "deterministic CRUD driver" rejection at line ~62 + the write-hunt-mode memory "node loops never hunt")
+### 2026-07-18 — REMOVE the read-only write-firewall + WRITE-HUNT mode entirely (operator decision)
+- CONTEXT: bughunter runs as a QA tool on the operator's OWN abandoned dev stand. It is MEANT to create/edit/delete/pay. The read-only firewall (`read-only-firewall.mjs`) had become dead weight that kept silently RE-IMPOSING refusals in code paths where the flag was forgotten, and `huntWrites` was defined as a strict SUBSET of `readOnly` (`huntWrites = readOnly && …`) — a per-act write window carved into a firewall the operator no longer wants installed at all.
+- CHOSE: delete the firewall and every mode derived from it. `read-only-firewall.mjs` / `read-allowlist.mjs` / `judge-endpoint.mjs` deleted; `readOnly` / `refuseMutations` / `allowBenignPost` / `revealOpener` / `huntWrites` / `huntWindow` / `huntStrict` / `createBudget` / `graph.huntCreates` stripped from `step.mjs`, `recon-run.mjs`, `whats-new.mjs`, `stateful-step.mjs`, `collect-loop.mjs`. `resolveWritePolicy` is NOT re-homed as a wrapper — `explore-policy.exploreAllArmed` already IS "explore-all armed or not", so the drivers call it directly and the redundant indirection dies with the module it named.
+- CONSEQUENCE: EXPLORE-ALL is the ONLY write posture. Default (unarmed) = the deterministic `danger-floor` still declines the CLICK on destructive/auth/payment/communication and the NAVIGATION to a danger route; nothing else is gated, so an ordinary write reaches the server. Armed = those refusals lift and the ONE rail is `explore-policy`: another user's content is edited-with-restore, NEVER destroyed (`FOREIGN_DESTROY`); an account is deleted only if THIS run created it (`ACCOUNT_PROTECTED`). `hunt-gate.mjs` + `huntMarker` SURVIVE — the `HUNT-<runId>` marker is what makes "ours vs theirs" decidable, so the foreign-content rail depends on it.
+- REJECTED — keeping the firewall behind a default-off flag: a flag nobody sets is untested code that still runs in every act path, and its historical failure mode was exactly the silent re-imposition the operator is removing. A gate that only ever fires by accident is not a safety feature.
+- REJECTED — replacing it with a narrower guard (e.g. abort only obvious write verbs): explicitly out of scope. The operator asked for removal, not substitution; adding a smaller net would recreate the same class of forgotten-flag refusal with less coverage and no test.
+- REJECTED — weakening the read-only/hunt tests into vacuous passes: `tests/CLAUDE.md` doctrine says a test that cannot fail is worse than none. They were DELETED. Cost, stated honestly: the WRITE-HUNT tests were the only LIVE end-to-end proof of the ownership rail. Live ownership coverage now rests on `portal-ownership.test.mjs` + `hunt-cleanup.test.mjs` (marked-only delete), the policy itself on the unit `explore-policy.test.mjs`. A live explore-all foreign-destroy test is the honest follow-up gap.
+- KEPT — `danger-floor.mjs` intact including `mutationFloor`/`MUTATION_VERBS`, now with no lib consumer. It CLASSIFIES (labels write-ness) without gating, which is its documented role; deleting a tested classifier was out of scope.
+
+### 2026-07-18 — NODE-LOOP HUNT (SUPERSEDED by the read-only removal above: hunt mode no longer exists; the ownership rails it introduced live on in explore-policy) (additive-only) — the scriptable mutation-collection loop (CTO/Fable-validated; RE-SCOPES the 2026-07-18 "deterministic CRUD driver" rejection at line ~62 + the write-hunt-mode memory "node loops never hunt")
 - CONTEXT: the operator's standing goal #3 — "a control SCRIPT that loops until ALL UI + endpoints are collected, WITH create/edit/delete" (a QA agent cannot test a write-heavy app read-only). Today hunt is threaded ONLY through the agent path (`whats-new`); the node-loop (`recon-run`) is read-only (`actStep(..., { refuseMutations: readOnly })`, never `huntWrites`), and `certify-loop` wraps that read-only crawl. So there is no SHELL-INVOCABLE loop that mutates. This DIRECTLY RE-SCOPES two prior decisions (surfaced by the CTO, not overridden silently): the line-~62 rejection of "a deterministic CRUD driver" and the `write-hunt-mode` memory's "the node/stateful loops never hunt".
 - CHOSE (Option A, single hunt-drain): thread the EXISTING, already-security-reviewed hunt machinery (`actStep`'s `{ huntWrites, marker, runCreatedAccount, huntWindow }`) into `recon-run`'s `crawl`+`persistentStep`, armed by the SAME `BUGHUNTER_HUNT`+`BUGHUNTER_RUN_ID` as `whats-new` (`resolveWritePolicy`). `recon-run --hunt` then drains the frontier+routes committing SAFE own-content mutations. The "loop" is `reconLoop` draining ONCE to DRAINED — a legitimate COLLECTION stopping condition (exact drain over the known denominator), NOT a completeness proof. The RE-SCOPE that threads the needle: the node-loop does ONLY the NON-SEMANTIC subset — ADDITIVE own-content (create/comment/like: single-control, no ownership needed, the firewall allows them) + the OWNED-SINGLE-CONTROL case (edit/delete-own gated by the DETERMINISTIC `ownsTarget` marker rail). It EXCLUDES the semantic parts the line-~62 rejection was really about — realistic fill quality, delete-with-confirm judgment, read-vs-mutation classification — which STAY on the agent path (model split preserved: the script clicks, the agent judges). Safety holds WITHOUT the LLM because the decisive rails are deterministic + driver-agnostic: `ownsTarget` reads the marker live off the DOM, the firewall gates destructive HTTP method/path on `hunt.owned`, auth + account-deletion are hard-gated in `actStep`. REQUIRED companion (the one real new risk — unbounded create spam with no judgment): a CREATE/mutation BUDGET `BUGHUNTER_HUNT_CREATE_BUDGET` (default ~15), tracked in `graph.huntCreates`, enforced in the NODE-LOOP's `persistentStep` (NOT `actStep` — keeps the shared causal primitive untouched; the agent path stays LLM-bounded) so once the budget is spent the crawl continues read-only. Chao2 certification stays a SEPARATE read-only overlay (Option C, later) — never DURING hunt, because Chao2 assumes a CLOSED population (Chao-Colwell 2017) and mutation opens it (a create exposes new UI, a delete removes re-detectable items), so a completeness number over a mutated surface is statistically invalid.
 - REJECTED — Option B (exclude hunt-created instances from Q1 by tagging + subtracting): does NOT fix the real defect (Chao2's closed-population assumption is violated by DELETE-deaths + create-exposed-UI, not just the count), adds a SECOND identity (hunt-tag) into the completeness path (violates single-source-of-truth), and leaks a hidden statistical bias the operator can't see. Certification must simply not co-occur with mutation.
@@ -570,3 +579,187 @@ Independent verification (NOT trusting the agents/script self-reports), directed
 - SAFETY DEPENDENCY (documented): `--reveal-opener` trusts the write-firewall, which nets HTTP(S) only — a target mutating over a WebSocket frame (review M1) is not aborted, so the flag is sound only on HTTP-mutating targets. rawcaster is POST-based (verified).
 - REVIEW (cto/invariant SHIP-after-fixes + security 0-crit/1-high/2-med) → all addressed before commit: (H1, security HIGH) the write-firewall nets non-GET only, so a reveal-opener could leak a mutation committed over a side-effectful GET (RPC-over-GET, `GET /api/follow?id=`) — FIXED deterministically: `installReadOnlyFirewall` exposes a live `strict.get` flag, `whats-new` flips it ON around the MEASURED reveal-opener act (try/finally), and the handler ABORTS a WRITE_VERB_RE-matching GET while strict — so the structural "cannot commit" guarantee holds across transports for OBVIOUS mutations (test: `GET /api/follow` aborted; fail-on-revert proven). (invariant CONSIDER) `communication` in the click-`REFUSED` set also folded into `routeRefused`, blocking NAVIGATION to a livestream/meeting VIEWING page (a read) — FIXED: `routeRefused` now uses `REFUSED_NAV` (destructive/auth/payment only); watching is navigable, initiating (a click) stays refused. (M2, security MED) icon-only call/go-live (no name → `unknown`) escapes the name-based communication class → DOCUMENTED (danger-floor header): the Sonnet agent is the defense for icon controls, as for every floor class. (M1, security MED) reveal-opener makes the WS-mutation residual reachable → DOCUMENTED (sound only on HTTP-mutating targets). (invariant SHOULD-FIX) added the reveal-opener guard to the tests/CLAUDE.md Live-guard index. Full suite 228/228.
 - WIDENED after a live graph check: the first `communication` regex missed "Join a meeting"/"Host a meeting" (article + `host`) → "Host a meeting" fell to `safe` and WOULD have been fired (host a real meeting). Fixed to catch join/host + optional article, still sparing "Join a group"/"Host name"/"Meeting notes".
+
+### 2026-07-18 — EXPLORE-ALL: full-write exploration mode
+- CHOSE: a single `explore-policy.mjs` as the ONE place the operator's rule set lives — the click gate, the network firewall, the observer, and the agent prompt all defer to it, so a refusal can never be reinstated in one place and silently diverge from the others.
+- CHOSE: split `requiresOwnership` into disjoint `destroysContent` / `editsContent` — on foreign content the two halves have different fates (edit-with-restore vs never), which a single predicate could not express.
+- CHOSE: logout is FIRED and flagged `needsRelogin`, not refused — refusing it leaves an element that can never be classified, which is the failure the mode exists to remove.
+- CHOSE: `exploreAllArmed` requires BOTH the operator opt-in AND a run id — without a run id there is no HUNT marker, so "ours vs a stranger's" is undecidable and the foreign rail would degrade into treating everything as foreign.
+- CHOSE: append-only restore journal written BEFORE the act — a crash can lose the CLOSE (a harmless duplicate rollback) but never the OPEN (an unrecorded edit).
+- REJECTED: keeping the danger-floor as a "backstop" under explore-all — a backstop that contradicts the fire path is not defense in depth, it is a second policy that silently wins. The floor still classifies (the label is kept); it no longer vetoes.
+- REJECTED: auto-restoring inside `actStep` — an edit spans several acts (Edit → fill → Save), so a rollback bracketed to one act would fire at the wrong moment. The journal outlives the act deliberately.
+- REJECTED: treating any unmarked item as untouchable — the operator's rule is edit-with-restore, and over-refusing would silently shrink coverage while looking like safety.
+
+### 2026-07-18 — mandatory run trail, optional frames
+- CHOSE: the event trail is ALWAYS written — `activeRunId` mints a run id when the operator supplied none and publishes it into the env so the sibling agent-path CLIs join the same run. A crawl that commits creates/edits/deletes must leave a record of what it touched.
+- CHOSE: `traceEvent` / `ensureDirs` / `openRun` THROW instead of swallowing. An act that happened but was not recorded is worse than a stopped crawl.
+- CHOSE: `openRun` proves the trail is appendable BEFORE the first act — this is what makes the throw safe. The old swallow existed because a mid-crawl throw trips reconLoop's catch and falsely marks a control `unreachable`; fail-fast at open moves that risk to a point where nothing is yet mis-attributed.
+- CHOSE: SCREENSHOTS stay opt-in behind `BUGHUNTER_VIEW=1` — a frame costs wall-clock and disk on every act and is only consumed by the admin viewer, whereas events are the record itself.
+- REJECTED: keeping the trail opt-in via `BUGHUNTER_RUN_ID` — it meant a crawl could click its way through an app leaving no trace, indefensible now that acts commit real writes.
+- REJECTED: making the graph a projection of the log in the same change — the current `act` event records `revealed` as a COUNT, not the elements, so the log is not yet sufficient to rebuild the graph. Widening the event schema and adding `rebuild-graph` + a divergence check is the next step, deliberately separate.
+
+### 2026-07-18 — classification column in the collection ledger
+- CHOSE: KNOWN is its OWN column, never folded into DONE. Clicking drains the frontier; only an `observe` writes `node.semantics`. The node-loop acts without judging, so a page can read fully collected and be entirely unexplained — folding the two would hide exactly the gap worth seeing.
+- CHOSE: three disjoint buckets — known / clicked-but-unclassified / never-clicked. `danger:'unknown'` (the judge looked and could not tell) is deliberately distinct from `clicked` (nobody looked) and `untouched` (nobody clicked).
+- CHOSE: report `inert` — acted, classified, caused no causal request and revealed nothing. This is the literal answer to the operator's "is this even an element?", and it is a finding, not a failure.
+- CHOSE: `triggeredTemplates` filters on `type:'triggers'` + `provenance:'causal'` — a structural nav edge (nav-links.mjs, provenance href/act) asserts reachability, NOT causation. Counting it would mark a plain link as "did something" and silently hide genuinely inert controls.
+- REJECTED: a single "coverage %" merging walked and understood — it would let a fully-drained, fully-unexplained crawl report as complete, the exact dishonesty the honest-denominator invariant exists to prevent.
+
+### 2026-07-18 — INC.4 transient CSS-motion classes are not identity anchors
+- CHOSE: reject animation-phase tokens (`-enter`/`-leave`/`-appear` + `ant|rc-zoom|fade|slide|motion|collapse`) in `dom-snapshot.isStableClass`. They live ~250ms, so a selector anchored on one matches ONLY mid-transition — the control resolves, then the transition completes to display:none before the click's actionability loop finishes. Measured live: 89/475 templates anchored on one, 96/195 unreachable touched, and the fix collapsed the denominator 475→327 (148 phantom duplicates of the same element in different animation phases).
+- CHOSE: schemaVersion 3→4 — an intentional identity re-key, same class as INC.1. A scheme-3 graph MUST reset, else animation-anchored selectors never match and the phantoms are permanent.
+- CHOSE: KEEP settled state classes (`ant-tabs-tab-active`, `ant-dropdown-hidden`). They describe what the UI IS; only transition phases are noise.
+- CHOSE: durable resolution for reveal HOPS (`resolveHandle` instead of raw `page.$`), with a live-name gate as a PRECONDITION — a representative hop could otherwise re-locate onto Logout/Delete under an authed session. Worst case now degrades to a refused reveal, never a stray mutation.
+- REJECTED: porting `dismissBlockingOverlay` into `persistentStep` (it was added, measured, and removed). That driver re-navigates before every act, so a prior act's modal cannot survive; any overlay present was opened by THIS act's own `applyReveal`, and dismissing it destroys the state the target needs — the retry did not re-run `applyReveal`. It could fire for at most 4 of 52 timeouts and was harmful when it fired.
+- REJECTED: raising OPENER_INSTANCE_CAP / DRILL_PER_LIST as a coverage move — the flagged instances belong to 13 templates already explored via instance[0], so it moves template coverage by exactly 0 at a cost of ~126 acts on calendar cells.
+- REJECTED: `force:true` / `dispatchEvent` for the click timeouts — the target was the problem, not the actuation; and AntD requires a real pointer click (in-page `.click()` does not fire its handlers).
+
+### 2026-07-18 — INC.6: why six explore-all runs created nothing
+Six live runs on rawcaster reached 67% coverage and produced TWO mutating endpoints total. The CTO review
+(run drain1) traced it to five independent breaks, not one. Recorded here mainly for the two beliefs that
+turned out to be false, because both drove misprioritized work.
+
+- CHOSE: typed field actuation (`field-actuate.mjs` + a `kind` from `form-fill.fieldsFor`) — antd renders
+  Select and DatePicker AS a readonly `<input>`, so the readonly skip dropped every required non-text
+  field, the submit was clicked, validation refused, and the control scored covered. Playwright has four
+  APIs for this; we used one. This is the terminus the trail actually shows: tpl 412 (the modal's submit)
+  WAS clicked and only `get_status_detail` left the browser.
+- CHOSE: refuse to replay a reveal path marked `stateful:true` (`REVEAL_PROVENANCE_ONLY`) — the stateful
+  driver's own contract calls that breadcrumb "provenance, NOT replay", and `applyReveal` never read the
+  flag. 493 of 494 recorded paths were stateful.
+- CHOSE: refuse to WRITE or WALK a path containing a dismiss control or a repeated template — the recorded
+  path to tpl 933 "Group Name" was `[26, 98, 79, 900 "cancel", 902]`, i.e. it closes the modal the field
+  lives in. 22 of 494 paths carried a dismiss hop, 39 were cyclic.
+- CHOSE: bump SCHEMA_VERSION 5→6 — reveal paths are written first-reveal-wins with NO invalidation, so the
+  494 poisoned paths would survive every fix above. The version bump IS the invalidation. This is also why
+  coverage sat at 67% for five consecutive runs: the graph was never reset and carried its own pollution
+  (our own form fill made antd add `ant-form-item-has-success`, minting a SECOND template for the same
+  "Full Name" field — the crawler inflating its own denominator by acting).
+- CHOSE: classify endpoints by their own verb (`endpoint-class.mjs`), not by HTTP method. The target speaks
+  POST-for-read; `yield-report` reported 18 write endpoints when ONE was a mutation, and fixes were ranked
+  off that number for several rounds. A verbless non-GET is still counted a write but reported as
+  `unnamedWrites` — a guess, labelled as one.
+- REJECTED (for now): `graph.states{}` (INC.3), a fourth time — but the PREVIOUS justification is withdrawn.
+  It said "the reveal annotation already gives reach at arbitrary depth". Measurement contradicts that: the
+  annotation gives reach only when the breadcrumb is a path, and on this target it frequently is not. The
+  honest reason to defer is now different — fixing the path invariant and its invalidation is cheaper and
+  addresses the same 83-of-93 `NO_INSTANCE_on_live_route` residual. Revisit if two runs with correct field
+  actuation still complete zero flows.
+- REJECTED: chasing the coverage percentage. 24.3% of the walkable denominator is FIELDS (textbox/combobox/
+  checkbox/radio), which are parameters of a flow, not controls that can be "covered" by clicking. 23 of
+  drain1's 57 acts were clicks on fields, 14 of them inert. The number can rise without a single additional
+  thing being tested.
+- REJECTED: my own two claims, both stated as fact and both wrong — "0 of 809 instances have a reveal path"
+  (the real number is 494; I tested `.length` on an object) and "the Create Event modal has no submit
+  template in the graph" (it is tpl 412). Both were measured wrong before being acted on, which is the same
+  failure as the write-count above: a decision taken on an unverified number.
+
+### 2026-07-18 — INC.6b: the same-name representative (why "Create Event" never created anything)
+A one-flow probe (open the modal by hand, dump what the filler sees, click submit) answered in a minute
+what six 20-round crawls could not. Two findings, and the second is the root cause.
+
+- FOUND: the Create Event form needs NO filling — the app pre-fills every required field (title "Rawcaster
+  Scheduled Event", type Public, date, time, duration). So the typed-actuation work (INC.6) was necessary
+  for other forms but was never what blocked THIS flow. Clicking the modal's submit by hand fires
+  POST /api/meetings-events and the event is created.
+- CHOSE: a role+name representative must belong to the SAME TEMPLATE (`el.matches(node.templateSelector)`),
+  in `resolve-handle.mjs`. `page.getByRole` searches the whole page, and the button that OPENS the modal
+  shares its accessible name with the button that SUBMITS it. With the modal shut the submit's positional
+  selector fails, the fallback resolved the OPENER, and the crawl clicked the opener while recording the
+  act against the submit. That is why seven runs show "Create Event exercised, fired only
+  get_status_detail" — the submit was never once clicked. Fail-safe: no templateSelector → old behaviour.
+- REJECTED: treating the repeated `get_status_detail` as client-side validation refusing the form. It was
+  the reading everyone (including the CTO review) took, and it is wrong — nothing was being validated,
+  because the submit was never reached. A wrong control was clicked and its request was recorded under the
+  right control's name, which no amount of form-filling could have fixed.
+- NOTE on method: this class of bug is invisible to the trail, because the trail records the act's INTENDED
+  target, not the element that was clicked. Only driving one flow by hand surfaced it. The CTO's named
+  pipeline gap (`flow-probe.mjs`) is therefore not a nice-to-have — it is the only instrument that could
+  have found this.
+
+### 2026-07-18 — INC.6c: reveal ordering, third iteration
+- CHOSE: rank pickLive candidates by reveal RECENCY (a templateId → act-sequence Map), not by a boolean
+  "was this revealed". The boolean was my own fix from earlier today, and measurement showed it defeated
+  itself: a navigation act reveals a whole page (52 controls on the live profile), after which every
+  candidate is "fresh", the sort is stable, and the walk falls back to ascending templateId — the exact
+  behaviour the fix was meant to remove. The modal's 11 controls were then retired unacted as
+  NO_INSTANCE_on_live_route on a later pass, which is why the graph shows them explored AND unreachable
+  with no act event: they were never clicked, they were written off.
+- NOTE: this is the third iteration of one bug, and each iteration was only visible because the previous
+  fix shipped and was measured on a live run. Ordering bugs of this kind cannot be reasoned out from the
+  code — the boolean version looks correct in isolation.
+
+### 2026-07-18 — INC.6d: the route-frontier collapse (85 patterns → 3)
+- CONTEXT: eight explore-all runs completed zero user flows. A four-agent review (CTO, log auditor, code
+  reviewer, literature research, all Fable) was run against the raw trails rather than my summary of them.
+  Three of my five "obvious" leads were wrong — most notably the "8x loop", which was 8 distinct INSTANCES
+  at OPENER_INSTANCE_CAP, i.e. designed behaviour. The finding none of my leads contained was upstream and
+  larger than all of them: the crawl had stopped leaving the dashboard.
+- CHOSE: carry `graph.routes` across a schemaVersion reset, RE-ARMED to pending. A schema bump invalidates
+  the ELEMENT identity scheme; routes are keyed by URL and hold navigation metadata only, so wiping them was
+  never required. The v4→v5 bump deleted 81 `declared:true` manifest-seeded routes. Re-arming is the
+  load-bearing half: `visited` is the ABSENCE of `pending`, so a verbatim carry-forward would mark every
+  route already-collected while its elements had just been discarded — a denominator that looks honest and
+  is empty.
+- CHOSE: run the metadata-only route seeding (manifest + harvestRoutes) ABOVE the stateful/stateless branch.
+  The stateful branch's "deliberately NO route-frontier" note is still honoured for the half it was actually
+  about — seedRoutes/visitRoute COLD-visit pages and would hand statefulStep controls that do not resolve
+  live, so they stay stateless-only. statefulLoop now drains the queue by NAVIGATING in-session (goToRoute,
+  the existing backtrack primitive) before it may claim a terminal.
+- MEASUREMENT that forced this: explore8/stateful1/fill1 reached 85 distinct route patterns; inc6/6b/6c
+  reached 2/2/3. `/groups`, `/events`, `/chats`, `/profile`, `/setting` were never queued, so "send message"
+  and "walk settings" produced ZERO acts — not broken, never started. The runner then reported "everything
+  reachable is collected", which was true of the collapsed denominator and is exactly the failure mode the
+  honesty invariant exists to forbid.
+- CHOSE: gate the text fallback in `resolve-handle` with the same `sameTemplate` predicate as role+name.
+  The INC.6b fix guarded one branch and the fallback beneath it re-ran the same page-wide name search with
+  no structural check — so the opener came back anyway. Both "Create Event" templates carry a causal edge to
+  the opener's own `get_status_detail`; the submit's endpoint never fired once.
+- NOTE on my own test doctrine failure: `samename-representative.test.mjs` opened the modal BEFORE resolving,
+  so role+name succeeded and the fallback was never reached. It stayed green while the bug it was written for
+  kept happening. Revert-proving the guard is not sufficient — the test must reproduce the STATE the live
+  system is in (here: container closed). A second test now does.
+- CHOSE: `fillRevealIfHidden` is inert in stateful mode. It was minting `stateful:true` reveal paths that
+  `reveal-replay` refuses by contract (250 of them, 173 on controls never hidden), burning the write-once
+  slot; worse, it cleared `explored`/`unreachable` on FAILED acts, so an intercepted click was re-ranked as
+  freshly revealed and re-picked to fail identically (tpl 25, seq 34 and 44). The stateless panel-reach
+  backfill it exists for is untouched.
+- CHOSE: `isDismissControl` also matches a long container-text blob led by a dismiss verb. The live close
+  control is `role=generic` named "closeSchedule a Meeting EventMeeting Title…"; the anchored pattern missed
+  it, so under recency ordering it ranked FIRST and the pass meant to drain the modal closed it instead.
+- DEFERRED (fifth time), with a NEW reason: `graph.states{}`. The literature is unanimous that state is the
+  centre of the model — but Crawljax, its primary source, states plainly that it "does not support form
+  input; form fields are left empty", and needed a separate specification language for flow completion. So a
+  state graph alone would buy back the retired controls and still submit Create Event once, on an empty
+  form. The binding constraint is that no unit of work is larger than one click. Revisit when the two
+  changes that address that — `(stateKey, template)` explored keying and a composite fill+submit action —
+  are in and a flow still cannot reach its submit.
+- REJECTED: rolling the working tree back to 52dca6c. It would discard proven-good INC.6 work (typed
+  actuation, endpoint classification, motion/state-class identity) and would not restore the routes anyway:
+  they are gone from the graph file and need re-seeding, not a code revert.
+
+### 2026-07-18 — INC.6e: the client-404 shell that counted as a collected section
+- CONTEXT: after the route-frontier fix the crawl reached 86 declared routes, and I reported "86 pages" to
+  the operator. He asked whether the site really has 86 pages. It does not, and the instrument could not
+  have told me: `render-probe` reported 44 collected of 60 declared, with ZERO client-404 phantoms.
+- CHOSE: the Not-Found SIGNATURE decides a route's verdict BEFORE any content count, in both consumers
+  (`render-probe.deriveVerdict`, `route-coverage.routeCoverageOf`). Both had restricted the client-404 label
+  to visited-but-EMPTY routes, with the stated reasoning that a Not-Found page carries no controls so the
+  restriction could only prevent a false collapse. The live shell renders ONE control, so all 18 dead routes
+  had content, landed in `collected`, and never reached the filter. Corrected: 44 → 26 collected, 0 → 18
+  phantoms, collectable 44 → 26. A 41% inflation of the coverage denominator, removed.
+- REJECTED: keeping the empty-only restriction and adding a "few controls" threshold. The research digest is
+  explicit that hand-tuned DOM-similarity thresholds are a known dead end (Yandrapally/Stocco/Mesbah, 493k
+  pairs: F1 degrades 0.95 → 0.45 over a crawl; FragGen calls the tuning "manual and tedious, required for
+  all existing techniques"). `contentSig` is already a structural equality — use it, do not soften it.
+- ACCEPTED RISK, stated plainly: the residual error now runs the other way — a REAL page whose skeleton is
+  byte-identical to the shell would be labelled dead and leave `collectable`, which is the direction the
+  honesty invariant actually forbids. Mitigation is disclosure, not cleverness: every phantom is LISTED in
+  `clientNotFound`, so the operator can check one by hand. Live evidence that the risk is not theoretical:
+  /verifyaccount, /verifyotp, /documentverify and /referel/dashboard share sig 1b67689c with each other —
+  distinct real pages DO collide structurally. None of them collides with the probe sig.
+- MEASUREMENT that settles the architecture question: /groups is a client-404 (the page does not exist),
+  /events and /chats REDIRECT to /dashboard. Three of the six flows the operator asked for have NO dedicated
+  page at all — their functionality lives inside the dashboard SPA, reachable only by in-page interaction.
+  /profile (21 own controls) and /setting (6) are real. So the route layer, now fixed, provably cannot reach
+  half the target flows, and the composite-action + (stateKey, template) work is not optional.
