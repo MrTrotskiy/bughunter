@@ -763,3 +763,37 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   page at all — their functionality lives inside the dashboard SPA, reachable only by in-page interaction.
   /profile (21 own controls) and /setting (6) are real. So the route layer, now fixed, provably cannot reach
   half the target flows, and the composite-action + (stateKey, template) work is not optional.
+
+### 2026-07-19 — INC.6f: widget chrome is not application surface
+- CHOSE: flag a framework widget's popup contents (`inWidgetPopup` in dom-snapshot → write-once
+  `node.widgetInternal` in graph-store) and keep them out of ALL FOUR frontier readers, counted in a new
+  `widgetSkipped` bucket. Measured on the live graph: 55 of 319 templates (17%) are picker/select chrome and
+  have fired ZERO requests between them, ever; `Next year (Control + right)` exists as SEVEN templates
+  because each panel level is a new structural anchor; one run spent 22 consecutive acts inside a calendar.
+  Each switcher opens a deeper panel, so under recency-first ordering they are an unbounded depth-first
+  descent generator — a container drain cannot be budgeted while one field can inject unbounded depth.
+- REJECTED: excluding them in `dom-snapshot` (never collect). The reviewer caught that this self-destructs:
+  55 such templates are ALREADY on disk and a graph is carried across runs, so the flag would never reach
+  them — they would keep being emitted, keep failing NO_INSTANCE, and could never be reclassified, because
+  nothing re-observes a control it refuses to collect. That is the INC.6 first-write-wins-with-no-
+  invalidation trap. Hence: compute in dom-snapshot, STAMP in graph-store outside the `if (!node)` branch.
+- REJECTED: bounding container-drain depth instead. The 22 calendar acts were at depth 1-3, so any threshold
+  that cuts them also cuts the legitimate modal→tab→content chain, and decisions.md already rejects
+  hand-tuned thresholds (Yandrapally/Stocco/Mesbah). A role rule is structural; a depth cap is not.
+- CHOSE: the discriminator is the ARIA authoring pattern, checked BEFORE the container. `role=menuitem` is
+  never chrome — a row's Edit/Delete/Share is genuine surface (INC.2 exists to address it). On the live
+  graph the two sets have ZERO role overlap across 84 templates: chrome is button/generic, portal menus are
+  menuitem/menu. The container list stays AntD-specific and fails OPEN (an unrecognised widget remains a
+  coverage obligation rather than vanishing).
+- NOT an identity change: additive flag, same class as `visible`/`inRow`/`inNav`/`listRow`/`navControl`,
+  never an identity input. No schemaVersion bump — and deliberately so, since INC.6d measured the real cost
+  of a bump (v4→v5 destroyed 81 declared routes).
+- NOTE on the test, and a second doctrine lesson: the first version of the converse half was VACUOUS.
+  Removing the role exemption did not fail it, because the portal menu in the fixture was not inside a
+  widget container at all — the container list was doing the protecting, not the role. Fixed by adding the
+  case the reviewer named: an AntD `dropdownRender` control mounted INSIDE `.ant-select-dropdown`, where
+  only the ARIA role separates it from the chrome beside it. Both levers now verified red.
+- FIXED separately: the `browse` skill was dead in this repo (it imported `lib/bug/bug-add.mjs`, a
+  bughunt-agents path that does not exist here). Repointed at `lib/browser/redact.mjs` via a new `redactText`
+  export, so there is ONE secret-pattern list rather than a skill-local copy. Note for the record: the recon
+  agent does NOT use this skill — it drives Bash + the project CLIs; `browse` is an operator tool.

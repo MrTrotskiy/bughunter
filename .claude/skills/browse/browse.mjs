@@ -13,7 +13,7 @@ import {
 } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { isPublicHttpUrl } from '../../../lib/browser/host-policy.mjs';
-import { redactSecrets } from '../../../lib/bug/bug-add.mjs';
+import { redactText as redactSecrets } from '../../../lib/browser/redact.mjs';
 
 const OUT_DIR = '/tmp/browse';
 const SESSION_FILE = `${OUT_DIR}/session.json`;
