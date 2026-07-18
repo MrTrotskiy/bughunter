@@ -3,7 +3,7 @@
 // the stateful walk reaches a 2-deep reveal chain A → B → X purely by ACCUMULATED in-session state, and
 // now stamps each revealed control with the accumulated opener breadcrumb — restoring the DISTINCT
 // locationKeys the report otherwise collapses to ONE. The breadcrumb is PROVENANCE (marked stateful:true),
-// not a replay path: safety of any future replay is delegated to the read-only firewall (default-ON here).
+// not a replay path — nothing re-fires it, so the method it was recorded under carries no replay risk.
 //
 // Guards (one crawl):
 //   (a) REACH — A (Open outer), B (Open inner, revealed by A), X (Show info, revealed by B) are all
@@ -54,10 +54,9 @@ test('stateful walk stamps the accumulated 2-deep reveal breadcrumb, restoring d
     if (prevState === undefined) delete process.env.BUGHUNTER_STATE_DIR; else process.env.BUGHUNTER_STATE_DIR = prevState;
   });
 
-  // The openers fire benign read-over-POSTs (/api/outer, /api/inner); a --stateful crawl aborts non-GET by
-  // default, so --allow-benign-post (operator override) lets them complete cleanly — this test guards the
-  // reveal PROVENANCE, not the firewall (which the write-verb gate still enforces on an obvious mutation).
-  const res = await crawl({ url, steps: 12, stateful: true, allowBenignPost: true });
+  // The openers fire benign read-over-POSTs (/api/outer, /api/inner) — this test guards the reveal
+  // PROVENANCE, not any write posture.
+  const res = await crawl({ url, steps: 12, stateful: true });
   assert.equal(res.ok, true, 'stateful crawl completed');
 
   const graph = loadGraph(path.join(stateDir, 'graph.json'));

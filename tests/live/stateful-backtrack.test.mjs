@@ -39,11 +39,7 @@ test('stateful driver backtracks in-session to finish a page left unfinished, at
     if (prevState === undefined) delete process.env.BUGHUNTER_STATE_DIR; else process.env.BUGHUNTER_STATE_DIR = prevState;
   });
 
-  // This fixture is a TRUSTED target: cA2 fires a benign POST /api/a2 (no write verb) which the read-only
-  // WRITE-FIREWALL (default-ON for --stateful) now ABORTS by default (the CTO blocker-1 inversion). This test
-  // guards BACKTRACKING, not the firewall, so --allow-benign-post restores the benign-POST reach (the operator
-  // override) — the write-verb gate still aborts an obvious mutation, so the safety of the default is intact.
-  const res = await crawl({ url, steps: 20, stateful: true, allowBenignPost: true });
+  const res = await crawl({ url, steps: 20, stateful: true });
   assert.equal(res.ok, true, 'stateful crawl completed');
   assert.equal(res.stopped, 'frontier-drained', 'the loop drained every route (no stall / budget stop)');
 
