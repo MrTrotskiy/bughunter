@@ -73,9 +73,13 @@ test('debug capture produces frames + timings without perturbing causal attribut
 
   // Capture produced both key-frames, the target rect, and per-phase timings.
   assert.ok(res.debug, 'capture attached a debug block');
-  assert.equal(res.debug.before.shot, `shots/t${b.templateId}-before.png`, 'before frame recorded');
+  // Frame names carry a monotonic capture ordinal AHEAD of the template id (`a0001-t7-before.png`).
+  // The old `t<templateId>-before` form assumed a template is captured at most once per run; the moment
+  // an element gets a second probe that assumption silently OVERWRITES the first frame, losing the
+  // evidence with no error. Assert the SHAPE, not a fixed ordinal — the counter is per process.
+  assert.match(res.debug.before.shot, new RegExp(`^shots/a\\d{4}-t${b.templateId}-before\\.png$`), 'before frame recorded');
   assert.ok(res.debug.before.rect && typeof res.debug.before.rect.width === 'number', 'the acted target rect was captured');
-  assert.equal(res.debug.after.shot, `shots/t${b.templateId}-after.png`, 'after frame recorded');
+  assert.match(res.debug.after.shot, new RegExp(`^shots/a\\d{4}-t${b.templateId}-after\\.png$`), 'after frame recorded');
   assert.equal(typeof res.debug.timings.actMs, 'number', 'the act (causal-window) duration was measured');
 
   // The frames actually exist on disk under the run's shots/ dir.

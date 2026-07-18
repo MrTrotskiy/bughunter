@@ -882,3 +882,25 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
 - MEASURED on the live Create Event modal: "Meeting Title" declares maxLength 50, "Event Type" is a readonly
   select (value comes from a list, never typed), Date and Time are pickers, 2 of 5 checkboxes are disabled.
   End-to-end: 14 of 42 templates carried field facts after two snapshots of the live dashboard.
+
+### 2026-07-19 — capture frames keyed by probe, not by template
+- CONTEXT: frames and body dumps were named `t<templateId>-before.png`. That is unique only while a
+  template is acted at most ONCE per run — a property the frontier's drain predicate happened to
+  guarantee (one act per control, ever), never a property anyone chose. The project is moving toward
+  studying an element with SEVERAL probes rather than touching it once; at the second probe the name
+  collides and the write silently overwrites the first frame. The evidence for the earlier probe is
+  gone with NO error — the worst failure shape for a tool whose whole output is evidence.
+- CHOSE: a monotonic per-process capture ordinal AHEAD of the template id — `a0001-t7-before.png`.
+  Ordinal first so a directory listing sorts in capture order; the template id kept so a frame stays
+  greppable by control. The same stem covers the redacted request/response body files, which carried
+  the identical collision.
+- CHOSE: assert the SHAPE (`^shots/a\d{4}-t<id>-before\.png$`) in the live test, not a fixed ordinal.
+  The counter is per PROCESS, so any test that acts ahead of this one would otherwise break on a
+  number that carries no meaning.
+- REJECTED: a per-template counter (`t7-2-before`) — reads as "template 7, instance 2" in a codebase
+  where instances are a real concept, and it loses the global capture order the trail is read in.
+- REJECTED: a timestamp suffix — two frames inside one act can land in the same millisecond, so it
+  reintroduces the collision it was meant to fix, and sorts worse than a zero-padded counter.
+- UNCHANGED, deliberately: screenshots stay gated behind `BUGHUNTER_VIEW=1` and `/recon` does not
+  export it. Logs always, frames only in view mode — the operator's standing instruction. This changes
+  what a frame is NAMED, never when one is TAKEN.
