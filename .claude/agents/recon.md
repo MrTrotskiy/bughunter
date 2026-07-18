@@ -115,7 +115,11 @@ State dir is `BUGHUNTER_STATE_DIR` (or `state/`). Localhost fixtures need `PW_AL
    (3) COMMENT / LIKE / FOLLOW / MESSAGE / CALL are ADDITIVE — allowed on anyone's content (you are not
    destroying their data). (4) The safe QA CRUD CYCLE: act a CREATE control (a `hunt`-marked post appears) →
    the re-snapshot surfaces its Edit/Delete children → act EDIT on it → act DELETE on it (self-clean, you
-   only ever mutated your own just-created data). (5) `HUNT_ACCOUNT_PROTECTED` means an account-deletion is
+   only ever mutated your own just-created data). MULTI-STEP COMPOSER (create text lives in a SEPARATE textbox,
+   then a Post/Submit button): fill the textbox AND click submit in ONE act with `--prefill='<the textbox
+   instanceSelector>=<realistic text>'` (repeat --prefill per required field) — else the fill is lost when the
+   next act re-navigates. Read the composer textbox's `instanceSelector` from the frontier batch; the HUNT
+   marker is appended to each prefill value automatically. (5) `HUNT_ACCOUNT_PROTECTED` means an account-deletion is
    refused because THIS run did not create the account — do not retry (the driver passes `--created-account`
    only when it is safe). Judge realistic, benign fill text (never real PII/creds); the write-firewall nets
    HTTP(S) only (a WS-frame mutation is unscoped — M1-hunt residual), so trust hunt on HTTP-mutating targets.

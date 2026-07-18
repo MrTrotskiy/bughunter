@@ -115,6 +115,23 @@ test('write-hunt (B): additive on others + create + edit-own all commit', async 
   assert.equal(server.counters().editHits, 1, 'editing our own HUNT-marked post commits');
 });
 
+test('write-hunt (G): create-with-prefill — a HUNT-marked post is created in ONE act (multi-step composer)', async (t) => {
+  const server = await start(0, { marker: MARKER });
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  const graphFile = boot(t);
+  t.after(() => server.close());
+  const graph = await baseline(url, graphFile);
+  const post = tpl(graph, 'Post');
+  // Fill the composer textarea AND click Post in ONE act (prefill) → the create commits with the HUNT marker,
+  // so the created content is provably OURS (a later edit/delete on it passes the ownsTarget rail). This is
+  // the fix for the re-navigating agent path where a separate fill act would be lost before the submit.
+  await run({ url, readOnly: true, hunt: true, actTemplate: post.templateId, prefill: [{ selector: '#new-post', value: 'my hunt post' }] });
+  assert.equal(server.counters().createHits, 1, 'the create committed');
+  const created = server.posts().find((p) => p.owner === 'self' && String(p.id).startsWith('self-new'));
+  assert.ok(created, 'a new self-owned post exists');
+  assert.ok(created.text.includes(MARKER), 'the created post carries the HUNT marker (provably ours → editable/deletable)');
+});
+
 test('write-hunt (C): OFF by default — no --hunt refuses create + like, byte-identical read-only', async (t) => {
   const server = await start(0, { marker: MARKER });
   const url = `http://127.0.0.1:${server.address().port}/`;
