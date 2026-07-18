@@ -33,8 +33,12 @@ test('debug capture produces frames + timings without perturbing causal attribut
   const stateDir = mkdtempSync(path.join(tmpdir(), 'bughunter-capture-'));
   const prevAllow = process.env.PW_ALLOW_PRIVATE;
   const prevState = process.env.BUGHUNTER_STATE_DIR;
+  const prevView = process.env.BUGHUNTER_VIEW;
   process.env.PW_ALLOW_PRIVATE = '1';
   process.env.BUGHUNTER_STATE_DIR = stateDir;
+  // Key-frames are VIEW-MODE-only (operator rule 2026-07-18: events always, screenshots on request).
+  // This test guards the frames themselves, so it must ask for them explicitly.
+  process.env.BUGHUNTER_VIEW = '1';
 
   const cold = await launch();
   t.after(async () => {
@@ -43,6 +47,7 @@ test('debug capture produces frames + timings without perturbing causal attribut
     rmSync(stateDir, { recursive: true, force: true });
     if (prevAllow === undefined) delete process.env.PW_ALLOW_PRIVATE; else process.env.PW_ALLOW_PRIVATE = prevAllow;
     if (prevState === undefined) delete process.env.BUGHUNTER_STATE_DIR; else process.env.BUGHUNTER_STATE_DIR = prevState;
+    if (prevView === undefined) delete process.env.BUGHUNTER_VIEW; else process.env.BUGHUNTER_VIEW = prevView;
   });
 
   const page = cold.page;
