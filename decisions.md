@@ -797,3 +797,69 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   bughunt-agents path that does not exist here). Repointed at `lib/browser/redact.mjs` via a new `redactText`
   export, so there is ONE secret-pattern list rather than a skill-local copy. Note for the record: the recon
   agent does NOT use this skill — it drives Bash + the project CLIs; `browse` is an operator tool.
+
+### 2026-07-19 — INC.7: container re-entry, measured before wiring
+- CONTEXT: three of six target flows have no URL (/groups is a client-404, /events and /chats redirect to
+  /dashboard) — their functionality exists only as dashboard modal state. The stateful driver's only recovery
+  when a control does not resolve is to re-navigate its route, which CLOSES the modal; 141 of 180 navigations
+  in inc6d produced zero acts. It retries the ROUTE dimension when the missing dimension is STATE.
+- CHOSE: build `reopen-policy` + `reopen-container` + `flow-probe` and MEASURE, wiring nothing into the
+  driver. The measurement decides whether the 476 recorded reveal paths are re-entry routes or merely
+  provenance. `reveal-replay.mjs`'s REVEAL_PROVENANCE_ONLY guard is untouched — this is a separate, stricter
+  admission path whose soundness comes from VERIFICATION: after the walk the intended target must re-resolve,
+  so a wrong path degrades to "still unreachable" and can never produce a mis-attributed act.
+- CHOSE: replay the SUFFIX of a path, shortest first, not the whole path. The last hop is the immediate
+  opener by construction. Measured: 37 distinct last hops cover all 87 unreachable-with-path instances, while
+  a recorded-depth cap covers far less and would exclude the headline case outright (the live `Create` sits at
+  depth 4 behind `See Translation` and `Read Out`, transparently not on the path to a Create modal).
+- THE GATE TOOK THREE VERSIONS and the history is the lesson:
+  v1 refused any hop whose recorded endpoints classified as a write. On this target that is unanswerable
+  lexically — `POST /rawcaster/addnuggetview` is a VIEW COUNTER that `endpoint-class` reads as a write via the
+  verb `add`, so a menu opener, a nav tab and a counter all looked mutating; `influencerlist` is a plain list
+  that falls to the non-GET fallback, which on a POST-for-reads app is the normal shape of a read. Result: 12
+  of 37 openers refused, catching ZERO irreversible acts, including `add` → `Create` refused on its NAME with
+  zero recorded requests.
+  v2 (CTO) dropped the write axis entirely for irreversibility + a budget. Rejected on review: `dangerFloor`
+  is `safe` for all 34 openers, which proves it has no resolving power on that population rather than that the
+  population is safe — "report Report Abuse" and "block Block User" are in neither the destructive nor the
+  communication set yet are outward-facing and effectively irreversible.
+  v3 (shipped): refuse on the decidable axis (danger floor, account deletion, destroys/edits existing
+  content), and keep ONE name-axis refusal that is EVIDENCE-CONDITIONED — a hop whose own instance was acted
+  cleanly is admitted whatever its name suggests; a hop with no clean act behind it and a non-safe name is
+  refused. Per INSTANCE, never per template: `markInstanceUnreachable` propagates to the node only for
+  instances[0], so tpl 515 and 521 both read clean at node level while carrying a failed instance.
+- REJECTED: patching `endpoint-class` so `addnuggetview` reads as a read. It genuinely inserts a view record,
+  and no lexical rule separates it from `createlist` — bending a shared classifier to serve one consumer's
+  different question would corrupt the write-surface headline in the direction already burned once.
+- CHOSE: the ownership rail runs at the HANDLE SEAM in the walker, not in the policy. Ownership is proven live
+  off the resolved handle and `admitHop` is pure, so it structurally cannot compute it. A hop whose verdict
+  needs a restore bracket or a re-login is refused rather than performed unbracketed — plumbing has neither.
+- BUG FOUND IN REVIEW: I wrapped `inOwnableItem` in `.catch(() => false)`. That function fails CLOSED by
+  returning TRUE (treat as in-item → block the unowned write); the catch inverted it, leaving ownership NONE
+  and full rights. The rule was not duplicated, but its FAIL DIRECTION had diverged — the same defect class.
+- MEASURED: 19 of 87 instances recoverable with the full gate including the ownership rail (26 without it —
+  the 7 are seven places the plumbing was about to click another user's content, a finding rather than a
+  cost). The acceptance criterion was then corrected: the 87 denominator answers "would wiring recover much",
+  NOT "are the breadcrumbs paths", because it includes instances our own policy declined to attempt. The
+  architectural verdict is over ATTEMPTED walks only, reported separately.
+
+### 2026-07-19 — the FOREIGN_ADDITIVE gap: outward acts against real people
+- FOUND while re-examining the operator's own rule set at his request. `decide()` on another user's content
+  returns allow=true for Report Abuse, Block User, Send Message, Add Friend, Invite AND Video Call — all as
+  FOREIGN_ADDITIVE, justified as "creates nothing of theirs to lose". That is true of a like or a comment and
+  false of a report: the category conflates ADDITIVE-TO-THE-DATA-MODEL with HARMLESS-TO-A-PERSON, and on a
+  live social app with real users the second is what matters.
+- WORSE: under explore-all the `REFUSED.has(floor)` check in `step.mjs` sits in the `else` branch, so
+  `communication` is never consulted in the mode we actually run — despite being placed in REFUSED precisely
+  because "initiating a real-time call is an IRREVERSIBLE OUTWARD side-effect".
+- CHECKED whether it had already happened: across inc6b/inc6c/inc6d the crawler clicked "Block User" and
+  "Report Abuse" dozens of times. NO block/report/abuse endpoint exists anywhere in the graph; the only
+  related request ever fired is `POST /rawcaster/listallblockedusers`, a read. Nothing reached a real person —
+  and the reason is that the confirmation dialogs were never completed. We were protected by the same
+  modal-completion failure this increment exists to remove.
+- OPERATOR DIRECTION (his own revision): the policy is ENVIRONMENT-TIERED. dev/staging — full freedom,
+  including another user's content, because there the "other users" are fixtures. prod — ALWAYS restricted;
+  the default is the ABSENCE of a grant, and the operator opens specific capabilities explicitly.
+- OPEN, and the line I intend to hold: outward-facing acts (email, SMS, payment, a real-time call, a report
+  against a person) stay refused on EVERY tier, because they leave the system identically whichever
+  environment fired them. Under consensus review; not yet implemented.
