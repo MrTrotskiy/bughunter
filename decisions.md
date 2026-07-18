@@ -863,3 +863,22 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
 - OPEN, and the line I intend to hold: outward-facing acts (email, SMS, payment, a real-time call, a report
   against a person) stay refused on EVERY tier, because they leave the system identically whichever
   environment fired them. Under consensus review; not yet implemented.
+
+### 2026-07-19 — field facts: read what the DOM already declares
+- CONTEXT: Phase 1 exists to turn a black box into a white one — for every control what it is and does, for
+  every field what it accepts and how many characters. A large part of that second half is DECLARED in the
+  DOM and costs nothing to read, and we were collecting none of it: field semantics were inferred by typing
+  into things and watching what broke.
+- CHOSE: `fieldFactsOf` (dom-snapshot) → `node.fieldFacts` (graph-store), recording maxLength, minLength,
+  required, pattern, min/max/step, type/kind, readOnly, disabled, the associated label, the aria-describedby
+  hint and option count. Stored on the TEMPLATE — a constraint is a property of the control, not of one row's
+  instance.
+- CHOSE: consult AntD's `.ant-form-item-required` wrapper class alongside the native attribute. The framework
+  marks requiredness on the wrapper, so `el.required` reads false on a genuinely required antd field.
+- CHOSE: additive, NEVER an identity input — the same class as visible/inRow/inNav/inWidgetPopup. NO
+  schemaVersion bump; a bump was measured in INC.6d as destroying 81 declared routes.
+- CHOSE: merge write-once-then-fill. A later observation may ADD a fact but never overwrites a non-null one,
+  because an early snapshot can catch a field before its wrapper has rendered the required marker.
+- MEASURED on the live Create Event modal: "Meeting Title" declares maxLength 50, "Event Type" is a readonly
+  select (value comes from a list, never typed), Date and Time are pickers, 2 of 5 checkboxes are disabled.
+  End-to-end: 14 of 42 templates carried field facts after two snapshots of the live dashboard.
