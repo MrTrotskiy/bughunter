@@ -1,21 +1,16 @@
-// Zero-dep fixture for the REVEAL-OPENER read (collect a compose UI without committing a write) + the
-// COMMUNICATION hard-refusal. The gap it models: on a live authed app the read-only crawl name-refuses a
-// mutation-NAMED control ("Create post") BEFORE the click, so the composer modal it would open is never
-// collected. The fix lets the AGENT judge such a control a form-opener (--reveal-opener) → the click is
-// allowed, the revealed modal is collected, and the network write-firewall stays the HARD net that ABORTS
-// any actual write the click fires. Separately, initiating a real-time call ("Video Call") is an
-// irreversible OUTWARD side-effect off the abortable HTTP layer — it must stay hard-refused even under
-// --reveal-opener.
+// Zero-dep fixture for the COMMUNICATION hard-refusal. Initiating a real-time call is an IRREVERSIBLE
+// OUTWARD side-effect — a WebRTC negotiation rings a real person — so unlike an ordinary write there is
+// nothing downstream that could undo it after the fact. `communication` therefore sits in the always-
+// consulted REFUSED set and the CLICK path must refuse it BEFORE the request leaves the browser.
 //
 //   - GET  /api/init          one fetch on load                       → LOAD BURST (token-excluded).
-//   - #create-post "Create post"  a mutation-NAMED opener. On click it BOTH fires POST /api/draft (a
-//                                 draft-create WRITE — the firewall must ABORT it) AND reveals the composer
-//                                 modal in #slot (pure DOM). So: reveal-opener collects the modal; the net
-//                                 prevents the server side-effect. Its revealed child #post-submit "Post"
-//                                 fires POST /api/createpost — also a write, never acted here.
-//   - #video-call "Video Call"    a COMMUNICATION control. On click it would POST /api/call/start (a real
-//                                 call). It must be HARD-refused (dangerFloor 'communication' ∈ REFUSED),
-//                                 NOT exempted by --reveal-opener.
+//   - #video-call "Video Call"    the CONTROL UNDER TEST. On click it would POST /api/call/start (a real
+//                                 call). It must be HARD-refused (dangerFloor 'communication' ∈ REFUSED);
+//                                 `callHits()` is the server-side ground truth that it never fired.
+//   - #create-post "Create post"  a mutation-NAMED opener that fires POST /api/draft and reveals a composer
+//                                 modal in #slot (pure DOM), whose child #post-submit "Post" fires
+//                                 POST /api/createpost. Non-trivial write-shaped surface around the control
+//                                 under test; nothing here asserts on it.
 //   - #refresh "Refresh feed"     a safe baseline read (GET /api/feed). Present so the baseline is non-trivial.
 
 import http from 'node:http';
@@ -36,19 +31,17 @@ const PAGE = `<!doctype html>
       fetch('/api/feed').catch(function () {});   // GET read — continued
     });
 
-    // A mutation-NAMED opener: fires a draft-create WRITE (firewall aborts) AND reveals the composer.
-    // It ALSO fires an RPC-over-GET mutation (a legacy /follow over GET) — the write-firewall nets non-GET
-    // only, so this GET-commit must be caught by the reveal-opener strict-GET gate (security review H1).
+    // A mutation-NAMED opener: fires a draft-create write AND reveals the composer modal.
     document.getElementById('create-post').addEventListener('click', function () {
-      fetch('/api/draft', { method: 'POST' }).catch(function () {}); // WRITE — must be aborted by the firewall
-      fetch('/api/follow?id=1').catch(function () {});               // RPC-over-GET mutation — strict-GET aborts it (H1)
+      fetch('/api/draft', { method: 'POST' }).catch(function () {});
+      fetch('/api/follow?id=1').catch(function () {});
       var slot = document.getElementById('slot');
       slot.innerHTML = '<div class="composer">'
         + '<textarea id="composer-text" placeholder="Share something"></textarea>'
         + '<button id="post-submit" type="button">Post</button>'
         + '</div>';
       document.getElementById('post-submit').addEventListener('click', function () {
-        fetch('/api/createpost', { method: 'POST' }).catch(function () {}); // the SUBMIT write (never acted)
+        fetch('/api/createpost', { method: 'POST' }).catch(function () {});
       });
     });
 
@@ -65,6 +58,9 @@ function sendJson(res, code, body) {
 }
 
 export function start(port = 0) {
+  // SERVER-SIDE GROUND TRUTH for the communication refusal: a click that got through would land here.
+  // Asserting on the server (not on the client's promise) is what makes the guard non-vacuous.
+  let callStarts = 0;
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
     if (url.pathname === '/') {
@@ -72,9 +68,11 @@ export function start(port = 0) {
       res.end(PAGE);
       return;
     }
+    if (url.pathname === '/api/call/start') { callStarts++; sendJson(res, 200, { ok: true }); return; }
     if (url.pathname.startsWith('/api/')) { sendJson(res, 200, { ok: true, path: url.pathname }); return; }
     sendJson(res, 404, { ok: false });
   });
+  server.callHits = () => callStarts;
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)));
 }
 

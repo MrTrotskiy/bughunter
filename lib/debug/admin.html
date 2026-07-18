@@ -275,7 +275,7 @@ function snapToView() {
 function outcomeOf(s) {
   if (!s || !s.error) return null;
   const e = String(s.error);
-  if (/refus|mutation-named|read-only|destructive|payment|\bauth\b|danger/i.test(e))
+  if (/refus|destructive|payment|\bauth\b|danger|foreign|protected/i.test(e))
     return { kind: 'safety', label: 'защита', tone: 'guard', why: 'предохранитель не дал сработать контролу (мутация / logout / оплата) — так и задумано' };
   if (/firewall/i.test(e))
     return { kind: 'firewall', label: 'файрвол', tone: 'guard', why: 'reveal-клик попытался отправить запись — запрос заблокирован write-firewall, аккаунт не тронут' };

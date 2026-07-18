@@ -3,7 +3,7 @@
 // it and, as a plain GET link, would NAVIGATE the browser to /logout on click — ending an authed session
 // with no click the name gate ever catches. The gate must refuse the click on the href's ROUTE instead.
 // Driven through whats-new (the /recon agent path) against a real chromium + fixture — and crucially with
-// NO authentication / --read-only, proving this gate protects EVERY path, independent of the write-firewall.
+// NO authentication, so the gate is proven standing on its own rather than behind any other posture.
 //
 // Guards: actStep refuses to CLICK a same-origin link whose href is a danger route (DANGER_FLOOR before the
 //   click), so an icon-only /logout / .../delete anchor cannot navigate/destroy on ANY actStep caller.

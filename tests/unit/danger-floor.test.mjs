@@ -133,14 +133,11 @@ test('routeRefused does NOT block navigation to a communication (viewing) route'
   assert.equal(routeRefused('/account/delete'), true, 'destructive/auth/payment routes ARE still nav-refused');
 });
 
-// mutationFloor — the ADDITIVE name-level mutation gate (read-only firewall defense-in-depth). It does NOT
-// widen REFUSED (a benign Follow/Like is NOT refused on the default crawl); it is a separate predicate the
-// read-only path opts into. Covers the write the URL-path firewall cannot see (a mutation-NAMED control
-// firing a benign-named endpoint), while an ICON control (no name) stays 'unknown' → the network gate
-// handles it and the causal edge is preserved.
-// Guards: a control literally named Follow/Like/Submit classifies 'mutation' (so refuseMutations can refuse
-//   it at click time), an ordinary control classifies 'safe', and an icon (no name) classifies 'unknown'
-//   (never refused here — it falls through to the network firewall).
+// mutationFloor — the ADDITIVE name-level mutation CLASSIFIER. It does NOT widen REFUSED and gates nothing
+// on its own; it LABELS a control's write-ness from its name. An ICON control (no name) stays 'unknown'
+// rather than being asserted safe — the honest answer when there is nothing to read.
+// Guards: a control literally named Follow/Like/Submit classifies 'mutation', an ordinary control
+//   classifies 'safe', and an icon (no name) classifies 'unknown' — never silently 'safe'.
 // FAIL-ON-REVERT: neuter MUTATION_NAME_RE (or drop the mutationFloor export's test) → 'Follow' falls to
 //   'safe' → "Follow must classify mutation" reds.
 test('mutationFloor classifies mutation-named controls, spares ordinary ones, and leaves an icon unknown', () => {
@@ -153,12 +150,12 @@ test('mutationFloor classifies mutation-named controls, spares ordinary ones, an
   assert.equal(mutationFloor({ name: '', route: '' }), 'unknown', 'an icon control with nothing to classify is unknown, never mutation');
 });
 
-// WRITE-HUNT predicates — the deterministic rails step.mjs consumes to relax read-only SAFELY.
-// isAccountDeletion carves account-scoped destruction out of destructive (gated on run-created, never the
-// item marker); requiresOwnership marks the modify/destroy verbs that need the HUNT ownership proof.
-// FAIL-ON-REVERT: neuter ACCOUNT_DELETION → "Delete account" is not account-scoped → the account-rail gate
-//   in step.mjs never fires → a persistent test account could be deleted. Neuter OWNERSHIP_REQUIRED_RE →
-//   "Delete" is not ownership-gated → the ownsTarget rail never runs → others' content deletable.
+// OWNERSHIP predicates — the deterministic rails explore-policy.mjs consumes. isAccountDeletion carves
+// account-scoped destruction out of destructive (gated on run-created, never the item marker);
+// requiresOwnership marks the modify/destroy verbs whose safety depends on WHOSE item it is.
+// FAIL-ON-REVERT: neuter ACCOUNT_DELETION → "Delete account" is not account-scoped → the ACCOUNT_PROTECTED
+//   rail never fires → a persistent test account could be deleted. Neuter OWNERSHIP_REQUIRED_RE →
+//   "Delete" is not ownership-gated → the foreign-content rail never runs → others' content deletable.
 test('isAccountDeletion flags account-scoped destruction, spares a plain post delete', () => {
   for (const name of ['Delete account', 'Close account', 'Deactivate account', 'Delete my account', 'Close your account', 'Cancel membership', 'Delete profile']) {
     assert.equal(isAccountDeletion({ name }), true, `${name} must be account-deletion`);

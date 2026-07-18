@@ -15,10 +15,9 @@
 //
 // The panel markup is injected on the #open click (never present at load), so #save is unreachable
 // unless the walk STAYS on the page (state accumulates). A poll hit-counter (pollHits) lets the
-// test prove the poll was live (non-vacuous). The panel control is NAMED a benign read ("Details",
-// not a write-verb like "Save"): a --stateful crawl is read-only, so its NAME-level mutation gate
-// (danger-floor mutationFloor, refuseMutations) refuses a write-verb-named control at click time —
-// this fixture isolates the depth-1 REACH mechanism from that gate. No danger-worded controls either.
+// test prove the poll was live (non-vacuous). The panel control is NAMED a benign read ("Details"),
+// and no control here carries a danger word — so this fixture isolates the depth-1 REACH mechanism
+// from every click-time gate.
 
 import http from 'node:http';
 

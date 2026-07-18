@@ -60,8 +60,7 @@ test('stateful walk reaches a panel control IN-SESSION (no reveal-replay), attri
   assert.equal(res.ok, true, 'stateful crawl completed');
 
   const graph = loadGraph(path.join(stateDir, 'graph.json'));
-  // The panel control is named a benign read ("Details") — a --stateful crawl is read-only, so its NAME-level
-  // mutation gate would refuse a write-verb-named control ("Save") at click time (see the fixture header).
+  // The panel control is named a benign read ("Details") — see the fixture header.
   const save = Object.values(graph.elements).find((n) => n.name === 'Details');
   const open = Object.values(graph.elements).find((n) => n.name === 'Open panel');
   assert.ok(open, 'the Open button was discovered at baseline');

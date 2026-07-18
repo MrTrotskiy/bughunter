@@ -61,10 +61,10 @@ test('every context carries a fixed desktop viewport (reproducible NOT_VISIBLE d
 });
 
 // serviceWorkers:'block' (security M2): Playwright's page.route does NOT intercept SW-originated
-// requests, so a service worker's background-sync POST would bypass the read-only write-firewall.
-// Blocking service workers at the single context builder closes that hole on BOTH newContext sites.
+// requests, so a service worker's background-sync POST would be invisible to page-level request
+// observation. Blocking them at the single context builder closes that blind spot on BOTH newContext sites.
 // FAIL-ON-REVERT (e): drop `serviceWorkers:'block'` from base → these asserts go red.
-test('every context blocks service workers so a SW request cannot bypass the write-firewall', (t) => {
+test('every context blocks service workers so a SW request stays observable', (t) => {
   withStorageEnv(t, undefined);
   assert.equal(contextOptions().serviceWorkers, 'block', 'the default context blocks service workers');
   assert.equal(contextOptions({ anonymous: true }).serviceWorkers, 'block', 'anonymous (login) contexts block them too');
