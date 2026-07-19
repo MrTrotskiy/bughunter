@@ -933,3 +933,40 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   rejected form from a dead control; `wasRefused` requires the page to have SAID something, and restoring
   the fallback is the module's own fail-on-revert lever.
 - NOT WIRED: nothing consumes this yet. It is the observation surface the probe battery will read.
+
+### 2026-07-19 — the knowledge ladder: coverage that cannot be earned by clicking
+- CONTEXT: `explored` was set immediately after one act returned, BEFORE the outcome was inspected, and the
+  frontier's drain predicate read that flag. So "explored" meant "clicked once and did not throw", and
+  coverage counted those. One measured run: 279 acts, 27% caused any request, 43% wholly inert, 21 of 32
+  submit-like controls clicked with ZERO fields filled, 0 of 6 user flows completed — while the coverage
+  percentage climbed. The number was measuring effort and being read as understanding.
+- WHY A LADDER: Phase 1's actual job is to turn a black box into a white one — for every control what it is
+  and does, for every field what it accepts and refuses. That is a claim about KNOWLEDGE, so the metric has
+  to be one. L-1 BLOCKED (named code, counted and listed, never in the numerator) / L0 UNKNOWN / L1 REACHED
+  (what `explored` really meant) / L2 EXERCISED / L3 CHARACTERIZED (the owed battery is complete) / L4
+  CONFIRMED (reproduced, or a write read back). "90%" now means 90% of obligations at L3 or above.
+- CHOSE: `batteryFor` derives what an element owes from its role and its DECLARED field facts — a boundary
+  probe ONLY where the field declares a limit. A blind overflow probe on a field with no declared limit has
+  no answer to check itself against; a declared limit gives a prediction to falsify, and a disagreement
+  between declared and observed is itself a defect worth reporting.
+- CHOSE: `verdictOf` adds the rung that never existed — `rejected`. An act that fired nothing because the
+  page SAID NO is a working control we failed to satisfy; one that fired nothing because it is dead is
+  weight in the denominator. They scored identically before.
+- CHOSE: `knowledgeStats` returns three numbers UNBLENDED — understood, blocked, and flows counted by the
+  caller. Blending is precisely what let coverage climb 45% → 67% while completed user flows stayed at zero.
+- CHOSE: a partially blocked element still owes what remains. L-1 is the verdict only when NOTHING could
+  ever be probed, so one blocked probe never writes an element off.
+- REJECTED: keeping `explored` as the coverage input behind a stricter setter. The flag's meaning is "an act
+  returned" — a fact about the crawler, not about the application. No amount of tightening makes it a
+  knowledge claim, and the drain predicate would still read a boolean where a rung is owed.
+- REJECTED: one blended headline percentage. That IS the failure being replaced: a single number lets effort
+  and understanding trade against each other invisibly.
+- REJECTED: a blind fuzz battery per field (overflow/invalid regardless of declared facts). Cost without
+  signal — nothing to check an answer against, and it multiplies acts on a crawl already spending them badly.
+- REJECTED: dropping BLOCKED out of the denominator. A quiet subtraction is how a coverage number flatters
+  itself; blocked stays counted and LISTED by name and reason.
+- NOT WIRED: nothing consumes this yet. `markInstanceExplored` still means what it always meant and the
+  frontier still drains on it. This is the METRIC, not the switch-over.
+- VERIFY (both levers revert-proven): make `levelOf` return L3 on `node.explored` — the old behaviour —
+  → "a click alone is not understanding" reds; make `verdictOf` ignore refusal → "the page said no: a
+  working control we failed to satisfy" reds.
