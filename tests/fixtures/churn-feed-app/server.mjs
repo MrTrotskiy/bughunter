@@ -1,5 +1,5 @@
 // Zero-dep fixture for the CHURN bucket (blocker-6 Part B). Models a RE-RENDERING FEED WITHOUT stable
-// data-ids — the rawcaster archetype. A feed row's instanceKey is CONTENT-derived (dom-snapshot rowKey:
+// data-ids — the live-target archetype. A feed row's instanceKey is CONTENT-derived (dom-snapshot rowKey:
 // no data-id → the row's text), so when the feed re-renders with NEW text the OLD instanceKey vanishes and
 // a NEW unexplored instance is minted. An unexplored REPRESENTATIVE that churns away before it is walked
 // would else sit in `walkable` forever and keep frontierInstanceStats.remaining above 0 — the honest

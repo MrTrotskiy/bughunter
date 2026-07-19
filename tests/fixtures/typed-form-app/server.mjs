@@ -1,4 +1,4 @@
-// Zero-dep fixture for TYPED FIELD ACTUATION (INC.6). Reproduces the live rawcaster failure that made six
+// Zero-dep fixture for TYPED FIELD ACTUATION (INC.6). Reproduces the live target failure that made six
 // crawls create nothing: a create form whose REQUIRED fields are not text inputs.
 //
 // The shapes are antd's, because antd is what the live target uses and its shapes are what defeated

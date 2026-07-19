@@ -46,7 +46,7 @@ test('communication / media controls classify communication and are hard-refused
   for (const name of [
     'Video Call', 'Voice Call', 'Audio Call', 'Start Call', 'Go Live', 'Start Meeting', 'Join Meeting',
     'Live Stream', 'Start Broadcast', 'Dial',
-    // article + host variants — real rawcaster labels ("Join a meeting" / "Host a meeting") that the
+    // article + host variants — real target labels ("Join a meeting" / "Host a meeting") that the
     // first regex missed, so "Host a meeting" fell to 'safe' and WOULD have been fired (host a real call).
     'Join a meeting', 'Host a meeting', 'Join the meeting', 'Host a call', 'Make a call',
   ]) {

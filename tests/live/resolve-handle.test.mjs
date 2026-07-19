@@ -2,7 +2,7 @@
 // stateful walk actually work on a DYNAMIC page. The fixture feed RE-RENDERS (reshuffle) AFTER the
 // baseline snapshot, so the walked representative's stored POSITIONAL nth-child instanceSelector goes
 // STALE. A positional-only resolver would throw NO_INSTANCE and retire the control unreachable (stateful
-// WORSE than stateless — the live rawcaster smoke drained at 7 vs 31). With durable resolution the control
+// WORSE than stateless — the live target smoke drained at 7 vs 31). With durable resolution the control
 // is re-located via its role+name locator (a LIVE representative), genuinely explored, its request
 // causally attributed, and the honest viaRepresentative marker recorded. The exact-match #refresh (stored
 // selector survives) is reached via that selector and is NOT flagged a representative (no over-counting).

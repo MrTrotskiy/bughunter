@@ -1,4 +1,4 @@
-// Zero-dep fixture for the PORTAL-DROPDOWN ownership fix (live rawcaster finding): a row's Edit/Delete lives
+// Zero-dep fixture for the PORTAL-DROPDOWN ownership fix (live target finding): a row's Edit/Delete lives
 // in a dropdown rendered as a PORTAL appended to <body>, structurally DETACHED from the post card — so
 // ownsTarget on the delete button finds no marker in its DOM ancestors and fails closed. The fix keys the
 // portal control's ownership on its reveal-TRIGGER (the row's "…" more button, which IS inside the card).

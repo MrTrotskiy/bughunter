@@ -192,7 +192,7 @@ test('a benign off-origin SAFE-method sub-resource is aborted (leak prevented) b
   // Guards: a safe-method OFF-ORIGIN sub-resource (a CDN image/font/pixel the revealed UI pulls in) is a
   // SOFT block — aborted to prevent the leak, yet the reveal COMPLETES and reveals its child. The old
   // "any aborted request fails the reveal" broke stay-on-page reach on every real app with off-origin
-  // assets (found live on dev.rawcaster.com: composer + Live-events reveals died REVEAL_WRITE_BLOCKED on
+  // assets (found live on the target host: composer + Live-events reveals died REVEAL_WRITE_BLOCKED on
   // a benign GET /nuggets/Image_*.jpg served off-origin). Writes/danger-routes still HARD-fail (tests above).
   // FAIL-ON-REVERT (reach): re-harden replayRevealPath (`blocked.slice(blockedBefore).find(b=>b.hard)` →
   //   `blocked.length > blockedBefore`) → the off-origin GET fails the reveal → `replayRevealPath` REJECTS

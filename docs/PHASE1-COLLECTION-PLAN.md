@@ -9,7 +9,7 @@ from three independent Fable passes — code-architect, industry-SOTA survey, an
 the abandoned reference `bughunt-agents`. Companion artifact (Russian, presentation form): the target-architecture
 page published this session. This file is the canonical, English, checked-in version.
 
-The goal: exhaustively collect the **whole reachable authenticated SPA** (dev.rawcaster.com — antd/React,
+The goal: exhaustively collect the **whole reachable authenticated SPA** (the target host — antd/React,
 the entire app under one URL, navigation swaps content client-side over POST), not a budget-bounded slice.
 
 ---
@@ -94,7 +94,7 @@ uncountable (you cannot enumerate what was never found) — the histogram names 
 On the route-collapse axis it must **FLAG** route-collapse-UNEXPLORED (POST-nav locations collapsed under one
 `routeKey`) as `pending-INC.3` — it CANNOT split it from budget-UNEXPLORED before INC.3, because the graph
 carries no location identity beyond `routeKey`; any split now would be a heuristic the invariants forbid. That
-honest flag is itself the signal that on rawcaster the dominant class is the INC.3 frontier-key class, not the
+honest flag is itself the signal that on the first target the dominant class is the INC.3 frontier-key class, not the
 L1 budget class. This is the go/no-go artifact the project's empirical discipline requires before L2/L3/L4.
 
 ### Layer 2 — Resilience at Scale  *(new · measure-gated)*
@@ -168,7 +168,7 @@ All read-only, from the already-collected trail:
 ## 7. INC.3 dispute — resolved
 
 The POST-nav state-distinction axis IS needed (industry: Burp keys locations by content, not URL), because on
-rawcaster all POST-nav pages currently collapse under one `routeKey` (`scope.mjs`) — the [9]/[45] blocker.
+the first target all POST-nav pages currently collapse under one `routeKey` (`scope.mjs`) — the [9]/[45] blocker.
 But implement it as a **frontier dedup KEY** (url + method + payload-shape, the Crawlee `useExtendedUniqueKey`
 pattern), **NOT** as a parallel `graph.states{}` DOM-identity. A second DOM-identity is exactly the reference's
 trap (two unconnected identities → construct 0/52). Invariant to hold: the payload-shape must never leak into a
@@ -194,7 +194,7 @@ graph node's identity or into a causal edge — it is a frontier-layer hint only
 
 The plan reaches / exceeds the reference IF:
 - (a) the histogram is built and run FIRST (an honest go/no-go);
-- (b) the second stone is chosen BY the histogram, not by taste (on rawcaster almost certainly the INC.3
+- (b) the second stone is chosen BY the histogram, not by taste (on the first target almost certainly the INC.3
   frontier-key, because L1 alone lifts a single-URL SPA only moderately);
 - (c) Layer-2 amortization stays behind a live reset-cost measurement + its own ADR;
 - (d) **drill-selection discipline** (one representative per list) is explicitly written into L1/frontier —

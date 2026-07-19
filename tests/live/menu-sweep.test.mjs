@@ -63,7 +63,7 @@ test('menu-sweep: nav-landmark controls are identified, front-loaded, and collec
 
   // (A) IDENTIFICATION — landmark/ARIA-role containment stamps node.navControl on the nav controls only.
   assert.equal(navGroups.navControl, true, 'nav-groups (in a <nav> landmark) is stamped navControl');
-  assert.equal(navEvents.navControl, true, 'nav-events (a div[role=tab] in a [role=tablist], the rawcaster shape) is stamped navControl');
+  assert.equal(navEvents.navControl, true, 'nav-events (a div[role=tab] in a [role=tablist], the first-target shape) is stamped navControl');
   assert.notEqual(plain.navControl, true, 'the <main> control is NOT stamped navControl');
 
   // (B) PRIORITY — the emit batch LEADS with the nav controls; the non-nav control is deferred.

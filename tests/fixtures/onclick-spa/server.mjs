@@ -1,7 +1,7 @@
 // Fixture for the ROUTE-MANIFEST seeder. A CONSTANT-URL onClick SPA: the home page exposes almost no
 // a[href] (ONE nav link), so an a[href]-only route harvest collects ~1 route — yet the app's OWN
 // same-origin bundle (/static/js/app.js) DECLARES its router with several static sections + a param
-// route + a danger route + decoy asset/api literals. This is exactly the rawcaster shape the seeder
+// route + a danger route + decoy asset/api literals. This is exactly the first-target shape the seeder
 // exists to close: the honest denominator must jump from the href count to the declared count.
 //
 // The served bundle is DATA the extractor regexes over (never eval'd). It extracts ONLY React-Router
@@ -17,7 +17,7 @@
 //   param pattern    : /item/:id                 (paramRoutes — counted, never directly navigated)
 //   splat            : *                          (excluded — no leading slash / catch-all)
 //   dynamic path expr: path:")".concat("z")        (a minified concat — the string regex grabs ")" →
-//                      "/)"; the expr-char filter rejects it, mirroring the live rawcaster artifacts)
+//                      "/)"; the expr-char filter rejects it, mirroring the live target artifacts)
 //   NOISE (rejected) : "/reactions" "/accept" "/static/js/app.js" "/api/data"  — NOT under `path:`,
 //                      so the path:-only extractor drops them (the anti-inflation precision guard)
 

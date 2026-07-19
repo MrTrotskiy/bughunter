@@ -16,7 +16,7 @@
 //                     THEN reveals #save2. Because the revealing act is not all-GET, the GET-only
 //                     replayability gate must NOT stamp #save2 with a reveal path — so #save2 stays
 //                     honestly `unreachable` (its POST-revealed state is never replayed).
-//   - #open-read      a POST-that-READS opener (apps like rawcaster fire list/search over POST):
+//   - #open-read      a POST-that-READS opener (apps like the first target fire list/search over POST):
 //                     fires POST /api/list (returns data, mutates NOTHING) and reveals #expand.
 //                     The GET-only default leaves #expand unstamped; the agent-judged
 //                     `--opener-replayable` widen (a read, not a write) must stamp + reach it.

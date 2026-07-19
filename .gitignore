@@ -13,3 +13,10 @@ docs/draft/
 
 # Local test file — targets + live credentials, never commit
 test.md
+
+# Per-TARGET rigs — stand setup, session minting, source-derived answer keys for a specific
+# application under test. Kept OUT of git deliberately: the tool must carry no trace of any one
+# customer's app, and a target-shaped script in the repo is how a general tool quietly becomes a
+# tool for one site. The generic half lives in lib/ (e.g. lib/recon/ground-truth.mjs, which scores
+# against ANY answer key); only the rig that produces one target's key belongs here.
+targets/

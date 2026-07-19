@@ -3,7 +3,7 @@
 // Guards: an animation-phase token (`ant-slide-up-leave`, `ant-zoom-appear`, `ant-fade-leave-start`) lives
 //   for the ~250ms of a CSS transition. A selector anchored on one matches only MID-TRANSITION, so the
 //   control resolves, then vanishes before the click's actionability loop finishes — measured live on
-//   rawcaster as 96 of 195 unreachable templates, and 44 selector groups that were pure duplicates of one
+//   the first target as 96 of 195 unreachable templates, and 44 selector groups that were pure duplicates of one
 //   another differing only by animation phase. SETTLED state classes (`ant-tabs-tab-active`,
 //   `ant-dropdown-hidden`) describe what the UI IS and must be KEPT — they are the structural anchor.
 // FAIL-ON-REVERT: drop `&& !isMotionClass(c)` from isStableClass in dom-snapshot.mjs → the motion tokens

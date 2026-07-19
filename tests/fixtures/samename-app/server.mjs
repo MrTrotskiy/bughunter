@@ -1,6 +1,6 @@
 // Zero-dep fixture for the SAME-NAME representative bug (INC.6) — the last link in the create chain.
 //
-// Reproduces the live rawcaster shape exactly: the button that OPENS the create modal and the button that
+// Reproduces the live target shape exactly: the button that OPENS the create modal and the button that
 // SUBMITS it carry the SAME accessible name ("Create Event"). They are different controls with different
 // templates, and only the second one creates anything.
 //

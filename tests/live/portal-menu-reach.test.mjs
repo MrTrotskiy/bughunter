@@ -1,7 +1,7 @@
 // Live proof of the REVEAL-BACKFILL fix (Fable design) — in-app-state reach for a PORTAL dropdown that
 // MOUNTS on open. The menuitem is never in the DOM while closed, so it can only ever be captured visible →
 // the write-once `hiddenWhenSeen` is structurally always false → the OLD reveal-backfill never gave it a
-// path → NO_INSTANCE on cold re-navigation (the live rawcaster Delete-in-dropdown gap). The per-act
+// path → NO_INSTANCE on cold re-navigation (the live target Delete-in-dropdown gap). The per-act
 // `preVisible` transition (not-visible-before-the-act + visible-after = revealed by this act) fixes it.
 //
 // SCOPE (bughunter review): this test guards END-TO-END REACH of a mount-on-reveal portal menuitem — it is

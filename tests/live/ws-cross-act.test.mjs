@@ -6,7 +6,7 @@
 // REUSED page. classifyInitiator (initiator.mjs) rejects only timer/parser roots; a WS message
 // dispatch is neither, so the WS-driven fetch inherits the active cause AND survives the
 // initiator filter = a phantom edge. Re-nav only INCIDENTALLY hides this by tearing the socket
-// down. rawcaster is a WS feed, so a no-re-nav crawl would keep every socket alive the whole run.
+// down. the first target is a WS feed, so a no-re-nav crawl would keep every socket alive the whole run.
 //
 // Guards: on a reused page (no goto between acts), a WS-onmessage-driven fetch ticking inside a
 //   control's causal window is NOT credited to that control (no phantom WS causal edge). This

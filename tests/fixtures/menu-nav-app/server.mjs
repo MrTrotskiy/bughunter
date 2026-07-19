@@ -1,6 +1,6 @@
 // Zero-dep fixture for the MENU-EVENT SWEEP (event-driven in-app-nav, Phase-1 close increment). A
 // CONSTANT-URL SPA (the URL never changes) whose SECTIONS are reached ONLY by clicking href-less onClick
-// controls inside a <nav> landmark — the rawcaster class (Groups/Events swap content in place, never a
+// controls inside a <nav> landmark — the first-target class (Groups/Events swap content in place, never a
 // distinct URL). It exists to prove: (1) a nav-landmark control is IDENTIFIED (node.navControl) and
 // FRONT-LOADED by the frontier over an equally-eligible NON-nav control; (2) acting a nav opener reveals
 // its section child and causally attributes the section-load read-over-POST; (3) the child is reachable
@@ -10,7 +10,7 @@
 //   - GET  /api/poll              150ms setInterval, whole run      → BACKGROUND (must stay uncredited).
 //   - #nav-groups (in <nav>)      href-less onClick section opener. Fires read-over-POST /api/section/groups
 //                                 (NON-GET so allGet=false → the reveal stamp needs --opener-replayable, the
-//                                 real rawcaster case) and reveals #groups-item in the section slot.
+//                                 real target case) and reveals #groups-item in the section slot.
 //   - #groups-item (revealed)     the section CHILD (absent at load). Fires GET /api/groupsinfo — the terminal
 //                                 read whose causal edge is asserted (wire-before-DOM), reachable only after
 //                                 the nav opener, i.e. via reveal-replay from a cold reset.
@@ -29,7 +29,7 @@ const PAGE = `<!doctype html>
   <nav aria-label="sections">
     <button id="nav-groups" type="button">Groups</button>
   </nav>
-  <!-- Events uses the ARIA TAB pattern (role=tablist/tab) with NO <nav> element — the real rawcaster
+  <!-- Events uses the ARIA TAB pattern (role=tablist/tab) with NO <nav> element — the real target
        shape (div[role=tab] in div[role=tablist]). It must ALSO be identified as a nav control. -->
   <div role="tablist" aria-label="more sections">
     <div id="nav-events" role="tab" tabindex="0">Events</div>

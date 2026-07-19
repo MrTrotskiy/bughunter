@@ -1,5 +1,5 @@
 // Zero-dep fixture for the REVEAL-BACKFILL fix (in-app-state reach; Fable design lock). Reproduces the live
-// rawcaster class: a row's action menu is a PORTAL that MOUNTS ONLY on the "…" click — the menuitem is NEVER
+// first-target class: a row's action menu is a PORTAL that MOUNTS ONLY on the "…" click — the menuitem is NEVER
 // in the DOM while the menu is closed, so it can only ever be captured `visible===true` → the write-once
 // `hiddenWhenSeen` is structurally always false → the OLD `fillRevealIfHidden` never backfills a reveal path
 // → cold re-navigation can't reach it (NO_INSTANCE). The per-act `preVisible` transition (a control NOT

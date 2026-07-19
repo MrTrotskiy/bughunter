@@ -2,7 +2,7 @@
 // the stateful-loop close-after-study) — the real fix for a modal-heavy site regressing the
 // stateful walk. An act OPENS a full-screen backdrop modal that OBSCURES a base-page sibling, so a
 // RAW click on that sibling TIMES OUT (obscured, NOT hidden — Playwright reports it visible). Without
-// the fix that sibling is marked unreachable → mass unreachable → premature drain (the live rawcaster
+// the fix that sibling is marked unreachable → mass unreachable → premature drain (the live target
 // symptom: 7 explored stateful vs 31 stateless, 17 of 35 unreachable were click-timeouts). The
 // overlay-aware loop STUDIES the modal control, CLOSES the modal (Escape, mid-walk), and REACHES the
 // sibling — genuine coverage, its request causally attributed.

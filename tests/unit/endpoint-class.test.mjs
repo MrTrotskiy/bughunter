@@ -9,7 +9,7 @@
 //   whatever the method; telemetry never counts as an application write; and a non-GET with no verb at
 //   all is classified write but SURFACED as a fallback guess rather than asserted.
 // FAIL-ON-REVERT: replace classifyEndpoint's body with the old method test
-//   (`method === 'GET' ? 'read' : 'write'`) → "POST /rawcaster/listnuggets is a READ" fails.
+//   (`method === 'GET' ? 'read' : 'write'`) → "POST /app/listnuggets is a READ" fails.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,15 +17,15 @@ import { classifyEndpoint, classifyEndpoints } from '../../lib/recon/endpoint-cl
 
 test('a read travelling by POST is a read, not a write', () => {
   // The exact endpoints the live crawl mis-counted as writes.
-  for (const p of ['/rawcaster/listnuggets', '/rawcaster/getothersprofile', '/rawcaster/searchrawcasterusers',
-    '/rawcaster/getfaq', '/rawcaster/listevents', '/rawcaster/get_status_detail', '/rawcaster/getcountylist',
-    '/rawcaster/listallfriends', '/rawcaster/getusersettings']) {
+  for (const p of ['/app/listnuggets', '/app/getothersprofile', '/app/searchusers',
+    '/app/getfaq', '/app/listevents', '/app/get_status_detail', '/app/getcountylist',
+    '/app/listallfriends', '/app/getusersettings']) {
     assert.equal(classifyEndpoint({ method: 'POST', urlPattern: p }), 'read', `POST ${p} is a READ`);
   }
 });
 
 test('an explicit mutation verb is a write, whatever the method', () => {
-  for (const p of ['/rawcaster/updateusersettings', '/rawcaster/followandunfollow', '/api/createpost',
+  for (const p of ['/app/updateusersettings', '/app/followandunfollow', '/api/createpost',
     '/api/delete_comment', '/api/group/invite']) {
     assert.equal(classifyEndpoint({ method: 'POST', urlPattern: p }), 'write', `POST ${p} is a WRITE`);
   }
@@ -46,23 +46,23 @@ test('a verbless non-GET is a GUESS, and says so in its own class', () => {
   // the honest answer is a separate class rather than a confident guess in either direction. This repeats a
   // failure already on record ("18 write endpoints, the truthful count was ONE") and takes the same fix:
   // surface the guess as a guess, and let a caller that needs certainty confirm by reading state back.
-  assert.equal(classifyEndpoint({ method: 'POST', urlPattern: '/rawcaster/community_dropdown' }), 'write-unnamed');
+  assert.equal(classifyEndpoint({ method: 'POST', urlPattern: '/app/community_dropdown' }), 'write-unnamed');
   // The report contract is unchanged: a fallback guess still counts toward the write SURFACE, and is still
   // listed separately so the operator knows how much of that surface was guessed.
   const out = classifyEndpoints([
-    { method: 'POST', urlPattern: '/rawcaster/community_dropdown' },
-    { method: 'POST', urlPattern: '/rawcaster/updateusersettings' },
-    { method: 'POST', urlPattern: '/rawcaster/listnuggets' },
+    { method: 'POST', urlPattern: '/app/community_dropdown' },
+    { method: 'POST', urlPattern: '/app/updateusersettings' },
+    { method: 'POST', urlPattern: '/app/listnuggets' },
     { method: 'POST', urlPattern: '/g/collect' },
   ]);
   assert.equal(out.writes.length, 2, 'two writes');
   assert.equal(out.reads.length, 1, 'listnuggets is the read');
   assert.equal(out.telemetry.length, 1, 'collect is telemetry');
-  assert.deepEqual(out.unnamedWrites, ['POST /rawcaster/community_dropdown'],
+  assert.deepEqual(out.unnamedWrites, ['POST /app/community_dropdown'],
     'the verbless one must be flagged as classified-by-fallback, not silently counted as a confirmed write');
 });
 
 test('endpoints are counted once each, not per call', () => {
-  const out = classifyEndpoints(Array.from({ length: 40 }, () => ({ method: 'POST', urlPattern: '/rawcaster/listnuggets' })));
+  const out = classifyEndpoints(Array.from({ length: 40 }, () => ({ method: 'POST', urlPattern: '/app/listnuggets' })));
   assert.equal(out.reads.length, 1, '40 calls to one endpoint is ONE endpoint exercised');
 });

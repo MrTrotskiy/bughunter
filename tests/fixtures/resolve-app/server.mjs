@@ -1,5 +1,5 @@
 // Zero-dep fixture for DURABLE-LOCATOR instance resolution (resolve-handle.mjs). Models a DYNAMIC feed
-// whose rows re-render (reshuffle) WHILE the stateful walk stays on the page — the exact rawcaster
+// whose rows re-render (reshuffle) WHILE the stateful walk stays on the page — the exact first-target
 // failure: the stored POSITIONAL instanceSelector (:nth-child + data-id) goes STALE, so a positional-only
 // resolver marks the control NO_INSTANCE-unreachable even though it is still right there. A durable
 // role+name locator re-locates the LIVE element (a representative of the template).

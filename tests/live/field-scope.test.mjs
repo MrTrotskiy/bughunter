@@ -1,7 +1,7 @@
 // A FIELD CAN ANSWER WITHOUT BEING SUBMITTED — and only for itself.
 //
 // THE MEASURED GAP. Run probe9: four textboxes were filled successfully and recorded `inert` — "Search
-// Community", "Search your connections", "Group Name", "Search Rawcaster". Nothing was wrong with the fill.
+// Community", "Search your connections", "Group Name", "Search <App>". Nothing was wrong with the fill.
 // Under a commit-only model they can never leave L2, because they have no commit control to answer to, and
 // the literature says field→commit on nameless markup is unsolved (the classical crawlers take the submit
 // for free from `<form action>`; the LLM agents press Enter and hope). The client already holds the answer:

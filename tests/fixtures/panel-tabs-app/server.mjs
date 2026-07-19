@@ -1,5 +1,5 @@
 // Zero-dep fixture for the "panel reach" fill (decisions.md 2026-07-15 depth-2 Option A). Models the
-// rawcaster antd-overflow failure: tabs that are PRESENT in the DOM at baseline but HIDDEN behind a
+// first-target antd-overflow failure: tabs that are PRESENT in the DOM at baseline but HIDDEN behind a
 // "…more" panel, so they are discovered PATHLESS and, under first-reveal-wins, would be locked
 // unreachable forever (NOT_VISIBLE with no reveal path to replay).
 //   - Constant URL (`/app`): every state change is in-page, the URL never changes.

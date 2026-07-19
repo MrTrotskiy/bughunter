@@ -4,7 +4,7 @@
 // `fillRevealIfHidden` never backfills its reveal path → NO_INSTANCE on cold replay. The per-act `preVisible`
 // transition (a control NOT visible immediately before this act, visible after → revealed by this act)
 // supersedes it. Tested through mergeSnapshot (fillRevealIfHidden is private) on a KNOWN instance — the
-// rawcaster case (the menuitem was captured in an earlier crawl, so it is not "new" this act).
+// first-target case (the menuitem was captured in an earlier crawl, so it is not "new" this act).
 //
 // FAIL-ON-REVERT: revert `revealedNow` to `inst.hiddenWhenSeen` → the known, first-captured-visible menuitem
 //   never backfills → the "acquired a reveal path" assertion reds.

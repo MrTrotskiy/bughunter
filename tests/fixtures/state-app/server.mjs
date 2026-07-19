@@ -1,6 +1,6 @@
 // Zero-dep fixture for the STATE MODEL / per-instance opener DFS (decisions.md 2026-07-15
 // "whole-site reach"). Models a CONSTANT-URL SPA the depth-1 slice could not crawl — the exact
-// rawcaster failure classes:
+// first-target failure classes:
 //   - Constant URL (`/app`): every nav is an in-page state swap, the URL never changes.
 //   - Nav = 3 buttons that are INSTANCES OF ONE TEMPLATE (`button.nav`, distinct nth-child; names
 //     Alpha/Beta/Gamma). Each swaps #content client-side to reveal a DISTINCT interactive control
@@ -13,7 +13,7 @@
 //     reveal-path chain Gamma -> Create (reason 4). (POST-read openers are covered by modal-app.)
 //   - A background GET /api/poll setInterval runs throughout — the causal-survival guard AT DEPTH-2.
 //   - Gamma also reveals "Choose", a MUTATION opener (POST /choose) whose revealed control must stay
-//     honestly `unreachable` (never replayed) — the rawcaster "choose your community" residual.
+//     honestly `unreachable` (never replayed) — the first target's "choose your community" residual.
 // Revealed markup is injected on click (never in the baseline DOM), so revealed controls are
 // reachable ONLY by replaying the reveal path. `act` controls carry a data-id so Alpha's and Beta's
 // are DISTINCT instances of one template (the instance-level reveal stamp), not one merged slot.

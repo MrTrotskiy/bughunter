@@ -1,5 +1,5 @@
 // Zero-dep fixture for INC.1 framework-id de-fragmentation (decisions.md 2026-07-15 "whole-site
-// reach"). Models the rawcaster identity failure: an Ant Design Tabs bar whose interactive
+// reach"). Models the first target's identity failure: an Ant Design Tabs bar whose interactive
 // controls carry FRAMEWORK-GENERATED ids (`rc-tabs-0-tab-*`) that SHIFT across reloads and,
 // under the pre-INC.1 identity, anchor each tab on its OWN id — so three tabs that are one
 // logical control fragment into THREE templates, and the replay chain that depends on a stable

@@ -5,7 +5,7 @@
 // (which depends on a stable selector across reloads) breaks. INC.1 rejects the framework id as a
 // path anchor AND as a sole-locator, so the tabs collapse to ONE structural template with three
 // addressable instances, each with a stable role+name locator. This is the identity fix behind the
-// antd tabs staying NOT_VISIBLE/NO_INSTANCE on rawcaster.
+// antd tabs staying NOT_VISIBLE/NO_INSTANCE on the first target.
 //
 // Guards:
 //   (a) DE-FRAGMENTATION — the 3 role=tab controls collapse to ONE template with 3 instances

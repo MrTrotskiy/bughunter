@@ -1,5 +1,5 @@
 // Fixture for OVERLAY-AWARE stateful acting (overlay-dismiss.mjs). Models the modal-heavy-app
-// regression the live rawcaster stateful run hit: an act OPENS a full-screen backdrop modal that
+// regression the live target stateful run hit: an act OPENS a full-screen backdrop modal that
 // OBSCURES the base-page siblings, so a raw click on a sibling TIMES OUT (obscured, NOT hidden —
 // Playwright still reports it visible) → mass unreachable → premature drain. Real traffic classes
 // plus the depth-1 modal the fix must STUDY, then CLOSE:

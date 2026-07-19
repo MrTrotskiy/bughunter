@@ -1,4 +1,4 @@
-// Live proof of the PORTAL-DROPDOWN ownership fix (a real rawcaster finding). AntD renders a row's
+// Live proof of the PORTAL-DROPDOWN ownership fix (a real target finding). AntD renders a row's
 // Edit/Delete dropdown as a PORTAL appended to <body>, DETACHED from the post card — so ownsTarget on the
 // delete button finds no marker in its DOM ancestors and fails closed, blocking a LEGITIMATE delete of OWN
 // content. `ownsViaReveal` fixes it: a portal control's ownership is the ownership of its reveal-TRIGGER (the

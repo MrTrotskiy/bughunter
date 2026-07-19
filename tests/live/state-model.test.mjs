@@ -1,5 +1,5 @@
 // Live proof of the STATE MODEL / per-instance opener DFS on a CONSTANT-URL SPA (decisions.md
-// 2026-07-15 "whole-site reach") — the reach the depth-1 slice could not deliver on rawcaster.
+// 2026-07-15 "whole-site reach") — the reach the depth-1 slice could not deliver on the first target.
 // A crawl of the state-app fixture (URL never changes; nav = 3 instances of ONE template, each
 // swapping content client-side) must walk EVERY nav instance and follow a depth-2 reveal chain.
 //

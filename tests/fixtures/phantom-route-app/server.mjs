@@ -1,6 +1,6 @@
 // Zero-dep fixture for GOAL-1 PHANTOM-ROUTE detection (the honest denominator / measurement gate).
 // A CONSTANT-URL SPA — the server returns HTTP 200 + the SAME shell for EVERY path, and client JS
-// routes on location.pathname. This is the rawcaster class: HTTP status can NOT tell a real section
+// routes on location.pathname. This is the first-target class: HTTP status can NOT tell a real section
 // from a phantom, so only the SETTLED URL (redirect?) and the RENDERED SHAPE (client-404?) can.
 //
 // Routes the <nav> a[href] harvest discovers (so harvestRoutes → seedRoutes → visitRoute exercise the
