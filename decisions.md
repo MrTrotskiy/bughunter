@@ -1006,3 +1006,33 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
 - VERIFY (both levers revert-proven): judging overflow on the typed length instead of the accepted length →
   "an enforced limit is not a defect" reds; making `valueForProbe('fill-overflow')` return a fixed long
   string when nothing is declared → "a field that declares nothing is not probed" reds.
+
+### 2026-07-19 — outward-facing acts: the line is the system boundary, not the environment
+
+- CONTEXT: on another user's content `decide()` returned allow=true for "Report Abuse" and "Block User",
+  classified FOREIGN_ADDITIVE — "creates nothing of theirs to lose". That is true of a like and false of a
+  complaint: a report reaches a moderator, nothing downstream undoes it, and unblocking is a separate act
+  the crawler will never perform. The category conflated ADDITIVE-TO-THE-DATA-MODEL with HARMLESS-TO-A-
+  PERSON, and on a live social app the second is what matters.
+- MEASURED, before the fix: the crawler clicked "Report Abuse" and "Block User" dozens of times across three
+  runs and nothing reached a real person ONLY because the confirmation modals were never completed. The
+  probe/episode work removes exactly that accidental protection, which is why this had to land first.
+- CHOSE: the line is the SYSTEM BOUNDARY, not the environment. A dev stand is routinely wired to a real SMTP
+  and a real SMS gateway, so the mail arrives at a real inbox whichever environment sent it. An environment
+  vouches that the application's own data are fixtures; it cannot vouch that outgoing integrations are
+  sandboxed, and the crawler has no way to check.
+- CHOSE: an UNCONDITIONAL refusal at the head of `decide()` — checked before ownership, never lifted by any
+  mode. Whose content the act was launched from does not change where it lands.
+- SCOPE (the operator's decision, recorded because the change first broke an existing test): the guard covers
+  acts aimed at a PERSON (report/block/flag) and channel egress (email/SMS invites). It deliberately does NOT
+  cover payment or real-time calls, which keep firing on the operator's own content — explore-all exists to
+  classify every control by actually firing it, and on a disposable test account a checkout and a call are
+  precisely the controls that mode is for. `tests/unit/explore-policy.test.mjs` already asserts that and
+  stays green; a test in the new file asserts the boundary from the other side, so a later widening cannot
+  quietly re-impose the blanket refusal the mode was built to remove.
+- REJECTED: folding in-app messaging into the class. A direct message is a row in the application's own
+  database and one of the six target user flows — folding it in would cost a flow and protect nobody.
+- REJECTED: gating the refusal on an environment tier (dev/staging/prod). That is precisely the inference
+  being removed: an environment label cannot vouch for a third-party integration.
+- VERIFY (both levers revert-proven): removing the unconditional block reds "Report Abuse must be refused
+  even on foreign content"; widening OUTWARD to a bare send/invite reds "an in-app message is not outward".
