@@ -904,3 +904,32 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
 - UNCHANGED, deliberately: screenshots stay gated behind `BUGHUNTER_VIEW=1` and `/recon` does not
   export it. Logs always, frames only in view mode — the operator's standing instruction. This changes
   what a frame is NAMED, never when one is TAKEN.
+
+### 2026-07-19 — outcome observables: REFUSED and INERT told apart on evidence
+- CONTEXT: an act produced exactly two observations — the requests it caused and the elements it revealed.
+  Everything else was inferred, and the inference that mattered most, "the form was refused by validation",
+  had no evidence behind it. It was asserted across six runs and then measured to be flatly wrong: the
+  submit had never been clicked (INC.6b), so nothing had ever been validated. A verdict nothing can
+  contradict is not a verdict.
+- WHY IT IS COVERAGE, not tidiness: a submit that fired nothing because the page rejected it is a WORKING
+  form we failed to satisfy; one that fired nothing because the control is dead is weight in the
+  denominator. Both scored identically before this.
+- CHOSE: three refusal tiers read most-standard-first — WHATWG constraint validation, then ARIA
+  (`aria-invalid` + `aria-errormessage`), then framework markup (`.ant-form-item-explain-error`). A silent
+  tier costs nothing, and a target that answers on tier 1 needs no framework knowledge at all.
+- CHOSE: a SUCCESS channel (live regions) that stands on its own rather than as a fallback beneath the
+  refusal tiers. MEASURED on the live target: the Create Event form answers on NO refusal tier at all and
+  accepts a completely EMPTY submit with `POST /api/meetings-events -> 201`, returning a real id; its only
+  signal of any kind is a live region reading "Event was successfully created". A target silent on tiers
+  1-3 is normal, not broken. (The empty-accept is also a genuine application bug — the form creates a
+  record from nothing.)
+- CHOSE: `:user-invalid`, NOT `checkValidity()` alone. An empty required field is invalid the instant the
+  page loads, so `checkValidity()` reported a refusal on a page that had said nothing — the exact false
+  inference the module exists to remove. The test caught that. Where the pseudo-class is unsupported the
+  flags still ride, so an older engine loses precision about WHEN, not the reading itself.
+- CHOSE: dismiss dialogs on capture rather than merely record them — an unhandled `confirm()` blocks every
+  subsequent command and would freeze the crawl.
+- REJECTED: inferring refusal from "no requests fired". That IS the six-run inference, and it cannot tell a
+  rejected form from a dead control; `wasRefused` requires the page to have SAID something, and restoring
+  the fallback is the module's own fail-on-revert lever.
+- NOT WIRED: nothing consumes this yet. It is the observation surface the probe battery will read.
