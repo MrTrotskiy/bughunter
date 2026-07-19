@@ -1173,3 +1173,30 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
 - REJECTED: CDP `DOMDebugger.getEventListeners` as a static inertness proof. React 17+ attaches handlers at
   the root container, so a live control has ZERO own listeners; absence proves nothing, and the traversal is
   subtree-only so an ancestor chain costs one call per ancestor.
+
+### 2026-07-19 — three headline numbers, audited and two of them wrong
+- An independent audit of run probe9 was asked to REFUTE my claims rather than confirm them. Two fell.
+- REFUTED: "act failures fell from 23/116 to ~1/30". Measured like-for-like the rate ROSE: probe8 23/119
+  (19.3%) → probe9 20/87 (23.0%). I had compared the best window of one run against the whole-run average
+  of the other. The click-timeout class — the only one `clickIntercepted` can affect — genuinely halved
+  (9.2% → 4.6%); ALIAS_COLLISION nearly doubled (5.0% → 12.6%) and my headline hid the worsening defect
+  behind the improving one. The lesson is the same one this project keeps relearning: a ratio quoted
+  without its denominator's history is not a measurement.
+- REFUTED: "field acts record `fill-valid` by FACT". The SELF-fill path was fixed; the BATCHED path mints
+  its rows from `prefill`, the INTENTION array `fieldsFor` builds by reading the DOM before anything is
+  typed, and never consults `actuateAll`'s returned `{attempted, actuated, skipped[]}`. probe8 held exactly
+  one field that failed to actuate (tpl 341 "Post Ad", attempted 1 / actuated 0) and it produced no
+  NOT_FILLABLE row. Fixed — but it was found by an audit, not by the fix that was written for this exact
+  bug one function away.
+- CONFIRMED exactly: the alias gate fired 6× in probe8, 4 of them resolving `via: selector` rather than the
+  text fallback.
+- QUALIFIED: "63% of touched elements reach L3+" is 62.9% and true, but the ratio rose because the
+  denominator collapsed faster than the numerator (probe8 52/96, probe9 39/62 — fewer elements understood in
+  absolute terms), and 31 of the 39 reached L3+ on a SINGLE probe row, because a non-field's whole battery
+  is `['click']`.
+- THE FINDING THAT MATTERS MOST, and it is not about the metric: 84 routes discovered, 58 pending, **0
+  visited**. The stateful run never left /dashboard and two /viewprofile pages, so four of the six target
+  user flows could not physically progress. The route frontier drains in the node-loop path and does not in
+  this one.
+- Also surfaced: `PATCH /api/groups/:param/pause-status -> 200`, the run's one unambiguous successful
+  mutation, is classified `read` by `classifyEndpoint`.
