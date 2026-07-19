@@ -32,6 +32,18 @@ test('a click alone is not understanding', () => {
   assert.equal(levelOf(node, one), 'L3',
     'a button owes only a click, so one recorded outcome completes its battery');
 
+  // THE EVIDENCE GATE. `inert` means the page did nothing observable — no request, no reveal, no
+  // navigation, and it said nothing. Calling that CHARACTERIZED re-imports "clicked once and did not
+  // throw" one rung higher, and it is indistinguishable from an act recorded against a control that was
+  // never actually clicked. Measured: 52 of 118 elements at L3+ had only inert rows — 22 points of the
+  // headline. A row with no verdict, or one recording that the act threw, is not a completed probe either.
+  assert.equal(levelOf(node, [{ kind: 'click', verdict: 'inert' }]), 'L2',
+    'a click that produced nothing observable is EXERCISED, never CHARACTERIZED');
+  assert.equal(levelOf(node, [{ kind: 'click' }]), 'L2', 'a row with no verdict completes nothing');
+  assert.equal(levelOf(node, [{ kind: 'click', verdict: 'error' }]), 'L2', 'an act that threw completes nothing');
+  assert.equal(levelOf(node, [{ kind: 'click', verdict: 'inert' }, { kind: 'click', verdict: 'inert' }]), 'L2',
+    'and two inert rows are not a reproduced outcome — they are two absences');
+
   // A field owes more, and one probe is nowhere near enough.
   const field = { role: 'textbox', name: 'Title', fieldFacts: { maxLength: 50, required: true } };
   assert.deepEqual(batteryFor(field), ['fill-valid', 'fill-overflow', 'fill-empty'],
@@ -54,8 +66,14 @@ test('a refused act is not inert — the distinction that did not exist', () => 
   assert.equal(verdictOf({ requests: [{ class: 'write' }] }), 'write');
   assert.equal(verdictOf({ requests: [{ class: 'read' }] }), 'read');
   assert.equal(verdictOf({ requests: [], revealed: 3 }), 'reveal');
-  assert.equal(verdictOf({ requests: [{ class: 'write' }], navigated: true }), 'navigate',
-    'navigation is the more specific fact when both happened');
+  // WRITE BEATS NAVIGATE, and the old precedence was backwards. A successful submit normally redirects, so
+  // post-redirect-get is the ordinary shape of the very thing this tool exists to find — ranking navigation
+  // first discarded the mutation from the verdict. Measured on the live graph: 2 of 4 navigate rows carried
+  // a write, and a wider audit put it at 10 of 20.
+  assert.equal(verdictOf({ requests: [{ class: 'write' }], navigated: true }), 'write+navigate',
+    'a submit that redirects is a WRITE that also navigated, not a navigation');
+  assert.equal(verdictOf({ requests: [{ class: 'read' }], navigated: true }), 'navigate',
+    'navigation still wins when nothing was written');
   assert.equal(verdictOf({ error: 'timeout' }), 'error');
   // The success channel stands alone: on the live target a form answered on no validation tier at all and
   // announced itself only through a toast.
