@@ -1060,3 +1060,105 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
 - REJECTED: improving the name heuristics. There is nothing to improve against — the names are absent, not
   ambiguous. This is the same lesson as the endpoint classifier: when the signal is not there, say so and
   find a different signal, rather than tuning a regex against a wall.
+
+### 2026-07-19 — the act is the measurement: filling fields, and clearing the way before clicking
+- MEASURED, mid-run on the live graph: 27 elements stranded at L2 EXERCISED. Their outstanding probes split
+  `fill-valid` 14, nothing-owed-but-no-evidence 13. The 14 were FIELDS handed to the loop as act targets and
+  given a bare CLICK — an obligation `probe-kinds.mjs satisfies()` deliberately refuses to let a click
+  discharge, and is right to: clicking a textbox teaches nothing about what it accepts.
+- CHOSE: when the target IS a field, the act is a FILL. `stateful-step` derives a value from the field's own
+  declared facts and passes it to the existing `actStep` `fill` option; `kindOf` records `fill-valid`.
+  Measured effect: field probe rows went from 2 `click` to 11 `fill-valid` on the next run, then 28 at scale,
+  and L2 fell 27 → 5.
+- CHOSE: the target's fill moved INSIDE the causal window. On a search box the whole observable is the
+  keystroke-triggered debounced XHR; the subsequent click fires nothing. With the fill outside the window
+  that request had no open cause, so every search field on the target recorded `inert` — the field was doing
+  its job and we were looking away while it did it. `prefill` (auxiliary fields for a DIFFERENT element's
+  commit) stays outside: that is setup, not the measurement.
+- CHOSE: `fillTarget` actuates TYPED, via `actuationKindFor`. `handle.fill()` is defined for input/textarea
+  only, so a radio / antd Select / picker / file input silently took the sibling-input branch and filled some
+  unrelated field nearby.
+- REJECTED (this was my own lead, and the evidence refuted it): building a field→commit-control oracle so a
+  field's battery could be committed. Census of the live graph: 64 field templates, 9 declare maxLength,
+  ZERO declare required, ZERO declare pattern/range. `batteryFor` only owes a boundary probe where the field
+  DECLARES a boundary, so the battery needs essentially no commits — a commit-finder would have served an
+  obligation that does not exist. Verified independently on /post_ad: 13 `.ant-form-item`, zero
+  `.ant-form-item-required`, zero native `required`, zero `aria-required`. The application genuinely declares
+  no required fields, which is also why its empty submits go through.
+- REJECTED: widening the name-based prefill gate (`looksLikeSubmit`) structurally, for now. The reviewer
+  showed it reaches another user's card in explore-all OUTSIDE the restore bracket — `fieldsFor` ascends up
+  to 6 ancestors and falls back to `body`, while `needsRestore` is decided by NAME, so an unnamed icon in a
+  foreign card would overwrite an inline textarea with no rollback journalled. Needs an item-boundary clamp
+  before it can land.
+
+### 2026-07-19 — a failure to ASK is not an answer
+- MEASURED: a field owes three probes; the first commit closes its modal; probes two and three return
+  NO_INSTANCE. With one undifferentiated blocked bucket `outstanding` empties, `terminal` reads
+  CHARACTERIZED, and the element scores L3 UNDERSTOOD having answered one probe of three.
+- CHOSE: `TRANSIENT_BLOCKS` (NO_INSTANCE / NOT_VISIBLE / ACT_FAILED / CONTAINER_CLOSED / ALIAS_COLLISION)
+  discharge nothing. Everything else is a terminal fact — a readonly field really is unfillable, a policy
+  refusal really is permanent — and those discharge while staying NAMED in the blocked list.
+- CHOSE: BLOCKED means unprobeable, not "we failed". An element whose every row is a transient failure is
+  L1 REACHED, not L-1 BLOCKED. Measured: 14 elements whose acts merely threw were being listed to the
+  operator as controls that cannot be probed at all — a fixable gap presented as a permanent ceiling. The
+  denominator is identical either way; what changes is whether the run admits it owes another attempt.
+
+### 2026-07-19 — clear the way before clicking, not after failing
+- MEASURED in run probe7: 17 of 48 acts died on `elementHandle.click: Timeout 5000ms` with the call log
+  naming `<div class="ant-modal-wrap ant-modal-centered"> ... intercepts pointer events`. A third of the run
+  was spent waiting five seconds at a time to be told a control was behind an open modal.
+- ROOT CAUSE: `dismissBlockingOverlay` existed and was correct, but ran only AFTER a click had already
+  failed. The ordinary cost of an open modal was therefore a full timeout per obscured control, and when the
+  dismiss then changed nothing the control was written off as unreachable.
+- CHOSE: `clickIntercepted(page, handle)` — ask the page, before acting, whether anything would intercept a
+  click at the target's centre, using `document.elementFromPoint`: the same hit-test the browser itself
+  performs. If intercepted, dismiss first. A target INSIDE the overlay is NOT intercepted (`contains`), so
+  studying a modal's own contents keeps working unchanged.
+- WHY NOT A SELECTOR LIST: the existing dismiss is a curated list of framework overlay classes, which is
+  fine for CLOSING but wrong for DETECTING — it can only see overlays someone remembered to enumerate. The
+  hit-test is framework-agnostic by construction, which matters because this tool is not for one site.
+- MEASURED effect: interception failures fell from 17/48 (35%) to 7/116 (6%); L-1 fell 15 → 4.
+- The post-failure dismiss+retry stays as the backstop for what the pre-check cannot foresee.
+
+### 2026-07-19 — two instances must never be credited from one node
+- MEASURED in run probe6: template 392, instance keys 05..11 — seven separate acts, seven instances
+  credited, every one reporting the IDENTICAL rect {x:693,y:383,w:48,h:28}. Stale positional selectors sent
+  `resolveHandle` to its `getByText` fallback, which returned the same first-visible node every time. One
+  control clicked seven times, written into the graph as knowledge about seven different controls — and
+  under explore-all, seven real interactions with the operator's live stand.
+- WHY IT SURVIVED: identity was only ever checked at the SELECTOR layer, and two selectors resolving to one
+  node is exactly what a selector-layer check cannot see. The node itself had to be asked.
+- CHOSE: `lib/recon/act-alias.mjs` — claim the resolved node with a non-enumerable expando before the click.
+  A second actor landing on a claimed node throws ALIAS_COLLISION; the same actor re-claims freely, because
+  an overlay retry and an L4 reproduction probe both legitimately re-act one instance.
+- WHY AN EXPANDO: dom-snapshot builds identity from tagName / id / classList / attributes / computed style /
+  rects / textContent. A non-enumerable JS property appears in NONE of them, so the mark cannot perturb the
+  graph's identity — a marker that leaked into identity would be strictly worse than the bug it fixes, and
+  the test asserts its absence from every one of those channels. Expandos also die with the node, so a
+  genuinely re-rendered element arrives unstamped and there is no false positive.
+- CHOSE: a collision is TRANSIENT, never a verdict. It means the identity of what we clicked is UNPROVEN,
+  not that the control is dead — so the obligation stays owed. A virtualized list recycling one DOM node for
+  a different logical row lands here too, and lands correctly: we genuinely cannot tell those apart from the
+  node alone, and saying so is the honest answer.
+- MEASURED: fired 6 times in the next run — and 4 of those resolved `via: selector`, not the text fallback.
+  The forensics had attributed the fault to the text fallback alone; stale positional selectors alias too.
+- REJECTED: rect-collision detection as the runtime oracle. It is what FOUND the bug and it stays useful in
+  trail review, but it is a proxy for node identity when node identity is directly readable, and two
+  genuinely distinct controls can share a rect across time in a re-rendering list.
+
+### 2026-07-19 — what the literature does and does not offer (research + design agents, reconciled)
+- ASKED two agents independently and they DISAGREED on the central fact: whether the batched field-credit
+  path produces any rows at all. Verified against the artifact rather than choosing a side — the live graph
+  held 6 `batched-with-submit` and 6 `fill-valid` rows, so the mechanism works and the reviewer was right;
+  the bottleneck is the gate firing 7 times in 122 acts, not a dead join.
+- RESEARCH FINDING: no academic system publishes "fraction of interactive elements characterized". Reported
+  SPA numbers (~50-58%) are CODE coverage, a different denominator — 90% of elements is compatible with ~50%
+  of branches. So the 90% goal is not refuted by that ceiling, but our denominator is our own construction
+  and must not become self-referential; that is what the honest-denominator invariant is for.
+- REJECTED: CDP `Profiler.startPreciseCoverage` as an "did application code run on this click" oracle. It
+  forces V8 to run the page deoptimized for the whole run, `callCount:false` makes an already-run handler
+  invisible, and the signal is a delta over a time interval — admissible only in the refutation direction,
+  which on a React SPA with schedulers and polls is never observed.
+- REJECTED: CDP `DOMDebugger.getEventListeners` as a static inertness proof. React 17+ attaches handlers at
+  the root container, so a live control has ZERO own listeners; absence proves nothing, and the traversal is
+  subtree-only so an ancestor chain costs one call per ancestor.
