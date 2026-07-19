@@ -970,3 +970,39 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
 - VERIFY (both levers revert-proven): make `levelOf` return L3 on `node.explored` — the old behaviour —
   → "a click alone is not understanding" reds; make `verdictOf` ignore refusal → "the page said no: a
   working control we failed to satisfy" reds.
+
+### 2026-07-19 — the probe battery: a field probe is a transaction, not a touch
+
+- CONTEXT: a field answers NOTHING on its own. Typing 51 characters into a field that declares a 50-character
+  limit produces no request, no error, no observable of any kind. The answer exists only after a COMMIT — the
+  form is submitted and the page either refuses, or accepts and thereby reveals that the declared limit was
+  never enforced. That is why the previous model could never learn what a field accepts: it clicked fields as
+  though they were buttons, and 37 of 53 such acts were inert BY CONSTRUCTION.
+- CHOSE: a field probe is a TRANSACTION (fill → commit → read), never a touch. `probeField` sets the value,
+  runs the commit, then reads the page's answer through the outcome observables.
+- CHOSE: the commit is INJECTED by the caller (`actStep`), never opened here. The ONE causal window stays
+  where it has always been, so this module cannot open a second one; fills run under `__idle__` as setup, and
+  the module never mutates the graph — it returns probe rows and lets the caller record them.
+- CHOSE: probes are derived from DECLARATIONS, never blind. `valueForProbe` returns null where the field
+  declares nothing, so the caller skips rather than inventing an input. A declaration is a PREDICTION and a
+  prediction can be falsified; this is also what keeps the battery affordable — one probe per declared
+  constraint instead of a fixed matrix over every element.
+- CHOSE (the most important line here, and a NEGATIVE result): the boundary verdict is judged on what the
+  field actually HELD, read back after the fill — never on what was TYPED. Measured live: "Meeting Title"
+  declares maxLength 50, the probe typed 51, and the browser TRUNCATED to 50 natively — the constraint works.
+  The first version compared the ATTEMPTED length against the declaration and would have reported a boundary
+  violation against a field that enforced its limit perfectly. A probe that invents defects is worse than no
+  probe: every false finding costs a human the time to disprove it, and enough of them make the whole report
+  untrustworthy.
+- REJECTED: judging the boundary on the typed length. It is the false-finding direction, and it fires on
+  every correctly-implemented maxLength field in the target — the failure mode that would discredit the tool
+  fastest, since the reports it poisons are the tool's only output.
+- REJECTED: a blind overflow probe on a field that declares nothing. With no prediction there is no answer to
+  check against, so the number produced would mean nothing. (The declaration-derivation choice, stated as the
+  lever that guards it.)
+- REJECTED: throwing when a field refuses the fill. A readonly input or a disabled control is a FACT about
+  the field — recorded as `blocked: NOT_FILLABLE`, not raised as an exception.
+- NOT WIRED: nothing in the crawl calls this yet. This is the instrument, not the switch-over.
+- VERIFY (both levers revert-proven): judging overflow on the typed length instead of the accepted length →
+  "an enforced limit is not a defect" reds; making `valueForProbe('fill-overflow')` return a fixed long
+  string when nothing is declared → "a field that declares nothing is not probed" reds.
