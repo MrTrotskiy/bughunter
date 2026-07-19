@@ -1070,11 +1070,22 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   declared facts and passes it to the existing `actStep` `fill` option; `kindOf` records `fill-valid`.
   Measured effect: field probe rows went from 2 `click` to 11 `fill-valid` on the next run, then 28 at scale,
   and L2 fell 27 → 5.
-- CHOSE: the target's fill moved INSIDE the causal window. On a search box the whole observable is the
-  keystroke-triggered debounced XHR; the subsequent click fires nothing. With the fill outside the window
-  that request had no open cause, so every search field on the target recorded `inert` — the field was doing
-  its job and we were looking away while it did it. `prefill` (auxiliary fields for a DIFFERENT element's
-  commit) stays outside: that is setup, not the measurement.
+- CHOSE: the target's fill moved INSIDE the causal window, so a request the TYPING causes has an open cause
+  to be attributed to. `prefill` (auxiliary fields for a DIFFERENT element's commit) stays outside: that is
+  setup, not the measurement.
+- CORRECTION, measured after the fact and recorded because the original claim was wrong: this does NOT
+  recover a search box's request, and the first version of this entry said it did. Run probe9, template 3
+  "Search Rawcaster": `fill-valid` is now discharged, and the verdict is still `inert`. A genuinely DEBOUNCED
+  request is rooted in a `setTimeout`, and the CDP initiator classifier rejects timer-rooted fires by design
+  — correctly, since that rejection is the invariant protecting the whole attribution model. Moving the fill
+  inside the window is right for a synchronous `oninput` fetch and is right on principle (the fill IS part of
+  the act), but the search-box case it was argued from is not evidence for it.
+- WHAT THE FIELDS ACTUALLY SHOW, and it is the design's own point restated: 4 of the remaining L2 elements
+  are textboxes that were filled successfully and observed NOTHING. `probe-battery.mjs`'s header says it
+  outright — a field answers nothing on its own; the answer exists only after a COMMIT. So the residual is
+  not a fill problem at all, and the next mechanism is a local read (fill → blur → readOutcome scoped to the
+  field's own form item), which research confirmed from AntD source is answerable without any submit
+  (`validateTrigger` defaults to `onChange`).
 - CHOSE: `fillTarget` actuates TYPED, via `actuationKindFor`. `handle.fill()` is defined for input/textarea
   only, so a radio / antd Select / picker / file input silently took the sibling-input branch and filled some
   unrelated field nearby.

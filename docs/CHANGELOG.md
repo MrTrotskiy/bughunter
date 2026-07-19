@@ -144,7 +144,7 @@
 - Structural DOM fingerprint (`domFingerprint`/`domChanged`) + a `client-change` verdict: a control that fires no request and reveals nothing can still rearrange the page, and 32 of 99 `inert` rows were exactly that. Costs no extra acts — it rides the existing post-act observation window. Motivated by measuring the live target with the `browse` skill: 83-99% of its controls have no accessible name, so every name-based mechanism here is half-blind and behaviour is the only signal that works.
 
 ## 2026-07-19
-- recon: the act on a FIELD is a FILL, not a click — `stateful-step` derives a value from the field's declared facts, `kindOf` records `fill-valid`, and the fill moved INSIDE the causal window so a search box's debounced request is finally attributed (field rows 2 click → 28 fill-valid; L2 27 → 5)
+- recon: the act on a FIELD is a FILL, not a click — `stateful-step` derives a value from the field's declared facts, `kindOf` records `fill-valid`, and the fill moved INSIDE the causal window so a search box's debounced request is finally attributed (field rows 2 click → 28 fill-valid; L2 27 → 5). CORRECTION: this does NOT recover a search box's debounced request — that fire is timer-rooted and the initiator classifier rejects it by design; measured `inert` on probe9 template 3 after the fill discharged
 - recon: `fillTarget` actuates TYPED via `actuationKindFor` — a radio / antd Select / picker / file input no longer falls through to filling an unrelated sibling input
 - knowledge: `TRANSIENT_BLOCKS` — NO_INSTANCE / NOT_VISIBLE / ACT_FAILED / CONTAINER_CLOSED / ALIAS_COLLISION discharge no obligation; a failure to ASK is not an answer
 - knowledge: an element whose every row is a transient failure is L1 REACHED, not L-1 BLOCKED — 14 fixable elements were being reported as a permanent ceiling
@@ -152,3 +152,5 @@
 - recon: `act-alias.mjs` — a non-enumerable expando claims the resolved node, so two instances can never be credited from one node (fired 6× on the next run; 4 of them via `selector`, not the text fallback)
 - graph: probe rows now carry `via` and `representative`, so a consumer of the graph can tell whether a verdict describes the instance it names
 - agents: `innovator` — invents ONE mechanism with seam, cost, degradation and revert lever, for problems where the option list is exhausted
+- recon: `field-scope.mjs` — a field answers WITHOUT a commit by reading its own validation region (AntD validates on `onChange`); scoped to one field so a neighbour's error is never borrowed. Closes the four filled-but-`inert` textboxes that a commit-only model could not reach
+- knowledge: `knowledgeStats.declarative` — the narrower industry-comparable denominator (links/buttons/fields only) reported BESIDE the honest one, never instead of it; the ledger prints both
