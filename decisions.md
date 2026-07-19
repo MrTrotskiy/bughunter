@@ -1036,3 +1036,27 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   being removed: an environment label cannot vouch for a third-party integration.
 - VERIFY (both levers revert-proven): removing the unconditional block reds "Report Abuse must be refused
   even on foreign content"; widening OUTWARD to a bare send/invite reds "an in-app message is not outward".
+
+### 2026-07-19 — the target does not name its controls, and every name-based mechanism is half-blind on it
+- MEASURED by going to the site with the `browse` skill, authenticated, page by page:
+  /dashboard 227 elements / 2 named (1%) · /post_ad 84 / 9 (11%) · /selectinfluencers 24 / 3 (13%) ·
+  /profile 60 / 10 (17%) · /setting 9 / 2 (22%). So 83-99% of controls carry NO accessible name.
+- CONSEQUENCE, and it explains a long run of separate-looking failures as one thing: every mechanism in
+  this project that judges by NAME is working blind here. `dangerFloor` refused 0 of 33 openers — not
+  because they were safe but because it has no resolving power on unnamed controls. `looksLikeSubmit`
+  recognises 14 controls out of hundreds. 23 of 59 fields have no label. A third of all templates are
+  `role=generic` — a bare div with a click handler. The mutation-vs-read judgment by control name is
+  unanswerable here in principle, not merely difficult.
+- CHOSE: lean on BEHAVIOUR, which is nameless by nature. A probe row records what the act DID — requests
+  with their status, revealed templates, navigation, what the page said, and now a structural DOM
+  fingerprint. An unnamed div that fires POST /addnuggets and announces "created" is fully characterized
+  even though we never learn what it is called.
+- CHOSE: `domFingerprint` / `domChanged` (lib/browser/observables.mjs) + a `client-change` verdict. A
+  control that fires no request and reveals no template can still rearrange the page — a tab, an accordion,
+  a filter, a toggle. Measured: 32 of 99 `inert` rows were exactly that, scored identically to dead surface.
+  The digest is text-free and attribute-free like `contentSig`, because a live feed rewrites its text on
+  every act and a text-sensitive digest would report a change every time and mean nothing.
+- COSTS ZERO ACTS: it rides inside the observation window that already exists after each act.
+- REJECTED: improving the name heuristics. There is nothing to improve against — the names are absent, not
+  ambiguous. This is the same lesson as the endpoint classifier: when the signal is not there, say so and
+  find a different signal, rather than tuning a regex against a wall.
