@@ -107,15 +107,51 @@ test('blocked stays in the denominator, named', () => {
 
 test('a partially blocked element still owes what remains', () => {
   const field = { role: 'textbox', name: 'Title', fieldFacts: { maxLength: 50, required: true } };
+  // NOT_FILLABLE is a TERMINAL fact about the field — a readonly input really cannot take a value, so the
+  // obligation is legitimately discharged and stays named in `blocked`.
   const probes = [
     { kind: 'fill-valid', verdict: 'write' },
-    { kind: 'fill-overflow', blocked: 'NO_INSTANCE' },
+    { kind: 'fill-overflow', blocked: 'NOT_FILLABLE' },
   ];
   assert.equal(levelOf(field, probes), 'L2',
     'one probe blocked does not write the element off — fill-empty is still owed');
   const st = probeStatus(field, probes);
   assert.deepEqual(st.outstanding, ['fill-empty']);
   assert.equal(st.terminal, null, 'not terminal while anything is still attemptable');
+});
+
+// FAIL-ON-REVERT: delete TRANSIENT_BLOCKS from probeStatus and this goes red — the element reads
+// CHARACTERIZED/L3 on ONE answered probe out of three.
+//
+// THE FAILURE IT GUARDS. A field owes three probes. The first commit closes the modal it lived in, so
+// probes two and three come back NO_INSTANCE — we never got to ask. With one undifferentiated blocked
+// bucket, `outstanding` empties, `terminal` reads CHARACTERIZED, and the element scores L3 UNDERSTOOD
+// having answered a third of its battery. That inverts the honest-denominator invariant at its most
+// dangerous point: a failure to measure counted as a measurement, and it inflates the headline silently
+// because nothing in the output distinguishes it from a field that genuinely answered.
+test('a failure to ASK is not an answer — transient blocks keep the obligation standing', () => {
+  const field = { role: 'textbox', name: 'Title', fieldFacts: { maxLength: 50, required: true } };
+  const probes = [
+    { kind: 'fill-valid', verdict: 'write' },
+    { kind: 'fill-overflow', blocked: 'NO_INSTANCE' },  // the modal closed under us
+    { kind: 'fill-empty', blocked: 'ACT_FAILED' },      // the click threw
+  ];
+  const st = probeStatus(field, probes);
+  assert.deepEqual(st.outstanding, ['fill-overflow', 'fill-empty'],
+    'neither was answered, so both are still owed');
+  assert.equal(st.terminal, null, 'nothing is terminal — we simply have not asked yet');
+  assert.equal(levelOf(field, probes), 'L2',
+    'one of three answered is EXERCISED; calling it CHARACTERIZED would be a fabricated number');
+
+  // And the other direction: a TERMINAL code really does discharge, or every readonly field would be
+  // permanently incomplete and the denominator could never close.
+  const readonly = [
+    { kind: 'fill-valid', verdict: 'write' },
+    { kind: 'fill-overflow', blocked: 'NOT_FILLABLE' },
+    { kind: 'fill-empty', blocked: 'NOT_APPLICABLE' },
+  ];
+  assert.equal(probeStatus(field, readonly).terminal, 'CHARACTERIZED',
+    'the field answered what it could and declared the rest impossible');
 });
 
 test('CONFIRMED needs the outcome seen twice, or a write read back', () => {
@@ -126,4 +162,19 @@ test('CONFIRMED needs the outcome seen twice, or a write read back', () => {
     'reproduced twice the same way');
   assert.equal(levelOf(node, [{ kind: 'click', verdict: 'write', confirmedByReadBack: true }]), 'L4',
     'or verified by reading the created thing back');
+});
+
+// A collision leaves the obligation standing — it is a failure to ASK, not an answer. Pure, so it
+// lives here rather than in the live alias test (layer rule).
+// FAIL-ON-REVERT: remove 'ALIAS_COLLISION' from TRANSIENT_BLOCKS -> the battery discharges and this reds.
+test('a collision leaves the obligation standing — it is a failure to ASK, not an answer', () => {
+  // (4) A field whose act aliased onto another instance's node learned NOTHING about itself. Discharging
+  // its battery here would credit one control's behaviour to another — the same confusion the gate exists
+  // to prevent, laundered through the ladder.
+  const field = { role: 'textbox', name: 'Search', fieldFacts: { maxLength: 75 } };
+  const probes = [{ kind: 'fill-valid', blocked: 'ALIAS_COLLISION' }];
+  const st = probeStatus(field, probes);
+  assert.deepEqual(st.outstanding, ['fill-valid', 'fill-overflow'],
+    'nothing was answered, so everything is still owed');
+  assert.equal(st.terminal, null, 'not terminal — we never got to ask');
 });
