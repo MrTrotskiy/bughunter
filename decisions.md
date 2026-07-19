@@ -1219,3 +1219,27 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   the loop's termination strategy, and `remaining === 0` is the honest terminator, so a careless
   interleave could either spin or declare drained early. It wants its own increment with a
   fail-on-revert test for termination.
+
+### 2026-07-19 — the tool was overfit to its first target, and a second application proved it in one run
+- The operator warned repeatedly that this must not become a tool for one site. The first crawl of a second
+  application (a local React/TanStack/shadcn-Radix CRM, source available) measured it: **59 of 91 acts
+  failed, 55 of them on overlay interception** — against 23% total failures on the original target.
+- ROOT CAUSE: every overlay mechanism was shaped like AntD. Radix does not put a `.ant-modal-wrap` in the
+  DOM; an open dialog sets `pointer-events: none` on the BODY. `overlaySignature` counts curated overlay
+  CLASSES, so it read 0, and `dismissBlockingOverlay` took its `if (before === 0) return false` early exit —
+  never even pressing Escape, the one affordance that would have worked on both frameworks.
+- CHOSE: when the caller supplies the blocked handle, the HIT-TEST governs both the decision to dismiss and
+  the verdict on whether it worked; the curated list is demoted to deciding what to CLICK in order to close.
+  A curated list and a direct measurement disagreeing is always the list's problem.
+- THE SECOND BUG, and it is the more instructive one: writing the test for the Radix shape turned it red on
+  `clickIntercepted` — the hit-test built EARLIER THE SAME DAY. It allowed any ancestor to be "a wrapper
+  receiving the click on the element's behalf", and since `<html>` contains everything, that clause
+  swallowed precisely the case Playwright reports as `<html …> intercepts pointer events`. The new
+  mechanism was blind to the same shape by a different route. Fixed by treating `<html>`/`<body>` as always
+  an interception.
+- MEASURED after both fixes, same target, same seed: act failures **65% → 13%**, overlay interceptions
+  **55 → 0**, ladder 31.9% → 41.2%, and 85% of TOUCHED elements understood. `rejected` appeared 20 times —
+  this application actually validates its inputs, where the first target declared no required field at all,
+  so the field-probe work only became visible on the second target.
+- LESSON, worth more than the fix: a mechanism validated on one application is a hypothesis, not a
+  capability. Both defects were invisible to 308 passing tests and to every audit of the first target.
