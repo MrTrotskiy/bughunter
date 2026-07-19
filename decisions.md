@@ -1200,3 +1200,22 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   this one.
 - Also surfaced: `PATCH /api/groups/:param/pause-status -> 200`, the run's one unambiguous successful
   mutation, is classified `read` by `classifyEndpoint`.
+
+### 2026-07-19 — the real coverage ceiling is breadth, not depth (identified, NOT yet fixed)
+- MEASURED on run probe10: `routeFrontierStats` = discovered 86, **visited 5**, pending 58, unreachable 23.
+  The graph holds elements from FIVE pages: /dashboard, /post_ad and three /viewprofile instances.
+  /setting, /profile, /groups, /events and /chats were discovered and never opened.
+- ROOT CAUSE: `stateful-loop` drains the CURRENT route completely before it reaches the branch that pulls
+  from the pending-route queue (`nextPendingRoute`, ~line 282). /dashboard alone still had 41 unexplored
+  controls, so that branch is never reached and 58 pages wait forever behind it. `MAX_BACKTRACKS` bounds it
+  further. The queue is not missing — it is starved by a depth-first strategy.
+- WHY IT MATTERS MORE THAN THE L2 BUCKET, which is where the session's effort went: every knowledge
+  percentage is computed over a denominator built almost entirely from ONE page. Converting the remaining
+  L2 elements moves the number a few points; opening 58 unvisited pages changes what the number is ABOUT.
+  It is also why four of the six target user flows have never progressed — they live on pages the crawl has
+  not reached, so no probe fix could ever have completed them.
+- NEXT: interleave rather than deepen — bound the acts spent on one route before visiting a pending one,
+  so breadth and depth share the budget. Deliberately NOT attempted at the end of this session: it changes
+  the loop's termination strategy, and `remaining === 0` is the honest terminator, so a careless
+  interleave could either spin or declare drained early. It wants its own increment with a
+  fail-on-revert test for termination.
