@@ -38,8 +38,17 @@ test('telemetry is never an application write', () => {
   assert.equal(classifyEndpoint({ method: 'POST', urlPattern: 'https://www.google-analytics.com/j/collect' }), 'telemetry');
 });
 
-test('a verbless non-GET is a write, but reported as a fallback guess', () => {
-  assert.equal(classifyEndpoint({ method: 'POST', urlPattern: '/rawcaster/community_dropdown' }), 'write');
+test('a verbless non-GET is a GUESS, and says so in its own class', () => {
+  // `write-unnamed`, not `write`. On a target that reads over POST this fallback is where most READS land:
+  // measured after wiring the classifier into probe rows, 28 acts recorded `write` and two or three were
+  // real — `nuggetcontentaudio` (text-to-speech), `texttoaudio`, `influencerlist` all arrived by this path.
+  // And so did `contactus`, which genuinely does write. From the name alone they are indistinguishable, so
+  // the honest answer is a separate class rather than a confident guess in either direction. This repeats a
+  // failure already on record ("18 write endpoints, the truthful count was ONE") and takes the same fix:
+  // surface the guess as a guess, and let a caller that needs certainty confirm by reading state back.
+  assert.equal(classifyEndpoint({ method: 'POST', urlPattern: '/rawcaster/community_dropdown' }), 'write-unnamed');
+  // The report contract is unchanged: a fallback guess still counts toward the write SURFACE, and is still
+  // listed separately so the operator knows how much of that surface was guessed.
   const out = classifyEndpoints([
     { method: 'POST', urlPattern: '/rawcaster/community_dropdown' },
     { method: 'POST', urlPattern: '/rawcaster/updateusersettings' },
