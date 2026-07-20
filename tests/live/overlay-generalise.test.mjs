@@ -1,7 +1,7 @@
 // THE OVERLAY CLOSER MUST NOT BE SHAPED LIKE ONE FRAMEWORK.
 //
 // THE MEASURED FAILURE, and it is the first time this tool met a second application. Every overlay
-// mechanism here was built against an AntD target. The new target is Radix/shadcn, where an open dialog
+// mechanism here was built against one component library. Another library's dialog instead
 // does NOT put a matching `.ant-modal-wrap` in the DOM — it sets `pointer-events: none` on the BODY. So
 // `overlaySignature`, which counts elements matching a curated class list, read 0; `dismissBlockingOverlay`
 // took its `if (before === 0) return false` early exit; and it never even pressed Escape, which is the one

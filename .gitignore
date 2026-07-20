@@ -14,6 +14,9 @@ docs/draft/
 # Local test file — targets + live credentials, never commit
 test.md
 
+# Personal Claude Code memory backups — never commit, personal data
+claude-memory-backup-*.zip
+
 # Per-TARGET rigs — stand setup, session minting, source-derived answer keys for a specific
 # application under test. Kept OUT of git deliberately: the tool must carry no trace of any one
 # customer's app, and a target-shaped script in the repo is how a general tool quietly becomes a
