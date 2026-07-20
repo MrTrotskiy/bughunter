@@ -1,186 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="background:#0a0a0a;color-scheme:dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>bughunter · Phase-1 debug</title>
 <style>
-  :root {
-    --bg: #0e1117; --panel: #161b22; --panel2: #1c2330; --line: #2a3240;
-    --fg: #e6edf3; --dim: #8b949e; --accent: #58a6ff; --good: #3fb950;
-    --warn: #d29922; --bad: #f85149; --mut: #6e7681;
-  }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-         background: var(--bg); color: var(--fg); display: flex; flex-direction: column; overflow: hidden; }
-  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  button, select { background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
-                   border-radius: 6px; padding: 4px 9px; font-size: 12px; cursor: pointer; }
-  button:hover, select:hover { border-color: var(--accent); }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-  .seg button { border: none; border-radius: 0; background: var(--panel); color: var(--dim); padding: 4px 11px; }
-  .seg button.on { background: var(--accent); color: #04101f; font-weight: 600; }
-  /* header */
-  header { display: flex; align-items: center; gap: 12px; padding: 9px 14px; background: var(--panel);
-           border-bottom: 1px solid var(--line); flex-wrap: wrap; flex: 0 0 auto; }
-  header h1 { font-size: 15px; margin: 0; font-weight: 700; }
-  header .sub { color: var(--dim); font-size: 12px; }
-  .tabbar { display: inline-flex; gap: 2px; }
-  .tabbar button { background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0;
-                   color: var(--dim); padding: 6px 14px; font-size: 13px; }
-  .tabbar button.on { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
-  .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-  .badge.running { background: rgba(88,166,255,.15); color: var(--accent); }
-  .badge.done { background: rgba(63,185,80,.15); color: var(--good); }
-  .dot-live { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; background: var(--good); animation: pulse 1.6s infinite; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(63,185,80,.5); } 70% { box-shadow: 0 0 0 6px rgba(63,185,80,0); } }
-  .kpis { display: flex; gap: 16px; padding: 6px 14px; background: var(--bg); border-bottom: 1px solid var(--line); flex: 0 0 auto; flex-wrap: wrap; }
-  .kpi b { font-size: 14px; } .kpi span { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
-  /* body: runs | stage | steps */
-  .body { flex: 1; display: grid; grid-template-columns: var(--leftw, 250px) 1fr var(--rightw, 320px); min-height: 0; }
-  .body.no-left { --leftw: 0px; } .body.no-right { --rightw: 0px; }
-  .col { overflow-y: auto; overflow-x: hidden; background: var(--panel); }
-  .col.left { border-right: 1px solid var(--line); } .col.right { border-left: 1px solid var(--line); }
-  .no-left .col.left { border-right: none; } .no-right .col.right { border-left: none; }
-  .hd { padding: 7px 12px; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
-        border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 1; }
-  /* runs list */
-  .runrow { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--line); }
-  .runrow:hover { background: var(--panel2); } .runrow.sel { background: rgba(88,166,255,.12); box-shadow: inset 3px 0 0 var(--accent); }
-  .runrow .top { display: flex; align-items: center; gap: 6px; }
-  .runrow .id { font-size: 12px; font-weight: 600; } .runrow .sub { color: var(--dim); font-size: 11px; margin-top: 2px; word-break: break-all; }
-  .sdot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--good); } .sdot.run { background: var(--accent); }
-  /* Прогоны left panel: pages drilled down under the SELECTED run — click a page to walk the run by page */
-  .runpages { background: rgba(0,0,0,.16); border-bottom: 1px solid var(--line); }
-  .runrow .runx { margin-left: auto; display: inline-flex; align-items: center; color: var(--mut); background: none; border: none; padding: 0 2px; line-height: 0; opacity: 0; }
-  .runrow:hover .runx, .runrow.sel .runx { opacity: .75; } .runrow .runx:hover { color: var(--bad); border-color: transparent; opacity: 1; } .runrow .runx svg { display: block; }
-  .pagerow { display: flex; align-items: baseline; gap: 8px; padding: 5px 12px 5px 24px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.03); font-size: 12px; }
-  .pagerow:hover { background: var(--panel2); } .pagerow.sel { background: rgba(88,166,255,.14); box-shadow: inset 3px 0 0 var(--accent); }
-  .pagerow .pnm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
-  .pagerow.sel .pnm { color: var(--accent); }
-  .pagerow .pc { color: var(--mut); font-size: 11px; flex: 0 0 auto; }
-  /* steps list */
-  .steprow { padding: 6px 12px; cursor: pointer; border-bottom: 1px solid var(--line); }
-  .steprow:hover { background: var(--panel2); } .steprow.sel { background: rgba(88,166,255,.10); box-shadow: inset 3px 0 0 var(--accent); }
-  .steprow .line { display: flex; gap: 8px; align-items: baseline; }
-  .steprow .n { color: var(--mut); font-size: 11px; min-width: 18px; } .steprow .lbl { flex: 1; min-width: 0; }
-  .steprow.err .lbl { color: var(--dim); }
-  /* a blocked/failed act is a CALM categorized outcome, not an alarm — a small tone chip carries the reason */
-  .ochip { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
-           padding: 0 6px; border-radius: 999px; background: var(--panel2); color: var(--mut); flex: 0 0 auto; }
-  .ochip.tone-guard { color: var(--warn); background: rgba(210,153,34,.14); }
-  .ochip.tone-bad { color: var(--bad); background: rgba(248,81,73,.14); }
-  .routelbl { padding: 5px 12px 2px; color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; border-top: 1px solid var(--line); }
-  .stepdetail { margin: 8px 0 2px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
-  .stepdetail h5 { margin: 8px 0 4px; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--dim); }
-  .stepdetail h5:first-child { margin-top: 0; }
-  .reqrow { padding: 2px 0; } .method { display: inline-block; min-width: 40px; font-weight: 700; font-size: 11px; }
-  .m-GET { color: var(--good); } .m-POST { color: var(--warn); } .m-PUT,.m-PATCH { color: var(--accent); } .m-DELETE { color: var(--bad); }
-  .endpoint { color: var(--accent); }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
-  .bar-row .nm { width: 52px; color: var(--dim); font-size: 11px; }
-  .bar { height: 10px; background: var(--accent); border-radius: 3px; min-width: 2px; } .bar.settle { background: var(--warn); } .bar.snap { background: #a371f7; }
-  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; margin: 0 5px 4px 0; background: var(--panel2); border: 1px solid var(--line); }
-  .tag.safe { color: var(--good); } .tag.destructive,.tag.auth,.tag.payment { color: var(--bad); }
-  .muted { color: var(--dim); }
-  /* stage */
-  .stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-  .stagebar { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
-  .stagebar .title { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .stagebar .spacer { flex: 1; }
-  .pfilter { background: rgba(88,166,255,.14); color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; font-size: 11px; padding: 2px 9px; cursor: pointer; white-space: nowrap; }
-  .pfilter:hover { border-color: var(--accent); filter: brightness(1.12); }
-  .stagewrap { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px; background: #0b0e13; }
-  .frame { position: relative; line-height: 0; max-width: 100%; max-height: 100%; }
-  .frame img { max-width: 100%; max-height: calc(100vh - 320px); display: block; border: 1px solid var(--line); border-radius: 4px; cursor: zoom-in; }
-  .frame .box { position: absolute; border: 2px solid var(--bad); box-shadow: 0 0 0 2px rgba(248,81,73,.3); pointer-events: none; display: none; }
-  .placard { color: var(--dim); text-align: center; padding: 40px; } .placard.err { color: var(--bad); }
-  /* failed/blocked act stage: a calm outcome card (never red-crash) + the before-frame when it was captured */
-  .outcome { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 100%; max-height: 100%; }
-  .ocard { border: 1px solid var(--line); border-left: 3px solid var(--mut); border-radius: 8px; background: var(--panel);
-           padding: 12px 16px; max-width: 560px; }
-  .outcome.tone-guard .ocard { border-left-color: var(--warn); } .outcome.tone-bad .ocard { border-left-color: var(--bad); }
-  .octag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
-           padding: 2px 9px; border-radius: 999px; background: var(--panel2); color: var(--mut); }
-  .tone-guard .octag { color: var(--warn); background: rgba(210,153,34,.14); }
-  .tone-bad .octag { color: var(--bad); background: rgba(248,81,73,.14); }
-  .octitle { font-weight: 600; margin: 8px 0 3px; } .ocwhy { color: var(--dim); font-size: 12px; }
-  .ocerr { color: var(--mut); font-size: 11px; margin-top: 8px; word-break: break-word; }
-  .outcome .frame img { max-height: calc(100vh - 440px); opacity: .92; }
-  .noshot { color: var(--mut); font-size: 12px; }
-  /* filmstrip — lives INSIDE the stage column, so it spans the screenshot width and sits above the footer */
-  .strip { flex: 0 0 auto; border-top: 1px solid var(--line); background: var(--panel); padding: 8px 12px 10px; display: flex; align-items: center; gap: 12px; }
-  .strip .tbtn { font-size: 15px; line-height: 1; padding: 4px 10px; }
-  .track { position: relative; flex: 1; height: 40px; cursor: pointer; touch-action: none; }
-  .rail-line { position: absolute; left: 0; right: 0; top: 26px; height: 2px; background: var(--line); border-radius: 2px; }
-  .sep { position: absolute; top: 6px; height: 30px; width: 1px; background: var(--mut); opacity: .6; }
-  .sep .rl { position: absolute; top: -4px; left: 3px; font-size: 9px; color: var(--dim); white-space: nowrap; }
-  .pdot { position: absolute; top: 20px; width: 13px; height: 13px; margin-left: -6.5px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
-  .pdot.error { background: var(--bad); } .pdot.danger { box-shadow: 0 0 0 2px var(--warn); }
-  .pdot.guard { background: var(--warn); } .pdot.miss { background: var(--mut); } /* by-design refusal / expected miss — not alarm-red */
-  .pdot.cur { width: 19px; height: 19px; margin-left: -9.5px; top: 17px; z-index: 2; box-shadow: 0 0 0 3px rgba(88,166,255,.25); }
-  .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); margin-left: -1px; z-index: 1; pointer-events: none; }
-  .readout { min-width: 150px; text-align: right; color: var(--dim); font-size: 12px; }
-  .tip { position: absolute; bottom: 44px; transform: translateX(-50%); background: #000; border: 1px solid var(--line); padding: 3px 7px; border-radius: 5px; font-size: 11px; white-space: nowrap; display: none; z-index: 3; }
-  .empty { color: var(--dim); padding: 40px; text-align: center; }
-  #lb { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; z-index: 50; align-items: center; justify-content: center; padding: 24px; }
-  #lb.open { display: flex; } #lb img { max-width: 96vw; max-height: 92vh; border: 1px solid var(--line); }
-  /* connectome graph view: page → UI elements → endpoints */
-  #graphView { flex: 1; min-height: 0; display: flex; flex-direction: column; background:
-      radial-gradient(900px 500px at 80% -10%, rgba(88,166,255,.06), transparent 60%), #0b0e13; }
-  .gbar { display: flex; align-items: center; gap: 8px 16px; padding: 8px 14px; border-bottom: 1px solid var(--line); flex: 0 0 auto; flex-wrap: wrap; }
-  .gbar .gc { font-size: 12px; color: var(--dim); } .gbar .gc b { color: var(--fg); font-family: ui-monospace, Menlo, monospace; }
-  .gbar .leg { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--dim); }
-  .gbar .leg i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
-  .gpages { display: flex; gap: 6px; padding: 7px 14px; border-bottom: 1px solid var(--line); flex: 0 0 auto; overflow-x: auto; }
-  .gpage { padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel2); color: var(--dim);
-           cursor: pointer; white-space: nowrap; font-size: 12px; flex: 0 0 auto; }
-  .gpage:hover { border-color: var(--accent); } .gpage.on { border-color: var(--accent); color: var(--fg); background: rgba(88,166,255,.12); }
-  .gpage .nm { font-family: ui-monospace, Menlo, monospace; } .gpage .pc { color: var(--mut); margin-left: 7px; }
-  .gwrap { flex: 1; min-height: 0; overflow: auto; }
-  #gcanvas { display: block; width: 100%; }
-  .gempty { padding: 60px; text-align: center; color: var(--dim); }
-  /* Прогоны: pick a page (route) of the run and jump the walk to it */
-  .stagesel { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim); }
-  .stagesel select { max-width: 260px; }
-  /* Граф: click a node → its data as a modal (page / control / endpoint) */
-  #nodeModal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; z-index: 60; align-items: center; justify-content: center; padding: 24px; }
-  #nodeModal.open { display: flex; }
-  .nm-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; max-width: 560px; width: 100%;
-             max-height: 82vh; overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
-  .nm-hd { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line);
-           position: sticky; top: 0; background: var(--panel); z-index: 1; }
-  .nm-kind { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 3px 8px; border-radius: 999px; flex: 0 0 auto; }
-  .nm-kind.pg { color: var(--accent); background: rgba(88,166,255,.14); }
-  .nm-kind.el { color: var(--good); background: rgba(63,185,80,.14); }
-  .nm-kind.ep { color: var(--bad); background: rgba(248,81,73,.14); }
-  .nm-title { font-weight: 600; word-break: break-all; flex: 1; min-width: 0; }
-  .nm-title .r { color: var(--dim); font-weight: 400; font-size: 12px; margin-top: 2px; }
-  .nm-x { cursor: pointer; color: var(--dim); font-size: 17px; line-height: 1; background: none; border: none; padding: 2px 6px; }
-  .nm-x:hover { color: var(--fg); border-color: transparent; }
-  .nm-body { padding: 12px 16px 16px; }
-  .nm-body h6 { margin: 14px 0 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--dim); } .nm-body h6:first-child { margin-top: 0; }
-  .nm-row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 12px; }
-  .nm-row .k { color: var(--dim); min-width: 100px; flex: 0 0 auto; } .nm-row .v { min-width: 0; word-break: break-word; }
-  .nm-list { display: flex; flex-wrap: wrap; gap: 0; }
-  .nm-pill { display: inline-block; padding: 1px 7px; border-radius: 5px; background: var(--panel2); border: 1px solid var(--line); font-size: 11px; margin: 0 4px 4px 0; }
-  .nm-pill .method { min-width: 34px; }
-  .nm-empty { color: var(--mut); font-size: 12px; }
-  /* confirm dialog for a destructive action (delete a run) */
-  #confirmModal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; z-index: 70; align-items: center; justify-content: center; padding: 24px; }
-  #confirmModal.open { display: flex; }
-  .cm-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; max-width: 420px; width: 100%; padding: 18px 18px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
-  .cm-msg { font-size: 14px; margin-bottom: 4px; } .cm-sub { color: var(--dim); font-size: 12px; word-break: break-all; margin-bottom: 14px; }
-  .cm-btns { display: flex; justify-content: flex-end; gap: 8px; }
-  .cm-btns .danger { background: var(--bad); border-color: var(--bad); color: #0b0e13; font-weight: 600; }
-  .cm-btns .danger:hover { border-color: var(--bad); filter: brightness(1.08); }
-  .hide { display: none !important; }
+  /* CRITICAL PAINT ONLY. The full house theme (palette, chrome, sidebar, every view) lives in
+     pipeline-view.mjs as SHELL_CSS and is injected on boot: admin.html is already far past the
+     project's <200-line file convention, so the stylesheet moved OUT rather than growing here.
+     What stays is what must be right on the FIRST paint, before the module executes — the house
+     rule is that the dark background is hardcoded so a load never flashes white (every aeye-os pod
+     does exactly this inline on <html>). */
+  html, body { height: 100%; margin: 0; background: #0a0a0a; color: #fafafa; }
+  body { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+         display: flex; flex-direction: column; overflow: hidden; }
 </style>
 </head>
 <body>
+<!-- SHELL: a fixed left rail + the view column. The rail replaced the top tab bar and is painted by
+     pipeline-view.mjs `mountShell` (NAV_ITEMS is the single list of sections); the four sections that
+     have no screen yet render an instructional placeholder into #stubView rather than fake content. -->
+<div class="shell">
+<nav class="side" id="side" aria-label="разделы"></nav>
+<div class="main">
 <header>
-  <h1>bughunter</h1><span class="sub">Phase-1 debug</span>
-  <span class="tabbar" id="tabs"><button data-tab="runs" class="on">Прогоны</button><button data-tab="graph">Граф</button><button data-tab="tests">Тесты</button></span>
+  <h1 id="secTitle">Прогоны</h1><span class="sub" id="secHint">список запусков</span>
   <span id="runTarget" class="sub mono"></span>
   <span id="runStatus"></span>
   <span style="flex:1"></span>
@@ -211,6 +55,7 @@
   </div>
   <div class="col right"><div class="hd">шаги</div><div id="stepsList"></div></div>
 </div>
+<div id="pipeView" class="hide"></div>
 <div id="testsView" class="hide"><div class="empty" style="padding-top:80px">Phase-2 тест-кейсы для этого прогона ещё не сняты.<br>Этот раздел переиспользует ту же сцену + полосу, когда появится <span class="mono">/gen</span>.</div></div>
 <div id="graphView" class="hide">
   <div class="gbar">
@@ -223,8 +68,8 @@
     <span class="leg"><i style="background:var(--good)"></i> UI-элемент</span>
     <span class="leg"><i style="background:var(--bad)"></i> endpoint</span>
     <span class="leg"><i style="background:var(--mut)"></i> unreachable</span>
-    <span class="leg" style="margin-left:6px"><i style="background:#a371f7"></i> навигация</span>
-    <span class="leg"><i style="background:#d29922"></i> вызов</span>
+    <span class="leg" style="margin-left:6px"><i style="background:var(--nav-edge)"></i> навигация</span>
+    <span class="leg"><i style="background:var(--warn)"></i> вызов</span>
     <span class="leg"><i style="background:var(--dim)"></i> владение</span>
   </div>
   <div class="gpages" id="gPages">
@@ -234,6 +79,8 @@
   </div>
   <div class="gwrap"><canvas id="gcanvas"></canvas><div class="gempty hide" id="gEmpty">на этой точке прогона ещё нет элементов — двигай полосу вправо</div></div>
 </div>
+<div id="stubView" class="stub hide"></div>
+</div></div>
 <div id="lb"><img id="lbImg" alt=""></div>
 <div id="nodeModal"><div class="nm-card" id="nmCard" role="dialog" aria-modal="true"></div></div>
 <div id="confirmModal"><div class="cm-card" role="alertdialog" aria-modal="true" aria-labelledby="cmMsg" aria-describedby="cmSub">
@@ -242,7 +89,14 @@
   <div class="cm-btns"><button id="cmCancel">Отмена</button><button id="cmOk" class="danger">Удалить</button></div>
 </div></div>
 <script type="module">
-import { deriveSteps, clampIndex, dotLeftPct, indexFromClientX, boxFromRect, dotClass } from './scrub-math.mjs';
+import { deriveSteps, derivePipeline, clampIndex, dotLeftPct, indexFromClientX, boxFromRect, dotClass } from './scrub-math.mjs';
+import { mountPipeline, newestRunWithTrail, isEmptyRun, mountShell, stubHtml, NAV_ITEMS, STUB_IDS, SHELL_CSS } from './pipeline-view.mjs';
+import { classify, explainFailure, displayName, anchorSource, controlPhrase, roleRu, plural } from './failure-hints.mjs';
+
+// The house theme, injected before anything paints. It lives in the module (not in this file's
+// <style>) because admin.html is already far over the project's file-size convention — see the
+// critical-paint note in <head>.
+document.head.appendChild(Object.assign(document.createElement('style'), { textContent: SHELL_CSS }));
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -250,7 +104,48 @@ const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const api = (p) => p + (p.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(TOKEN);
 async function jget(url) { const r = await fetch(api(url)); if (!r.ok) throw new Error(r.status); return r.json(); }
 
-const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before', pageFilter: null };
+// sgSeq/sgGraph: the graph snapshot cached for the CURRENTLY selected step (see stepGraph below).
+// `walkOpen` holds the repeat-groups the operator expanded in the Прогоны walk (keys, not indexes,
+// so the set survives a re-render and a live refresh that shifts every index).
+const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before', pageFilter: null, sgSeq: null, sgGraph: null, idGraph: null, idGraphRun: null, walkOpen: new Set() };
+// «Конвейер»: its own tab, fed the SAME events the walk uses but through derivePipeline (every
+// kind, not just the acts). It owns its markup + styles; the page only hands it rows — and, on
+// demand, the graph snapshot for the row it has selected (pipeGraphFor below).
+const PIPE = mountPipeline($('#pipeView'), { graphFor: pipeGraphFor, identityGraph: () => S.idGraph });
+// The left rail. It owns its own markup + active state; this page owns routing and the counts.
+const SHELL = mountShell($('#side'), { onNav: setTab });
+
+// The counts shown beside each rail item, and on a placeholder page. EVERY one is derived from the
+// RUN ALREADY LOADED — nothing here fetches, and nothing invents. A section whose number cannot be
+// derived returns null, which navCount renders as '—': zero would be a claim, '—' is the absence of
+// one. `finds` is deliberately narrow — the ONLY anomaly class derivable today is DISABLED, and the
+// Находки placeholder says so rather than letting the number imply full anomaly coverage.
+function sectionCounts() {
+  const st = (S.run && S.run.stats) || lastStats();
+  const has = S.steps.length > 0;
+  const edges = new Set(); let finds = 0;
+  for (const s of S.steps) {
+    (s.requests || []).forEach((q) => edges.add(q.method + ' ' + q.urlPattern));
+    const cls = classify(s);
+    if (cls && cls.tone.key === 'finding') finds++;
+  }
+  return {
+    runs: S.runs.length,
+    pages: has ? distinctRoutes().size : null,
+    rows: Number.isFinite(S.pipeRows) ? S.pipeRows : null,
+    els: Number.isFinite(st.discovered) ? st.discovered : null,
+    edges: has ? edges.size : null,
+    finds: has ? finds : null,
+    cover: Number.isFinite(st.explored) ? st.explored : null,
+    tests: null,                       // Phase-2 has produced nothing yet — '—', never 0
+  };
+}
+// Repaint the rail's counts and, if a placeholder is open, its number too.
+function refreshShell() {
+  const c = sectionCounts();
+  SHELL.setCounts(c);
+  if (STUB_IDS.has(S.tab)) $('#stubView').innerHTML = stubHtml(S.tab, c);
+}
 
 // The steps VISIBLE under the current page filter, as indices into S.steps. No filter → every step; a page
 // filter → only that route's acts. The strip, the steps list, and prev/next all walk THIS view, so picking a
@@ -267,45 +162,73 @@ function snapToView() {
   if (view.length && !view.includes(S.i)) S.i = view.reduce((best, si) => Math.abs(si - S.i) < Math.abs(best - S.i) ? si : best, view[0]);
 }
 
-// Classify a blocked/failed act into a CALM, EXPECTED outcome (not a crash). Returns null on success.
-// `tone` drives a non-alarm color: 'guard' (by-design refusal — safety floor / write-firewall), 'muted'
-// (an expected coverage miss — the instance could not be resolved), 'bad' (a genuine unexpected fault).
-// This is what "mark it properly" means: a refused mutation or a churned selector is a handled result,
-// not the viewer breaking.
+// Classify a blocked/failed act. Returns null on success. THE TAXONOMY LIVES IN failure-hints.mjs —
+// this is a thin adapter, and it must stay thin: the previous version guessed the cause from message
+// TEXT with an ordered pile of regexes, and the first of them (`/refus/`) matched the words
+// "firewall-refused", so all 43 REVEAL_FIREWALL acts of run `raw1` were reported as danger-floor
+// refusals — including a `button "Close"` that danger-floor classifies as SAFE. It also printed
+// «не удалось найти на странице» above a message saying the element IS present but not visible.
+// Prefer the stamped `code`; fall back to the module's ordered matchers for runs already on disk.
 function outcomeOf(s) {
-  if (!s || !s.error) return null;
-  const e = String(s.error);
-  if (/refus|destructive|payment|\bauth\b|danger|foreign|protected/i.test(e))
-    return { kind: 'safety', label: 'защита', tone: 'guard', why: 'предохранитель не дал сработать контролу (мутация / logout / оплата) — так и задумано' };
-  if (/firewall/i.test(e))
-    return { kind: 'firewall', label: 'файрвол', tone: 'guard', why: 'reveal-клик попытался отправить запись — запрос заблокирован write-firewall, аккаунт не тронут' };
-  if (/cannot resolve instance|no instance|not visible|stale|not found/i.test(e))
-    return { kind: 'missing', label: 'не найден', tone: 'muted', why: 'инстанс контрола не удалось найти на странице (churn / скрыт) — честно учтён как unreachable' };
-  return { kind: 'failed', label: 'сбой', tone: 'bad', why: 'акт не выполнился' };
+  const cls = classify(s);
+  if (!cls) return null;
+  return { kind: cls.code, label: cls.chip, tone: cls.tone.key, why: cls.tone.hint };
+}
+// The graph snapshot for the SELECTED step, used to split NO_INSTANCE into "no reveal path was ever
+// recorded" vs "a path was recorded and it broke" — two different diagnoses behind one message, and
+// the difference is only knowable from the graph. Failed acts write no snapshot, so walk BACK to the
+// nearest earlier one: that is the state the act was launched from.
+async function stepGraph() {
+  const step = S.steps[S.i];
+  if (!step) return null;
+  if (S.sgSeq === step.seq) return S.sgGraph;
+  let g = null;
+  for (let j = S.i; j >= 0 && !g; j--) {
+    const st = S.steps[j];
+    if (!st || st.seq == null) continue;
+    if (st.error) continue;          // a failed act threw before its snapshot was written — a guaranteed 404
+    const gg = await graphAtSeq(st.seq);
+    if (gg && Object.keys(gg.elements || {}).length) g = gg;
+  }
+  S.sgSeq = step.seq; S.sgGraph = g;
+  return g;
+}
+// Fetch the snapshot for the current step, then repaint the panels that depend on it. Fire-and-forget:
+// the panel renders immediately WITHOUT the graph (degrading to the honest "path not recorded" branch)
+// and sharpens when the snapshot lands, so the viewer never blocks on a fetch.
+function refreshStepGraph() {
+  const want = S.steps[S.i] && S.steps[S.i].seq;
+  stepGraph().then(() => { if (S.steps[S.i] && S.steps[S.i].seq === want) { renderSteps(); renderStage(); } });
 }
 
 async function loadRuns() {
   const { runs } = await jget('/api/runs');
   S.runs = runs || [];
   if (!S.runs.length) { // no runs (e.g. the last one was just deleted): clear the CENTER too, not only the list
-    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null;
-    $('#runsList').innerHTML = '<div class="empty">Пусто — запусти /recon.</div>'; $('#kpis').innerHTML = '';
-    renderHeader(); renderSteps(); renderStrip(); renderStage(); return;
+    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null;
+    $('#runsList').innerHTML = '<div class="empty">Пока ни одного прогона.<br>Запусти <code>/recon &lt;url&gt;</code> — здесь появится его обход.</div>'; $('#kpis').innerHTML = '';
+    S.pipeRows = null;
+    renderHeader(); renderSteps(); renderStrip(); renderStage(); PIPE.update([]); refreshShell(); return;
   }
   renderRunsList();
   if (!S.runId || !S.runs.some((r) => r.id === S.runId)) {
-    if (!S.userCleared) { S.runId = S.runs[0].id; await loadRun(true); } // auto-open the newest — unless the operator deselected
+    // Auto-open the newest run THAT HAS A TRAIL — unless the operator deselected. Runs sort
+    // newest-first and the newest are typically aborted zero-event runs, so a bare `S.runs[0]`
+    // opened the viewer on a blank screen and read as "nothing was built". Empty runs stay in
+    // the list, marked «пустой» (renderRunsList) — flagged, never hidden.
+    if (!S.userCleared) { S.runId = (newestRunWithTrail(S.runs) || S.runs[0]).id; await loadRun(true); }
   } else if (S.run && S.run.status === 'running') await loadRun(false); // live-refresh the open run
 }
 
 function renderRunsList() {
   $('#runsList').innerHTML = S.runs.map((r) => {
     const st = r.stats || {}, sel = r.id === S.runId;
+    const mt = isEmptyRun(r) ? '<span class="emptychip" title="прогон оборван — событий не записано">пустой</span>' : '';
     const row = `<div class="runrow ${sel ? 'sel' : ''}" data-id="${esc(r.id)}">
-      <div class="top"><span class="sdot ${r.status === 'running' ? 'run' : ''}"></span><span class="id mono">${esc(r.id)}</span>
+      <div class="top"><span class="sdot ${r.status === 'running' ? 'run' : ''}"></span><span class="id mono">${esc(r.id)}</span>${mt}
         <span style="flex:1"></span><button class="runx" data-del="${esc(r.id)}" title="удалить прогон" aria-label="удалить прогон"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6 4V2.8c0-.45.35-.8.8-.8h2.4c.45 0 .8.35.8.8V4M12 4l-.5 8.6c-.03.5-.45.9-1 .9H5.5c-.55 0-.97-.4-1-.9L4 4M6.5 6.6v4.6M9.5 6.6v4.6"/></svg></button></div>
       <div class="sub">${esc(r.target || '')}</div>
-      <div class="sub">${st.explored ?? '–'}/${st.discovered ?? '–'} explored · ${st.routes ?? '–'} routes</div></div>`;
+      <div class="sub">${st.explored == null && st.discovered == null ? 'итоги считаются по завершении' : `изучено ${st.explored ?? '–'} из ${st.discovered ?? '–'} · страниц ${st.routes ?? '–'}`}</div></div>`;
     return row + (sel ? runPagesHtml() : ''); // the SELECTED run drills down into its pages (toggle to collapse)
   }).join('');
   $('#runsList').querySelectorAll('.runrow').forEach((el) => el.onclick = () => toggleRun(el.dataset.id));
@@ -314,7 +237,9 @@ function renderRunsList() {
 }
 
 async function loadRun(reset) {
-  if (reset) { S.pageFilter = null; if (typeof G !== 'undefined' && G.cache) G.cache.clear(); } // fresh run: drop the filter + the per-run graph cache
+  // fresh run: drop the filter + the per-run graph cache + the selected step's cached snapshot (it
+  // belongs to the OLD run; keeping it would explain this run's failures with another run's graph)
+  if (reset) { S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; if (typeof G !== 'undefined' && G.cache) G.cache.clear(); PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null; }
   const data = await jget('/api/runs/' + S.runId);
   S.run = data.run; S.events = data.events || [];
   const steps = deriveSteps(S.events);
@@ -322,7 +247,10 @@ async function loadRun(reset) {
   S.steps = steps;
   S.i = atEnd ? Math.max(0, steps.length - 1) : clampIndex(S.i, steps.length);
   snapToView(); // live-refresh with an active page filter must not strand S.i outside the filtered view
-  renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage();
+  renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage(); refreshStepGraph();
+  S.pipeRows = PIPE.update(derivePipeline(S.events)); // Конвейер reads EVERY event kind, not just the acts
+  refreshShell();                                     // the rail's counts follow the loaded run
+  loadIdentityGraph();                                // background: names the nameless controls, then repaints
   if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView();
 }
 
@@ -330,8 +258,8 @@ async function loadRun(reset) {
 // (collapse pages + clear the walk). userCleared stops the live-refresh tick from re-opening the newest.
 function toggleRun(id) {
   if (S.runId === id) {
-    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.userCleared = true;
-    renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage();
+    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.userCleared = true; S.pipeRows = null; PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null;
+    renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage(); PIPE.update([]); refreshShell();
   } else { S.userCleared = false; S.runId = id; loadRun(true); }
 }
 
@@ -347,42 +275,149 @@ function lastStats() {
 }
 function renderKpis() {
   const st = (S.run && S.run.stats) || lastStats();
-  const edges = new Set(); let tot = 0, n = 0;
-  for (const s of S.steps) { (s.requests || []).forEach((q) => edges.add(q.method + ' ' + q.urlPattern)); if (s.timings) { tot += s.timings.actMs; n++; } }
+  // `avg act` is the average over acts that COMPLETED a causal window. A FAILED act carries only
+  // `timings.attemptMs` (a throw before/inside the click closed no window), so the old truthy `if (s.timings)`
+  // did `tot += undefined` and the whole run's average rendered `NaNms` — one failed act poisons the KPI, and
+  // they are ~15% of a real run (54 of 355 acts in `hygge2`, 56 of 408 in `goal1`). Attempt time is counted
+  // SEPARATELY under its own label; folding it into `avg act` would silently redefine the measure.
+  const edges = new Set(); let tot = 0, n = 0, att = 0, an = 0;
+  for (const s of S.steps) {
+    (s.requests || []).forEach((q) => edges.add(q.method + ' ' + q.urlPattern));
+    const t = s.timings || {};
+    if (Number.isFinite(t.actMs)) { tot += t.actMs; n++; }
+    if (Number.isFinite(t.attemptMs)) { att += t.attemptMs; an++; }
+  }
   const k = (v, l) => `<span class="kpi"><b>${v}</b> <span>${l}</span></span>`;
-  $('#kpis').innerHTML = [k(`${st.explored ?? '–'}/${st.discovered ?? '–'}`, 'explored'), k(st.unreachable ?? '–', 'unreachable'),
-    k(st.routes ?? '–', 'routes'), k(S.steps.length, 'acts'), k(edges.size, 'edges'), k(n ? Math.round(tot / n) + 'ms' : '–', 'avg act')].join('');
+  // A DASH IS NOT A NUMBER, AND ON A LIVE RUN IT IS NOT EVEN A GAP. `explored`/`unreachable`/`routes`
+  // are stamped into run.json when the run CLOSES, so a run still in flight renders «–/– EXPLORED»
+  // and the screen looks broken while it is in fact working correctly. Say which it is: the counts
+  // that can only be totalled at the end are announced as such, and the ones we can compute from the
+  // trail right now (acts, edges, timings) keep rendering live.
+  const pending = st.explored == null && st.discovered == null && st.routes == null;
+  const live = S.run && S.run.status === 'running';
+  const totals = pending
+    ? (live ? '<span class="kpi wide">Итоги обхода (изучено, недостижимо, страниц) считаются по завершении прогона — он ещё идёт</span>'
+      : '<span class="kpi wide">Итоги обхода не записаны: прогон завершился, не подведя их</span>')
+    : [k(`${st.explored ?? '–'}/${st.discovered ?? '–'}`, 'изучено контролов'), k(st.unreachable ?? '–', 'не достучались'),
+      k(st.routes ?? '–', 'страниц пройдено')].join('');
+  $('#kpis').innerHTML = totals
+    + [k(S.steps.length, 'действий'), k(edges.size, 'связей контрол → запрос'),
+      k(n ? Math.round(tot / n) + 'мс' : '–', 'среднее действие'),
+      ...(an ? [k(Math.round(att / an) + 'мс', 'средняя неудачная попытка')] : [])].join('');
+}
+
+// WHAT THE CLICK ACTUALLY DID, as one sentence. The panel used to answer this with three lines of
+// field names — `no request caused` / `revealed 0 instance(s)` / `no observation (node-loop run)` —
+// English jargon in a Russian interface, from which the reader learned nothing, and which together
+// mean one simple thing: the click produced neither a server request nor a new element. The fields
+// stay below, smaller, as CONFIRMATION of the sentence rather than as the message itself.
+function actSummary(s) {
+  const n = (s.requests || []).length, rev = Number(s.revealed) || 0;
+  const req = `${n} ${plural(n, ['запрос', 'запроса', 'запросов'])}`;
+  const el = `${rev} ${plural(rev, ['новый элемент', 'новых элемента', 'новых элементов'])}`;
+  if (s.external) return 'Ссылка ведёт на другой сайт — по ней намеренно не переходили, за пределами приложения изучать нечего.';
+  if (s.error) return 'Клик не состоялся, поэтому ни запросов, ни новых элементов от него быть не может — почему именно, сказано выше.';
+  if (n && rev) return `Клик сработал: страница отправила ${req} на сервер и показала ${el}.`;
+  if (n) return `Клик отправил ${req} на сервер, но ничего нового на странице не появилось.`;
+  if (rev) return `Клик не обращался к серверу, но открыл ${el} на странице.`;
+  return 'Клик ничего не дал — ни запроса на сервер, ни новых элементов на странице.';
 }
 
 function stepDetailHtml(s) {
-  const reqs = (s.requests || []).map((r) => `<div class="reqrow"><span class="method m-${esc(r.method)}">${esc(r.method)}</span> <span class="endpoint mono">${esc(r.urlPattern)}</span></div>`).join('') || '<div class="muted">no request caused</div>';
-  const t = s.timings, w = (ms) => Math.max(2, Math.min(340, (ms || 0) * 1.2));
-  const bars = t ? `<div class="bar-row"><span class="nm">act</span><div class="bar" style="width:${w(t.actMs)}px"></div><span class="muted">${t.actMs}ms</span></div>
-    <div class="bar-row"><span class="nm">settle</span><div class="bar settle" style="width:${w(t.settleMs)}px"></div><span class="muted">${t.settleMs}ms</span></div>
-    <div class="bar-row"><span class="nm">snapshot</span><div class="bar snap" style="width:${w(t.snapMs)}px"></div><span class="muted">${t.snapMs}ms</span></div>` : '<div class="muted">—</div>';
+  const reqs = (s.requests || []).map((r) => `<div class="reqrow"><span class="method m-${esc(r.method)}">${esc(r.method)}</span> <span class="endpoint mono">${esc(r.urlPattern)}</span></div>`).join('');
+  const t = s.timings || {}, w = (ms) => Math.max(2, Math.min(340, (ms || 0) * 1.2));
+  // Draw ONLY the stages this act actually reached. A FAILED act threw before/inside the click,
+  // so it carries `timings:{attemptMs}` and none of act/settle/snap — the old unconditional
+  // three-bar block rendered "undefinedms" three times over on ~15% of a run's steps.
+  const bar = (nm, cls, ms) => (Number.isFinite(ms)
+    ? `<div class="bar-row"><span class="nm">${nm}</span><div class="bar ${cls}" style="width:${w(ms)}px"></div><span class="muted">${ms}ms</span></div>` : '');
+  // Stage names in words: `act`/`settle`/`snap` are this codebase's internal vocabulary.
+  const bars = [bar('клик', '', t.actMs), bar('ожидание ответа', 'settle', t.settleMs), bar('снимок страницы', 'snap', t.snapMs),
+    bar('попытка клика', 'attempt', t.attemptMs)].join('') || '<div class="muted">стадии этого шага не замерялись</div>';
+  // OBSERVATION IS AN AGENT-PATH-ONLY BLOCK. The live driver has no LLM stage, so on those runs there
+  // is no observation to report — and «no observation (node-loop run)» told the reader nothing except
+  // that an internal term applied to him. A section with nothing in it is dropped, not translated.
   const o = s.observe;
-  const obs = o ? `<span class="tag ${esc(o.danger)}">danger: ${esc(o.danger)}</span><span class="tag">effect: ${esc(o.effect)}</span>${o.unreachable ? '<span class="tag" style="color:var(--bad)">unreachable</span>' : ''}<div>${esc(o.purpose) || '<span class="muted">—</span>'}</div>` : '<div class="muted">no observation (node-loop run)</div>';
+  const obs = o ? `<h5>что записал агент</h5><span class="tag ${esc(o.danger)}">опасность: ${esc(o.danger)}</span><span class="tag">эффект: ${esc(o.effect)}</span>${o.unreachable ? '<span class="tag" style="color:var(--bad)">не достучались</span>' : ''}<div>${esc(o.purpose) || '<span class="muted">—</span>'}</div>` : '';
+  // Verdict first here too: the tone + the explanation sentence, with the raw error collapsed last.
   const oc = outcomeOf(s);
-  const err = oc ? `<h5>исход · ${esc(oc.label)}</h5><div style="color:var(--dim);font-size:12px">${esc(oc.why)}</div><div class="mono" style="color:var(--mut);font-size:11px;margin-top:4px">${esc(s.error)}</div>` : '';
-  return `<div class="stepdetail">${err}<h5>caused · control → endpoint</h5>${reqs}<div class="muted" style="margin-top:4px">revealed ${s.revealed} instance(s)${s.external ? ' · external link, not fired' : ''}</div>
-    <h5>speed</h5>${bars}<h5>observation</h5>${obs}</div>`;
+  const g = graphForStep(s);
+  const ex = oc ? explainFailure(anchorSource(s, nameGraph(s)), g) : null;
+  const err = oc ? `<h5>исход · ${esc(ex ? ex.toneLabel : oc.label)} · ${esc(oc.label)}</h5>
+    <div style="color:var(--fg);font-size:12px;line-height:1.45">${esc(ex ? ex.sentence : oc.why)}</div>
+    <details style="margin-top:5px"><summary style="cursor:pointer;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">сырые данные</summary>
+      <div class="mono" style="color:var(--mut);font-size:11px;margin-top:4px;white-space:pre-wrap">${esc(s.error)}</div></details>` : '';
+  // READING ORDER: the conclusion, then the evidence for it, then the timings. The request list is
+  // kept because a caused endpoint IS the product of this whole tool — but it now sits UNDER the
+  // sentence that says whether there was one, instead of standing in for it.
+  const facts = `<div class="muted" style="margin-top:6px;font-size:11px">запросов: ${(s.requests || []).length} · новых элементов: ${Number(s.revealed) || 0}${s.external ? ' · ссылка на другой сайт' : ''}</div>`;
+  return `<div class="stepdetail">${err}
+    <h5>что дал клик</h5>
+    <div style="color:var(--fg);font-size:12px;line-height:1.45">${esc(actSummary(s))}</div>
+    ${reqs ? `<div style="margin-top:6px">${reqs}</div>` : ''}${facts}
+    <h5>сколько заняло</h5>${bars}${obs}</div>`;
+}
+// REPEATS, COLLAPSED WHERE THE OPERATOR ACTUALLY READS. The fold was built for the Конвейер tab; he
+// reads Прогоны, where rows 77-80 were four identical `textbox "Enter your email id"` ВЫКЛЮЧЕН and
+// 81-85 five identical `combobox без имени`. Nine rows carrying two facts. Same rule as
+// pipeline-view's `foldIdenticalRuns`: CONSECUTIVE rows only (order is the evidence — a fold across
+// a gap would claim a run that did not happen), same outcome class AND the same control phrase, at
+// least RUN_MIN of them. The group header states the shared fact; a click expands it to the rows.
+const WALK_FOLD_MIN = 3;
+function walkGroupKey(s) {
+  const oc = outcomeOf(s);
+  return `${oc ? oc.kind : 'ok'}|${s.role || ''}|${controlText(s, 60)}`;
+}
+// view (an array of step indexes) → a list of either {si} singles or {key, members:[si,…]} groups.
+function foldWalk(view) {
+  const out = [];
+  let i = 0;
+  while (i < view.length) {
+    const key = walkGroupKey(S.steps[view[i]]);
+    let j = i;
+    // A route change ends a group: the header would otherwise straddle two pages and name one.
+    while (j + 1 < view.length && walkGroupKey(S.steps[view[j + 1]]) === key
+      && (S.steps[view[j + 1]].route || '—') === (S.steps[view[i]].route || '—')) j++;
+    const n = j - i + 1;
+    if (n >= WALK_FOLD_MIN) out.push({ key, members: view.slice(i, j + 1) });
+    else for (let k = i; k <= j; k++) out.push({ si: view[k] });
+    i = j + 1;
+  }
+  return out;
+}
+function stepRowHtml(si) {
+  const s = S.steps[si];
+  const oc = outcomeOf(s);
+  const chip = oc ? `<span class="ochip tone-${oc.tone}" title="${esc(oc.why)}">${esc(oc.label)}</span>` : '';
+  const det = si === S.i ? stepDetailHtml(s) : '';
+  return `<div class="steprow ${si === S.i ? 'sel' : ''} ${s.error ? 'err' : ''}" data-i="${si}">
+    <div class="line"><span class="n">${si + 1}</span><span class="lbl">${controlHtml(s, 46)}</span>${chip}</div>${det}</div>`;
 }
 function renderSteps() {
   const list = $('#stepsList'), view = viewIdx();
   if (!view.length) { list.innerHTML = '<div class="empty">нет актов</div>'; return; }
-  list.innerHTML = view.map((si, pos) => {
-    const s = S.steps[si];
-    // route label at the top of the view, or wherever the route changes vs the previous VISIBLE step
-    const prev = pos > 0 ? S.steps[view[pos - 1]] : null;
-    const sep = (!prev || (prev.route || '—') !== (s.route || '—')) ? `<div class="routelbl">${esc(s.route)}</div>` : '';
-    const oc = outcomeOf(s);
+  let prevRoute = null;
+  list.innerHTML = foldWalk(view).map((g) => {
+    const head = S.steps[g.si != null ? g.si : g.members[0]];
+    const sep = (head.route || '—') !== prevRoute ? `<div class="routelbl">${esc(shortRoute(head.route))} <span class="mono">${esc(head.route)}</span></div>` : '';
+    prevRoute = head.route || '—';
+    if (g.si != null) return sep + stepRowHtml(g.si);
+    const open = S.walkOpen.has(g.key) || g.members.includes(S.i);
+    const oc = outcomeOf(head);
+    const n = g.members.length;
     const chip = oc ? `<span class="ochip tone-${oc.tone}" title="${esc(oc.why)}">${esc(oc.label)}</span>` : '';
-    const lbl = `${esc(s.role || '?')} ${esc(JSON.stringify(s.name || ''))}`;
-    const det = si === S.i ? stepDetailHtml(s) : '';
-    return `${sep}<div class="steprow ${si === S.i ? 'sel' : ''} ${s.error ? 'err' : ''}" data-i="${si}">
-      <div class="line"><span class="n">${si + 1}</span><span class="lbl">${lbl}</span>${chip}</div>${det}</div>`;
+    const what = `${n} ${plural(n, ['одинаковый шаг', 'одинаковых шага', 'одинаковых шагов'])}: ${controlText(head, 44)}`;
+    const grouped = `<div class="steprow group ${open ? 'open' : ''}" data-key="${esc(g.key)}">
+      <div class="line"><span class="n">${g.members[0] + 1}–${g.members[n - 1] + 1}</span><span class="lbl">${esc(what)}</span>${chip}
+        <span class="fold">${open ? 'свернуть' : 'развернуть'}</span></div></div>`;
+    return sep + grouped + (open ? g.members.map(stepRowHtml).join('') : '');
   }).join('');
-  list.querySelectorAll('.steprow').forEach((el) => el.onclick = () => setStep(Number(el.dataset.i)));
+  list.querySelectorAll('.steprow[data-i]').forEach((el) => el.onclick = () => setStep(Number(el.dataset.i)));
+  list.querySelectorAll('.steprow.group').forEach((el) => el.onclick = () => {
+    const k = el.dataset.key;
+    if (S.walkOpen.has(k)) S.walkOpen.delete(k); else S.walkOpen.add(k);
+    renderSteps();
+  });
   const sel = list.querySelector('.steprow.sel'); if (sel) sel.scrollIntoView({ block: 'nearest' });
 }
 
@@ -416,8 +451,10 @@ function renderStrip() {
       sep.innerHTML = `<span class="rl">${esc(s.route)}</span>`; track.appendChild(sep);
     }
     const d = document.createElement('div');
-    const oc = outcomeOf(s); // by-design refusal → amber (guard), expected miss → gray (miss); red only for a genuine fault
-    const cls = oc ? (oc.tone === 'guard' ? 'guard' : oc.tone === 'muted' ? 'miss' : 'error') : dotClass(s);
+    // by-design refusal → amber (guard), a FINDING (disabled control) → amber too rather than red,
+    // reach gap → gray (miss); red is reserved for a genuine fault and nothing else.
+    const oc = outcomeOf(s);
+    const cls = oc ? (oc.tone === 'broken' ? 'error' : oc.tone === 'unreached' ? 'miss' : 'guard') : dotClass(s);
     d.className = 'pdot ' + cls + (si === S.i ? ' cur' : '');
     d.style.left = dotLeftPct(pos, count) + '%'; d.dataset.i = si;
     d.onclick = (e) => { e.stopPropagation(); setStep(si); };
@@ -444,17 +481,113 @@ function renderReadout() {
 }
 
 function shotUrl(rel) { return api(`/api/runs/${S.runId}/${rel}`); }
+
+// A control's NAME is sometimes the concatenated text of a whole subtree — the operator was shown
+// `generic "Add GroupuploadCreatesearchConnections (0)No dataNo Connections Found"` as if that were a
+// label. Truncate for DISPLAY and hand the full string to the tooltip. Display-side only: the name
+// derivation in lib/graph/ is identity-adjacent and is deliberately not touched.
+//
+// Takes the STEP, not the bare name: a nameless control has no label to truncate, and «без имени»
+// on its own is unaddressable. displayName's anchor chain fills in the element's test-id / id /
+// class / position instead, and the step's graph snapshot (when loaded) supplies the selector for
+// runs whose act payloads carried none.
+function nameHtml(step, max) {
+  const src = step && typeof step === 'object' ? anchorSource(step, nameGraph(step)) : step;
+  const d = displayName(src, max || 44);
+  if (!d.full) return '<span class="muted">без имени</span>';
+  const q = d.kind === 'name' ? esc(JSON.stringify(d.text)) : esc(d.text);
+  return `<span title="${esc(d.full)}">${q}</span>`;
+}
+
+// WHAT THE READER SEES INSTEAD OF `combobox без имени · input:nth-child(1)`. That row was formally
+// better than a bare ARIA role and still useless to a human: it names a CSS position, in English,
+// for a reader who does not know the project. `controlPhrase` says what kind of thing it is in
+// Russian and gives it the best name anyone ever wrote for it; when the author wrote none, the last
+// resort is the one the operator asked for by name — the page and a count.
+//
+// The ordinal is computed HERE, not in the module, because only the page holds the graph: it is the
+// control's rank among the SAME-ROLE unnamed controls on the same route, so «второе поле ввода без
+// подписи» addresses exactly one thing and stays stable while that page's markup does.
+function ordinalOf(step, graph) {
+  if (!step || !graph || !graph.elements) return null;
+  const els = Array.isArray(graph.elements) ? graph.elements : Object.values(graph.elements);
+  const peers = els.filter((e) => e && e.route === step.route && e.role === step.role
+    && !String(e.name == null ? '' : e.name).trim())
+    .sort((a, b) => (a.templateId || 0) - (b.templateId || 0));
+  const i = peers.findIndex((e) => e.templateId === step.templateId);
+  return i >= 0 ? i + 1 : null;
+}
+// The full human phrase for a step's control, with the raw anchor kept in the tooltip.
+function controlHtml(step, max) {
+  const g = nameGraph(step);
+  const src = step && typeof step === 'object' ? anchorSource(step, g) : step;
+  const p = controlPhrase(src, { ordinal: ordinalOf(step, g), pageLabel: shortRoute(step && step.route) });
+  const full = p.text;
+  const shown = full.length > (max || 60) ? full.slice(0, (max || 60) - 1).trimEnd() + '…' : full;
+  const raw = displayName(src, 80).full;
+  return `<span title="${esc(full + (raw && raw !== full ? ` · ${raw}` : ''))}">${esc(shown)}</span>`;
+}
+const controlText = (step, max) => {
+  const g = nameGraph(step);
+  const p = controlPhrase(anchorSource(step, g), { ordinal: ordinalOf(step, g), pageLabel: shortRoute(step && step.route) });
+  return p.text.length > (max || 60) ? p.text.slice(0, (max || 60) - 1).trimEnd() + '…' : p.text;
+};
+// TWO lookups, deliberately not one. `graphForStep` is the snapshot for THIS step and is the only
+// thing allowed to answer the reveal-path split — a path recorded later says nothing about what was
+// known here, and answering with it would be a fresh version of the lie the split exists to end.
+// `nameGraph` may fall back to the run-wide identity graph, because which selector a templateId has
+// is run-stable. Neither fetches: the panel renders immediately and sharpens when a snapshot lands.
+function graphForStep(step) { return step && S.sgSeq === step.seq ? S.sgGraph : null; }
+function nameGraph(step) { return graphForStep(step) || S.idGraph; }
+
+// «Что решил скрипт» — derived from trail ORDER, the only place this is recorded today: an act that
+// failed leaves the control unexplored, and the running count of such controls is what the ledger
+// carries forward. Counted over the steps up to and including this one, so it matches the walk.
+function verdictOf(i) {
+  let unreachable = 0;
+  for (let j = 0; j <= i && j < S.steps.length; j++) if (S.steps[j] && S.steps[j].error) unreachable++;
+  return `Отмечен недостижимым. Недостижимых к этому шагу: ${unreachable}.`;
+}
+
+// The failure panel, in the ONE binding reading order (see failure-hints.mjs):
+// 1 приговор · 2 где это было · 3 что пробовали · 4 что решил скрипт · 5 сырые данные (collapsed).
+// The verdict sentence is the first thing on the card; the selector is last and folded away.
+function failurePanel(s, ex, oc) {
+  const attempts = Array.isArray(s.attempts) ? s.attempts : null; // another agent is adding this; render gracefully when absent
+  const where = s.route
+    ? `<span class="mono">${esc(s.route)}</span>`
+    : '<span class="none">положение не записано</span>';
+  const tried = attempts && attempts.length
+    ? attempts.map((a) => `<div class="mono">${esc(typeof a === 'string' ? a : (a.what || a.selector || JSON.stringify(a)))}</div>`).join('')
+    : '<span class="none">список попыток не записан</span>';
+  return `<div class="ocard">
+    <span class="octag">${esc(ex ? ex.toneLabel : oc.label)}</span>
+    <div class="ocsent">${esc(ex ? ex.sentence : oc.why)}</div>
+    <div class="octitle">${controlHtml(s, 60)}</div>
+    <div class="ocsec"><h6>где это было</h6><div class="v">${where}</div></div>
+    <div class="ocsec"><h6>что пробовали</h6><div class="v ${attempts && attempts.length ? '' : 'none'}">${tried}</div></div>
+    <div class="ocsec"><h6>что решил скрипт</h6><div class="v">${esc(verdictOf(S.i))}</div></div>
+    <details class="ocraw"><summary>сырые данные</summary>
+      <div class="ocerr mono">${esc(s.error)}</div></details></div>`;
+}
+
 function renderStage() {
   const wrap = $('#stageWrap'), s = S.steps[S.i];
-  $('#stageTitle').textContent = s ? `act [${s.templateId}] ${JSON.stringify(s.name || '')} · ${s.route}` : '—';
+  // `act [1052]` was a raw template index — meaningless to a reader, and the first thing on the
+  // screen. Position in the walk, what was clicked, and on which page: three facts a person can use.
+  // The template number stays reachable in the tooltip, where a term belongs.
+  $('#stageTitle').textContent = s
+    ? `Шаг ${S.i + 1} из ${S.steps.length} · ${controlText(s, 56)} · страница ${shortRoute(s.route)}`
+    : '—';
+  $('#stageTitle').title = s ? `шаблон ${s.templateId} · ${s.route}` : '';
   if (!s) { wrap.innerHTML = '<div class="empty">нет шага</div>'; return; }
   const oc = outcomeOf(s);
-  if (oc) { // a blocked/failed act — calm categorized card + the before-frame if it was captured (so it is never blank)
+  if (oc) { // a blocked/failed act — explained outcome card + the before-frame if it was captured (so it is never blank)
+    const g = graphForStep(s);
+    const ex = explainFailure(anchorSource(s, nameGraph(s)), g);
     const sh = s.shots || {}, rel = sh.before || sh.after;
     const shot = rel ? `<div class="frame"><img id="stageImg" src="${shotUrl(rel)}" alt="frame"></div>` : '<div class="noshot">кадр не снят для этого шага</div>';
-    wrap.innerHTML = `<div class="outcome tone-${oc.tone}"><div class="ocard"><span class="octag">${esc(oc.label)}</span>
-      <div class="octitle">${esc(s.role || '')} ${esc(JSON.stringify(s.name || ''))}</div>
-      <div class="ocwhy">${esc(oc.why)}</div><div class="ocerr mono">${esc(s.error)}</div></div>${shot}</div>`;
+    wrap.innerHTML = `<div class="outcome tone-${oc.tone}">${failurePanel(s, ex, oc)}${shot}</div>`;
     const img = $('#stageImg'); if (img) img.onclick = () => { $('#lbImg').src = img.src; $('#lb').classList.add('open'); };
     return;
   }
@@ -476,7 +609,8 @@ function placeBox() {
 
 function setStep(i) {
   S.i = clampIndex(i, S.steps.length); snapToView();
-  renderCursor(); renderReadout(); renderSteps(); syncRunPages(); renderStage(); if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView();
+  renderCursor(); renderReadout(); renderSteps(); syncRunPages(); renderStage(); refreshStepGraph();
+  if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView();
 }
 // Move by ±1 WITHIN the current page-filtered view (not the raw S.steps array).
 function stepBy(delta) { const view = viewIdx(); if (!view.length) return; let pos = view.indexOf(S.i); if (pos < 0) pos = 0; setStep(view[clampIndex(pos + delta, view.length)]); }
@@ -506,24 +640,34 @@ track.addEventListener('pointermove', (e) => {
   const view = viewIdx(); if (!view.length) return;
   const rect = track.getBoundingClientRect(), pos = indexFromClientX(e.clientX, rect.left, rect.width, view.length), s = S.steps[view[pos]];
   const tip = $('#tip'); tip.style.display = 'block'; tip.style.left = dotLeftPct(pos, view.length) + '%';
-  tip.textContent = `${pos + 1}. t${s.templateId} ${s.name || s.role} · ${s.route}`;
+  // displayName here too: a concatenated-subtree name would otherwise stretch the tooltip off-screen
+  tip.textContent = `${pos + 1}. ${controlText(s, 44)} · ${shortRoute(s.route)}`;
 });
 track.addEventListener('pointerup', () => { dragging = false; });
 track.addEventListener('pointerleave', () => { $('#tip').style.display = 'none'; });
 
-/* ---- tabs + wiring ---- */
+/* ---- sections + wiring ---- */
+// The router. `runs` is the only section that owns the 3-pane walk (grid + KPI strip + scrubber);
+// every other section replaces it wholesale. The four unbuilt sections all render into the SAME
+// #stubView — one container, content chosen by id — so adding a section costs a NAV_ITEMS row and
+// a STUBS entry, not another view div.
 function setTab(t) {
   S.tab = t;
-  $('#tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-  const graph = t === 'graph', tests = t === 'tests';
-  $('#bodyGrid').classList.toggle('hide', graph || tests);
-  $('#kpis').classList.toggle('hide', graph || tests);
-  $('#strip').classList.toggle('hide', graph || tests); // scrubber strip lives only under the Прогоны walk
-  $('#testsView').classList.toggle('hide', !tests);
-  $('#graphView').classList.toggle('hide', !graph);
-  if (graph) { G.hover = null; requestAnimationFrame(drawGraphView); }
+  SHELL.setActive(t);
+  const item = NAV_ITEMS.find((i) => i.id === t) || NAV_ITEMS[0];
+  $('#secTitle').textContent = item.label;
+  $('#secHint').textContent = item.title;
+  const runs = t === 'runs', stub = STUB_IDS.has(t);
+  $('#bodyGrid').classList.toggle('hide', !runs);
+  $('#kpis').classList.toggle('hide', !runs);         // Конвейер carries its OWN KPI strip
+  $('#strip').classList.toggle('hide', !runs);        // scrubber strip lives only under the Прогоны walk
+  $('#testsView').classList.toggle('hide', t !== 'tests');
+  $('#pipeView').classList.toggle('hide', t !== 'pipe');
+  $('#graphView').classList.toggle('hide', t !== 'graph');
+  $('#stubView').classList.toggle('hide', !stub);
+  if (stub) $('#stubView').innerHTML = stubHtml(t, sectionCounts());
+  if (t === 'graph') { G.hover = null; requestAnimationFrame(drawGraphView); }
 }
-$('#tabs').querySelectorAll('button').forEach((b) => b.onclick = () => setTab(b.dataset.tab));
 $('#gSub').querySelectorAll('button').forEach((b) => b.onclick = () => {   // Obsidian (force) vs Схема (bipartite) sub-tab
   G.viewMode = b.dataset.vm; G.hover = null;
   $('#gSub').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
@@ -545,7 +689,7 @@ async function doDeleteRun() {
     const r = await fetch(api('/api/runs/' + id), { method: 'DELETE' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     closeConfirm();
-    if (S.runId === id) { S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; }
+    if (S.runId === id) { S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; }
     S.runs = S.runs.filter((x) => x.id !== id);
     if (typeof G !== 'undefined' && G.cache) G.cache.clear();
     await loadRuns();
@@ -583,7 +727,7 @@ function classifyEp(key) {
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return 'read';
   return WRITE_RE.test(p) ? 'write' : 'read';
 }
-const epLabel = (k) => k.replace(/^\S+\s+/, '').replace('/rawcaster/', '').replace('/api/', '').split('?')[0];
+const epLabel = (k) => k.replace(/^\S+\s+/, '').replace('/api/', '').split('?')[0];
 // Human-readable page name from a route. Known routes get a curated label; unknown ones are prettified
 // (separators / camelCase → words, title-cased). An opaque trailing id (a profile hash) is dropped, but a
 // short 4-char tag is kept so two different profiles stay distinguishable rather than collapsing to one name.
@@ -610,25 +754,104 @@ function shortRoute(route) {
   if (segs.length > 1 && /^[A-Za-z0-9=_-]{6,}$/.test(tail)) return base + ' ·' + tail.slice(0, 4); // opaque id → short tag
   return base;
 }
-function elLabel(el) { let n = String(el.name || '').replace(ICON_RE, ' ').replace(/\s+/g, ' ').trim(); return n || (el.role || ('#' + el.id)); }
+// A graph node's label. Icon-ligature noise is stripped, then displayName caps it — the SAME
+// truncator the walk and the pipeline use, so one control reads identically in all three views.
+// elLabelFull keeps the untruncated string for the tooltip.
+function elLabelFull(el) { const n = String(el.name || '').replace(ICON_RE, ' ').replace(/\s+/g, ' ').trim(); return n || (el.role || ('#' + el.id)); }
+function elLabel(el) { return displayName(elLabelFull(el), 44).text; }
 function isBlocked(el) { return el.danger === 'destructive' || el.danger === 'auth' || el.danger === 'payment'
   || /refused|firewall|mutation|skipped as|OAuth|account-creation/i.test(el.purpose || ''); }
 function isGap(el) { return el.unreachable || /unreachable|not-visible/.test(el.effect || ''); }
 function elColor(el) {
   if (isGap(el)) return gcol('--mut');
   if (isBlocked(el)) return gcol('--warn');
-  if (el.effect === 'navigate') return '#a371f7';
-  if (el.effect === 'reveal') return '#2dd4bf';
+  if (el.effect === 'navigate') return gcol('--nav-edge');
+  if (el.effect === 'reveal') return '#009689';
   if (el.effect === 'request') return gcol('--accent');
   return gcol('--dim');
 }
 
+// Caches the PROMISE, not the resolved value. Three consumers walk back over the same seqs (the
+// walk's stepGraph, the run's identity graph, the pipeline's per-step split), and caching only the
+// result meant all three missed the cache before any of them resolved and refetched the same
+// misses — measured, it doubled the 404 count in the console. A miss is cached too: a seq with no
+// snapshot is a fact about the run, and re-asking cannot change it.
 async function graphAtSeq(seq) {
   const ck = S.runId + ':' + seq;
   if (G.cache.has(ck)) return G.cache.get(ck);
-  let g = null;
-  try { g = await jget(`/api/runs/${S.runId}/graph/${seq}`); } catch { g = null; }
-  G.cache.set(ck, g); return g;
+  const p = jget(`/api/runs/${S.runId}/graph/${seq}`).catch(() => null);
+  G.cache.set(ck, p);
+  return p;
+}
+
+// The nearest snapshot AT OR BEFORE a seq — the state the step was launched from. Snapshots are
+// written per STEP, not per event (142 of 288 seqs on run raw1, worst gap 18), so a bare fetch at
+// a row's own seq 404s about half the time.
+//
+// The walk-back therefore probes STEP seqs and prefers the ones that SUCCEEDED: a failed act throws
+// before the snapshot is written, so its seq is a guaranteed miss. Consulting the trail first turns
+// most of the probing into arithmetic — on raw1 the run's tail is a run of failures, and a naive
+// walk-back from the last event burned six 404s before finding anything. Still bounded at BACKWALK:
+// an unbounded walk would fire hundreds of requests on a run whose snapshots were never written.
+const BACKWALK = 24;
+const PIPE_GRAPH = new Map();   // 'runId:seq' → graph | null, resolved through the walk-back
+async function graphAtOrBefore(seq) {
+  const cands = [];
+  for (let j = S.steps.length - 1; j >= 0 && cands.length < BACKWALK; j--) {
+    const st = S.steps[j];
+    if (!st || st.seq == null || st.seq > seq) continue;
+    cands.push(st);
+  }
+  // Successful acts first (they are the ones that wrote a snapshot), then the rest as a fallback —
+  // nothing is skipped, only reordered, so a run with an unexpected write pattern still resolves.
+  for (const list of [cands.filter((s) => !s.error), cands.filter((s) => s.error)]) {
+    for (const st of list) {
+      const g = await graphAtSeq(st.seq);
+      if (g && Object.keys(g.elements || {}).length) return g;
+    }
+  }
+  return null;
+}
+// The «Конвейер» tab's per-step graph hook — the MOMENT-specific question only. Synchronous when
+// known (so the tab paints without a round trip), a promise on the first miss (the tab repaints
+// once when it lands). Only rows whose failure class actually READS the graph are fetched for —
+// the NO_INSTANCE split and the broken-hop chain — so selecting through a run of successful acts
+// costs nothing, and naming is served by the run-wide identity graph instead.
+const GRAPH_HUNGRY = new Set(['NO_INSTANCE', 'REVEAL_HOP_MISSING']);
+function pipeGraphFor(row) {
+  if (!S.runId || !row || !row.outcome || row.templateId == null) return null;
+  const cls = classify({ error: row.error || String(row.outcome), code: row.code || String(row.outcome) });
+  if (!cls || !GRAPH_HUNGRY.has(cls.code)) return null;
+  const ck = S.runId + ':' + row.seq;
+  if (PIPE_GRAPH.has(ck)) return PIPE_GRAPH.get(ck);
+  return graphAtOrBefore(Number(row.seq)).then((g) => { PIPE_GRAPH.set(ck, g); return g; });
+}
+
+// The run's IDENTITY graph: one snapshot, loaded once, used ONLY to name controls. Which selector
+// or authored id a templateId has does not change during a run, so the newest snapshot names every
+// row correctly — and a nameless control reads «без имени · #device» instead of «без имени · t313».
+// It must NEVER be used for the reveal-path split: a path recorded at step 200 says nothing about
+// what was known at step 12, and answering with it would be a fresh version of the lie the split
+// exists to end. Loads in the background and repaints once; the tab is never blocked on it.
+async function loadIdentityGraph() {
+  const runId = S.runId;
+  if (!runId || S.idGraphRun === runId) return;
+  S.idGraphRun = runId;
+  // Newest first, and SUCCESSFUL acts first: a failed act throws before its snapshot is written, so
+  // probing one is a guaranteed 404. raw1 ends in a run of failures, which cost six of them.
+  const order = [...S.steps].reverse();
+  for (const st of [...order.filter((s) => s && !s.error), ...order.filter((s) => s && s.error)]) {
+    const sq = st.seq;
+    if (sq == null) continue;
+    const g = await graphAtSeq(sq);
+    if (g && Object.keys(g.elements || {}).length) {
+      if (S.runId !== runId) return;                 // the operator switched runs mid-flight
+      S.idGraph = g;
+      S.pipeRows = PIPE.update(derivePipeline(S.events));   // repaint the titles with real anchors
+      renderSteps(); renderStage();
+      return;
+    }
+  }
 }
 function buildModel(g) {
   const elsRaw = g.elements || {}, reqs = g.requests || {};
@@ -745,7 +968,7 @@ function drawGraph() {
   if (s.bipartite) { drawBipartite(s); return; }         // Схема sub-tab: two-column causal graph
   // node palette (per operator): PAGE = blue, UI element = green, endpoint = red. Edges split by TYPE:
   // page↔page navigation = violet, element→endpoint call = amber, page→element ownership = faint gray.
-  const n = s.nodes, settled = s.alpha < 0.22, NAV = '#a371f7', FIRE = '#d29922', PAGE = gcol('--accent'), ELEM = gcol('--good'), EP = gcol('--bad');
+  const n = s.nodes, settled = s.alpha < 0.22, NAV = gcol('--nav-edge'), FIRE = gcol('--warn'), PAGE = gcol('--accent'), ELEM = gcol('--good'), EP = gcol('--bad');
   if (s.single) { gctx.strokeStyle = gcol('--line'); gctx.globalAlpha = 0.5; gctx.lineWidth = 1;  // orbit-ring guides (Страница)
     [s.rIn, s.rOut].forEach((rr) => { gctx.beginPath(); gctx.arc(s.cx, s.cy, rr, 0, 7); gctx.stroke(); }); gctx.globalAlpha = 1; }
   // page→element ownership + element→endpoint call edges (dimmed when off the focus/hover set)
@@ -765,7 +988,7 @@ function drawGraph() {
   for (const a of n) { const on = nodeOn(a.t, a.key);
     gctx.globalAlpha = on ? 1 : 0.3;
     if (a.t === 'pg') { const grd = gctx.createRadialGradient(a.x, a.y, 1, a.x, a.y, a.r * 2.6);
-      grd.addColorStop(0, 'rgba(88,166,255,.4)'); grd.addColorStop(1, 'rgba(88,166,255,0)');
+      grd.addColorStop(0, 'rgba(37,147,186,.40)'); grd.addColorStop(1, 'rgba(37,147,186,0)'); // --accent, the one page colour
       gctx.fillStyle = grd; gctx.beginPath(); gctx.arc(a.x, a.y, a.r * 2.6, 0, 7); gctx.fill(); }
     if (a.t === 'pg' && a.page.linkedOnly) {                                    // linked-but-not-collected: hollow ring
       gctx.beginPath(); gctx.arc(a.x, a.y, a.r, 0, 7); gctx.lineWidth = 2; gctx.strokeStyle = PAGE; gctx.stroke();
@@ -789,7 +1012,7 @@ function drawGraph() {
   const radial = !!s.single;
   // radial (Страница) label: every element + endpoint labelled, placed OUTWARD along its orbit angle
   const radLabel = (a, txt) => { const on = nodeOn(a.t, a.key), right = Math.cos(a.a || 0) >= 0;
-    gctx.font = a.t === 'ep' ? '11px ui-monospace, Menlo, monospace' : '11px -apple-system, "Segoe UI", sans-serif';
+    gctx.font = a.t === 'ep' ? '11px ui-monospace, Menlo, monospace' : '11px ui-monospace, Menlo, monospace';
     gctx.textAlign = right ? 'left' : 'right'; gctx.globalAlpha = on ? 1 : 0.4; gctx.fillStyle = on ? gcol('--fg') : gcol('--dim');
     gctx.fillText(fit(txt, 150), a.x + (right ? a.r + 5 : -(a.r + 5)), a.y); };
   // force (Граф) overview: endpoint labels only on hover / focused page — keeps the web clean
@@ -801,14 +1024,14 @@ function drawGraph() {
     else if (a.t === 'ep' && epLabelOn(a)) {
       const hits = a.info && a.info.statuses ? ' ·' + Object.values(a.info.statuses).reduce((x, y) => x + y, 0) : (a.info && a.info.cls === 'write' ? ' ·⊘' : '');
       label(a, epLabel(a.key) + hits, '11px ui-monospace, Menlo, monospace', -(a.r + 8));
-    } else if (a.t === 'el' && hovKey(a)) label(a, elLabel(a.el), '11px -apple-system, "Segoe UI", sans-serif', -(a.r + 8));
+    } else if (a.t === 'el' && hovKey(a)) label(a, elLabel(a.el), '11px ui-monospace, Menlo, monospace', -(a.r + 8));
   }
   gctx.globalAlpha = 1;
 }
 // Схема renderer: PAGES (blue, left) │ CONTROLS (green, middle) │ ENDPOINTS (red, ✕=write, right).
 // Edges: page→control ownership (faint) + control→endpoint call (amber read / red write).
 function drawBipartite(s) {
-  const n = s.nodes, FIRE = '#d29922', midPC = (s.pageX + s.ctrlX) / 2, midCE = (s.ctrlX + s.epX) / 2;
+  const n = s.nodes, FIRE = gcol('--warn'), midPC = (s.pageX + s.ctrlX) / 2, midCE = (s.ctrlX + s.epX) / 2;
   const pill = (x, y, w, on) => { gctx.globalAlpha = on ? 0.8 : 0.25; gctx.fillStyle = gcol('--bg'); gctx.fillRect(x, y - 8, w, 16); gctx.globalAlpha = 1; };
   // page → control ownership edges (faint)
   for (const e of s.edges) { if (e.type !== 'contains') continue; const a = n[e.a], b = n[e.b];
@@ -831,7 +1054,7 @@ function drawBipartite(s) {
     gctx.textAlign = 'right'; gctx.fillStyle = on ? gcol('--fg') : gcol('--dim'); gctx.fillText(fit(txt, maxW), a.x - 13, a.y); }
   // controls (middle, green) + right-aligned label sitting in the page→control gap
   for (const a of n) { if (a.t !== 'el') continue; const on = nodeOn('el', a.key), maxW = s.ctrlX - s.pageX - 30;
-    gctx.font = '12px -apple-system, "Segoe UI", sans-serif'; const w = Math.min(gctx.measureText(fit(elLabel(a.el), maxW)).width, maxW);
+    gctx.font = '12px ui-monospace, Menlo, monospace'; const w = Math.min(gctx.measureText(fit(elLabel(a.el), maxW)).width, maxW);
     pill(a.x - 12 - w, a.y, w + 6, on);
     gctx.globalAlpha = on ? 1 : 0.25; gctx.beginPath(); gctx.arc(a.x, a.y, a.r, 0, 7); gctx.fillStyle = isGap(a.el) ? gcol('--mut') : gcol('--good'); gctx.fill();
     gctx.textAlign = 'right'; gctx.fillStyle = on ? gcol('--fg') : gcol('--dim'); gctx.fillText(fit(elLabel(a.el), maxW), a.x - 11, a.y); }
@@ -967,7 +1190,7 @@ function nodeModalHtml(a) {
     const ctrls = p.els.map((id) => m.els[id]).filter(Boolean);
     const acts = ctrls.filter((e) => !isGap(e) && !isBlocked(e)).length, gaps = ctrls.filter(isGap).length;
     const eps = [...p.eps], links = [...(m.navAdj[a.key] || [])];
-    const ctrlList = ctrls.length ? ctrls.map((e) => `<span class="nm-pill" style="color:${isGap(e) ? 'var(--mut)' : 'var(--good)'}">${esc(elLabel(e))}</span>`).join('') : empty;
+    const ctrlList = ctrls.length ? ctrls.map((e) => `<span class="nm-pill" style="color:${isGap(e) ? 'var(--mut)' : 'var(--good)'}" title="${esc(elLabelFull(e))}">${esc(elLabel(e))}</span>`).join('') : empty;
     const epList = eps.length ? eps.map(methodPill).join('') : '<span class="nm-empty">эндпоинтов не зафиксировано</span>';
     const linkList = links.length ? links.map((r) => `<span class="nm-pill mono">${esc(shortRoute(r))}</span>`).join('') : empty;
     return `<div class="nm-hd"><span class="nm-kind pg">страница</span><span class="nm-title">${esc(shortRoute(a.key))}<div class="r mono">${esc(a.key)}</div></span>${close}</div>
@@ -981,9 +1204,9 @@ function nodeModalHtml(a) {
   if (a.t === 'el') {                                        // CONTROL: which page it is on + the endpoints it fires
     const e = m.els[a.key]; if (!e) return '';
     const eps = [...(m.elEps[a.key] || [])];
-    const epList = eps.length ? eps.map(methodPill).join('') : '<span class="nm-empty">endpoints не вызывал (навигация / reveal / недоступен)</span>';
+    const epList = eps.length ? eps.map(methodPill).join('') : '<span class="nm-empty">запросов не отправлял — навигация, раскрытие панели или контрол недоступен</span>';
     const row = (k, v) => v ? `<div class="nm-row"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>` : '';
-    return `<div class="nm-hd"><span class="nm-kind el">контрол</span><span class="nm-title">${esc(elLabel(e))}<div class="r">${esc(e.role || '')}</div></span>${close}</div>
+    return `<div class="nm-hd"><span class="nm-kind el">контрол</span><span class="nm-title" title="${esc(elLabelFull(e))}">${esc(elLabel(e))}<div class="r">${esc(e.role || '')}</div></span>${close}</div>
       <div class="nm-body">
         <div class="nm-row"><span class="k">страница</span><span class="v mono">${esc(e.route)}</span></div>
         ${row('эффект', e.effect)}${row('danger', e.danger)}${e.unreachable ? '<div class="nm-row"><span class="k">статус</span><span class="v" style="color:var(--mut)">unreachable</span></div>' : ''}${row('инстансов', e.insts)}
@@ -995,7 +1218,7 @@ function nodeModalHtml(a) {
     const callers = [...(m.epEls[a.key] || [])].map((id) => m.els[id]).filter(Boolean);
     const pages = [...new Set(callers.map((e) => e.route))];
     const statuses = info.statuses ? Object.entries(info.statuses).map(([s, n]) => `<span class="nm-pill">${esc(s)} ·${n}</span>`).join('') : '<span class="nm-empty">не зафиксированы</span>';
-    const callerList = callers.length ? callers.map((e) => `<span class="nm-pill" style="color:var(--good)">${esc(elLabel(e))}</span>`).join('') : empty;
+    const callerList = callers.length ? callers.map((e) => `<span class="nm-pill" style="color:var(--good)" title="${esc(elLabelFull(e))}">${esc(elLabel(e))}</span>`).join('') : empty;
     const pageList = pages.length ? pages.map((r) => `<span class="nm-pill mono">${esc(shortRoute(r))}</span>`).join('') : empty;
     return `<div class="nm-hd"><span class="nm-kind ep">endpoint</span><span class="nm-title mono">${esc(info.method || '')} ${esc(info.pattern || epLabel(a.key))}</span>${close}</div>
       <div class="nm-body">

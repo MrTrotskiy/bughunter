@@ -5,10 +5,13 @@
 // Guards: indexFromClientX round-trips dotLeftPct and clamps at both ends (a click past the
 //   right edge lands on the LAST dot, not out of range); deriveSteps extracts one step per
 //   act in seq order, pairs the observe verdict by templateId, and flags a route change;
-//   boxFromRect scales the highlight box DPR-independently from viewport-CSS-px to rendered px.
+//   deriveSteps keeps `act.failed` (the LIVE driver's failure kind) in the walk, reading its
+//   `requested`/`message` field names; boxFromRect scales the highlight box DPR-independently
+//   from viewport-CSS-px to rendered px.
 // FAIL-ON-REVERT: change indexFromClientX's `count-1` to `count` (the classic off-by-one) →
 //   the right-edge assertion returns count instead of count-1 → red. Drop the observe pairing
-//   in deriveSteps → the "observe folded onto its act" assertion goes red.
+//   in deriveSteps → the "observe folded onto its act" assertion goes red. Narrow the
+//   deriveSteps filter back to `e.kind === 'act'` → "a failed act is a step" reds with 2 of 3.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -69,6 +72,36 @@ test('deriveSteps: an errored act still becomes a step with no shots', () => {
   assert.equal(steps.length, 1);
   assert.equal(steps[0].error, 'NOT_VISIBLE');
   assert.equal(dotClass(steps[0]), 'error', 'errored act dot is tinted error');
+});
+
+// The node-loop (recon-run) records a failure as `kind:'act'` with an `error` — the case above. The LIVE
+// driver (stateful-step recordFail) records `kind:'act.failed'`, so readActFailed can see the granular
+// NO_INSTANCE / NOT_VISIBLE / REVEAL_* codes it filters on. deriveSteps feeds the viewer's "Прогоны" walk,
+// which RENDERS failures deliberately (outcomeOf reads `error`; there is blocked/failed styling), so an
+// `act`-only filter makes 15% of a run vanish from it: 54 failed acts of 355 in `hygge2`, 56 of 408 in
+// `goal1`. The failure payload also uses DIFFERENT field names — `requested` (aimed) not `route` (landed),
+// and on the whats-new path only `message` — so both need a fallback or the row lands on a phantom "—"
+// page and renders as a blank SUCCESS, which is worse than not rendering at all.
+// FAIL-ON-REVERT: narrow the filter to `e.kind === 'act'` → "a failed act is a step" reds with 2 of 3.
+test('deriveSteps keeps act.failed — the live driver kind, ~15% of a run', () => {
+  const steps = deriveSteps([
+    { seq: 0, kind: 'act', payload: { templateId: 1, name: 'Save', role: 'button', route: '/events' } },
+    // stateful-step shape: `requested` + `message` + `error`, a before-frame, and attemptMs-only timings.
+    { seq: 1, kind: 'act.failed', payload: { templateId: 9, name: 'Create Event', role: 'button', requested: '/events',
+      code: 'NO_INSTANCE', message: 'cannot resolve instance #create', error: 'cannot resolve instance #create',
+      timings: { attemptMs: 812 }, shots: { before: 'f/9.png', after: null, rect: null, viewport: null } } },
+    // whats-new shape: NO `error`, NO route — only code/message. It must not render as a blank success.
+    { seq: 2, kind: 'act.failed', payload: { templateId: 12, instance: 'k2', code: 'NOT_VISIBLE', message: 'instance #x is present but not visible' } },
+  ]);
+  assert.equal(steps.length, 3, 'a failed act is a step: an act-only filter loses 15% of the walk');
+  assert.equal(steps[1].templateId, 9);
+  assert.equal(steps[1].route, '/events', 'a failed act stamps `requested` (aimed), not `route` (landed)');
+  assert.equal(steps[1].routeStart, false, 'the aimed route is the same page — no phantom route separator');
+  assert.equal(steps[1].shots.before, 'f/9.png', 'the before-frame survives, so the stage is not blank');
+  assert.equal(dotClass(steps[1]), 'error', 'a failed act tints its dot');
+  // The viewer keys its outcome card on `error`; the whats-new writer only sets `message`.
+  assert.equal(steps[2].error, 'instance #x is present but not visible', 'message backs `error` so the row is not a blank success');
+  assert.equal(dotClass(steps[2]), 'error', 'a message-only failure is still tinted, never silently green');
 });
 
 test('boxFromRect scales viewport-CSS-px to rendered px, DPR-independent', () => {
