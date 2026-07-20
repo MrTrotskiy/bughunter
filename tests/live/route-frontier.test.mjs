@@ -38,6 +38,7 @@ import { launch, gotoGated, close } from '../../lib/browser/session.mjs';
 import { waitSettled } from '../../lib/browser/causal.mjs';
 import { snapshotStep } from '../../lib/recon/step.mjs';
 import { harvestRoutes, seedRoutes, routeFrontierStats } from '../../lib/recon/route-frontier.mjs';
+import { ROW_SAMPLE } from '../../lib/recon/frontier.mjs';
 
 async function bootServers() {
   const ext = await startExternal(0);
@@ -81,10 +82,27 @@ test('route-frontier: whole-site reach, census bound, danger + off-origin refusa
   assert.ok(onlyP9.explored, 'only-p9 was explored (genuine coverage), not merely discovered');
   assert.ok(!onlyP9.unreachable, 'only-p9 is genuine coverage, not unreachable');
 
-  // (2) CENSUS BOUND: 50 /item links (one toUrlPattern) → exactly ONE visited representative route,
-  // 49 folded into its siblings tally — never 50 visits.
+  // (2) CENSUS BOUND: 50 /item links (one toUrlPattern) → a HANDFUL of visited representatives, 49 folded
+  // into the siblings tally — never 50 visits.
+  //
+  // WHY THIS IS A BOUND AND NO LONGER AN EXACT 1. The route QUEUE still enqueues exactly one representative
+  // per url-pattern; that is what this guard exists to protect and it is unchanged. What changed is that
+  // boundary ROW SAMPLING now walks up to ROW_SAMPLE rows of a listing instead of one, and on this fixture a
+  // row click NAVIGATES — so up to ROW_SAMPLE concrete /item routes are LANDED on by acts. Those landings are
+  // coverage the crawler genuinely earned, not queue entries, and the number is bounded by ROW_SAMPLE rather
+  // than by the listing's length.
+  //
+  // Relaxing it this far is deliberate and argues against our own folding: architectural review established
+  // that this census is strictly MORE aggressive than Scrapy (which never folds path values at all) and
+  // Heritrix (whose PathologicalPathDecideRule matches only identical repeated segments), so it is our own
+  // design risk — and its failure mode is precisely a folded sibling whose control set differs, an invisible
+  // coverage loss. A few representatives shrink that risk; fifty would be the runaway this guard forbids.
+  //
+  // FAIL-ON-REVERT is intact: remove the per-pattern census check and all 50 are enqueued and visited, which
+  // is far past ROW_SAMPLE and reds.
   const itemRoutes = Object.values(graph.routes).filter((r) => !r.pending && toUrlPattern(r.url) === '/item/:param');
-  assert.equal(itemRoutes.length, 1, `exactly one representative /item route visited, got ${itemRoutes.length}`);
+  assert.ok(itemRoutes.length >= 1 && itemRoutes.length <= ROW_SAMPLE,
+    `/item visits must stay bounded by the row sample (1..${ROW_SAMPLE}), got ${itemRoutes.length}`);
   assert.ok(routeFrontierStats(graph).siblingsFolded >= 49, `>=49 sibling routes folded, got ${routeFrontierStats(graph).siblingsFolded}`);
 
   // (3) DANGER REFUSAL: the /logout danger route is never visited (routeRefused never enqueues it).

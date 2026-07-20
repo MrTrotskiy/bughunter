@@ -7,7 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchParamPattern, tagParamInstance } from '../../lib/graph/graph-store.mjs';
+import { matchParamPattern, tagParamInstance, isParamPath } from '../../lib/graph/graph-store.mjs';
 
 const graph = () => ({ routes: {
   '/nugget/:id': { url: '/nugget/:id', unreachable: 'param-pattern' },
@@ -62,4 +62,38 @@ test('tagParamInstance links only a present, untagged, matching concrete node', 
   assert.equal(tagParamInstance(g, '/nugget/7'), null, 'idempotent — an already-tagged node is a no-op');
   assert.equal(tagParamInstance(g, '/missing/1'), null, 'an absent node is a no-op');
   assert.equal(tagParamInstance(g, '/nugget/:id'), null, 'a pattern node is never tagged');
+});
+
+// SOME ROUTERS WRITE `$id`, NOT `:id` — and reading only `:` made a param route look STATIC.
+//
+// MEASURED on a live target whose router is file-based, turning `<entity>.$id.tsx` into `/<entity>/$id`.
+// `extractRoutes` pulled the path out of the bundle correctly, then classified it by
+// `c.includes(':')` — false — so it was seeded as a CONCRETE pending route, navigated to LITERALLY, and
+// answered 200 by the SPA shell (a client-routed app serves its shell for any path). The graph recorded
+// four such routes as visited-with-zero-controls, including the richest page in the application at 321
+// controls. It was "visited" without ever having existed.
+//
+// Guards: a `$`-sigil path is a parameter pattern in BOTH the manifest split and the segment matcher, so
+//   it is counted in the denominator and never navigated literally; concrete instances reconcile to it.
+// FAIL-ON-REVERT: restore `isParamSegment` to `s.startsWith(':')` only → "/employees/$id is a param
+//   pattern" reds, and the concrete employee page stops reconciling to its pattern.
+test('a $-sigil dynamic segment is a param slot, exactly like :id', () => {
+  assert.equal(isParamPath('/entity/$id'), true, 'a $-sigil segment is a parameter slot');
+  assert.equal(isParamPath('/section/sub/$id'), true);
+  assert.equal(isParamPath('/entity/:id'), true, 'the : form still works');
+  // The over-classification direction: an ordinary path must NOT become a pattern, or real sections
+  // would leave the pending queue and never be visited at all.
+  assert.equal(isParamPath('/entity'), false);
+  assert.equal(isParamPath('/section/action'), false);
+  assert.equal(isParamPath('/'), false);
+});
+
+test('a concrete page reconciles to its $-sigil pattern', () => {
+  const graph = { routes: {
+    '/entity/$id': { url: '/entity/$id', unreachable: 'param-pattern' },
+    '/listing': { url: '/listing' },
+  } };
+  assert.equal(matchParamPattern(graph, '/entity/ebc62a90-2909-476c-87bc-9064e74141f8'), '/entity/$id',
+    'the concrete detail page is an INSTANCE of the pattern, not a section of its own');
+  assert.equal(matchParamPattern(graph, '/listing'), null, 'a static route reconciles to nothing');
 });

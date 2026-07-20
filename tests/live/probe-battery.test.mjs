@@ -28,6 +28,7 @@ import { launch, gotoGated, close } from '../../lib/browser/session.mjs';
 import { waitSettled } from '../../lib/browser/causal.mjs';
 import { attachPageSignals } from '../../lib/browser/observables.mjs';
 import { probeField, valueForProbe } from '../../lib/recon/probe-battery.mjs';
+import { batteryFor, probeStatus } from '../../lib/recon/knowledge.mjs';
 
 test('a declared boundary is judged on what the field HELD, not on what we typed', async (t) => {
   const server = await start(0);
@@ -86,4 +87,66 @@ test('a declared boundary is judged on what the field HELD, not on what we typed
   assert.equal(empty.conflict.claim, 'required');
 
   assert.ok(server.commitHits() >= 3, 'the commits really reached the server (non-vacuous)');
+});
+
+// THE WRONG-SHAPE PROBE (docs/GOAL.md rung 4) — letters into a number, driven through the real browser.
+// Two directions, both terminal: a NATIVE typed input REFUSES the fill (the type is enforced, recorded as
+// NOT_FILLABLE and never retried away), while a text input rendered as that type HOLDS the wrong value, and
+// committing it through is the "declared type not enforced" defect.
+//
+// Guards: the field owes `fill-invalid` from its declared type alone; the value is genuinely wrong for the
+//   declaration; a native type=number refusing the fill is a NOT_FILLABLE terminal on the `fill-invalid`
+//   kind (so the obligation DRAINS, not loops); a text input that accepts+commits the wrong shape yields a
+//   conflict naming the type.
+// FAIL-ON-REVERT: make `valueForProbe('fill-invalid', {kind:'number'})` return a numeric string → the native
+//   number input accepts the fill → "a native type=number REFUSES the wrong shape (NOT_FILLABLE)" reds; drop
+//   the `fill-invalid` conflict arm in `probeField` → "an accepted wrong-shape value is a conflict" reds.
+test('a wrong-shape probe: a native number refuses it, a text input that accepts it is a conflict', async (t) => {
+  const server = await start(0);
+  const url = `http://127.0.0.1:${server.address().port}/`;
+  const prev = process.env.PW_ALLOW_PRIVATE;
+  process.env.PW_ALLOW_PRIVATE = '1';
+  const sess = await launch();
+  t.after(async () => {
+    await close(sess.browser);
+    await new Promise((r) => server.close(r));
+    if (prev === undefined) delete process.env.PW_ALLOW_PRIVATE; else process.env.PW_ALLOW_PRIVATE = prev;
+  });
+
+  const { page } = sess;
+  attachPageSignals(page);
+  await gotoGated(page, url);
+  await waitSettled(page);
+
+  const commit = async () => {
+    await page.click('#commit');
+    await waitSettled(page);
+    return { requests: [{ method: 'POST', urlPattern: '/api/commit', class: 'write' }], newElements: [] };
+  };
+
+  // The field owes the probe from its declared TYPE alone, and the value is genuinely non-numeric.
+  assert.ok(batteryFor({ role: 'textbox', fieldFacts: { kind: 'number' } }).includes('fill-invalid'),
+    'a type=number field owes a wrong-shape probe');
+  assert.ok(Number.isNaN(Number(valueForProbe('fill-invalid', { kind: 'number' }))),
+    'the wrong-shape value for a number is genuinely non-numeric');
+
+  // NATIVE type=number — the browser refuses letters at fill time. That refusal IS the answer, recorded as
+  // NOT_FILLABLE on the fill-invalid kind, and the obligation drains rather than being retried away.
+  const numberEl = await page.$('#number');
+  const enforced = await probeField(page, { handle: numberEl, facts: { kind: 'number' }, kind: 'fill-invalid', commit });
+  assert.equal(enforced.kind, 'fill-invalid', 'the row is filed under the obligation it was answering');
+  assert.equal(enforced.blocked, 'NOT_FILLABLE', 'a native type=number REFUSES the wrong shape (NOT_FILLABLE) — the type is enforced');
+  const st = probeStatus(
+    { role: 'textbox', fieldFacts: { kind: 'number' } },
+    [{ kind: 'fill-valid', verdict: 'write' }, enforced],
+  );
+  assert.deepEqual(st.outstanding, [], 'so the wrong-shape obligation DRAINS — minted, valued, terminal — never sitting owed');
+
+  // A TEXT input handed the same declared type HOLDS the letters, and committing them through is the defect.
+  const textEl = await page.$('#uncapped');
+  const violated = await probeField(page, { handle: textEl, facts: { kind: 'number' }, kind: 'fill-invalid', commit });
+  assert.equal(violated.verdict, 'write', 'the wrong-shape value was committed');
+  assert.ok(violated.conflict, 'an accepted wrong-shape value is a conflict — declared type NOT enforced');
+  assert.equal(violated.conflict.claim, 'type');
+  assert.equal(violated.conflict.declared, 'number');
 });

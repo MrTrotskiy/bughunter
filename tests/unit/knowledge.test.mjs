@@ -21,6 +21,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { batteryFor, verdictOf, probeStatus, levelOf, knowledgeStats } from '../../lib/recon/knowledge.mjs';
+import { valueForProbe } from '../../lib/recon/probe-battery.mjs';
+import { nextBatch } from '../../lib/recon/frontier.mjs';
 
 test('a click alone is not understanding', () => {
   const node = { role: 'button', name: 'Create', explored: true };
@@ -177,4 +179,130 @@ test('a collision leaves the obligation standing — it is a failure to ASK, not
   assert.deepEqual(st.outstanding, ['fill-valid', 'fill-overflow'],
     'nothing was answered, so everything is still owed');
   assert.equal(st.terminal, null, 'not terminal — we never got to ask');
+});
+
+// A TYPED INPUT DOES NOT ACCEPT PROSE — the probe that could never be satisfied.
+//
+// MEASURED on run goal2: five acts failed with `elementHandle.fill: Cannot type text into
+// input[type=number]`. The field DECLARED itself numeric (`kind: 'number'` in fieldFacts, read straight
+// off the DOM), the battery asked for a 'fill-valid' value, and the generator returned "Test value" —
+// which the browser refuses before the page ever sees it. The probe recorded ACT_FAILED, the obligation
+// stayed outstanding, and the element sat at L1 owing a fill it could never satisfy however many times
+// the loop returned to it. `valueFor` (form-fill.mjs) had handled input types for a year; this generator,
+// written later for the declared-facts battery, had not — the same rule in two places, disagreeing.
+//
+// Guards: a declared field type produces a value of THAT type, and a declared bound is honoured, so a
+//   valid-fill probe measures the FIELD rather than our own bad input.
+// FAIL-ON-REVERT: drop the type switch from `valueForProbe('fill-valid')` (always the text default) →
+//   "a numeric field gets a number" reds with got 'Test value'.
+test('a valid-fill probe respects the type the field declares', () => {
+  assert.equal(valueForProbe('fill-valid', { kind: 'number' }), '1', 'a numeric field gets a number');
+  assert.equal(valueForProbe('fill-valid', { kind: 'number', min: '1900' }), '1900',
+    'and a declared minimum is used, so the value is valid by the field\'s OWN declaration');
+  assert.equal(valueForProbe('fill-valid', { kind: 'date' }), '2026-01-15');
+  assert.equal(valueForProbe('fill-valid', { kind: 'time' }), '12:00');
+  assert.match(valueForProbe('fill-valid', { kind: 'email' }), /@/);
+
+  // The untyped default is unchanged — this widen must not disturb the ordinary text field, which is
+  // still the common case, nor the declared-maxLength behaviour the boundary probes depend on.
+  assert.equal(valueForProbe('fill-valid', { kind: 'text' }), 'Test value');
+  assert.equal(valueForProbe('fill-valid', { kind: 'text', maxLength: 5 }), 'aaaaa');
+  assert.equal(valueForProbe('fill-valid', {}), 'Test value');
+});
+
+// A FIELD THAT DECLARES A SHAPE OWES A WRONG-SHAPE PROBE, and that obligation must DRAIN — the whole
+// three-end wiring (minted → valued → satisfied/blocked), or it is the "green but the obligation never
+// drains" failure this project has hit repeatedly.
+//
+// docs/GOAL.md rung 4: "the wrong shape for its declared type/pattern/range — letters into a number, text
+// into a date". Before this, `fill-invalid` was minted ONLY for a declared pattern/min/max, so a plain
+// `type=email` / `type=number` field — a shape declared by the TYPE alone — was never asked what it
+// refuses, only what it accepts. "It accepts a value" is nearly free; "declared number, refused letters"
+// is the knowledge.
+//
+// Guards: a typed-shape field (number/date/email) OWES `fill-invalid`; a plain text field does NOT (no
+//   shape to falsify); the value is genuinely WRONG for the declaration (non-numeric at a number, no `@`
+//   at an email); and the obligation DRAINS whether the field refused the fill (NOT_FILLABLE, the type
+//   enforced) or accepted+committed it (a recorded row) — never sits owed forever.
+// FAIL-ON-REVERT: narrow `batteryFor` back to `pattern||min||max` (drop `isShapedType`) → "a type=number
+//   field owes a wrong-shape probe" reds; make `valueForProbe('fill-invalid')` return a numeric/valid value
+//   for a number → "the wrong-shape value is genuinely non-numeric" reds.
+test('a field that declares a SHAPE owes a wrong-shape probe, and it drains', () => {
+  // MINTED — a declared TYPE is a shape, even with no pattern/min/max.
+  assert.ok(batteryFor({ role: 'textbox', fieldFacts: { kind: 'number' } }).includes('fill-invalid'),
+    'a type=number field owes a wrong-shape probe — a shape declared by the type alone was never probed before');
+  assert.ok(batteryFor({ role: 'textbox', fieldFacts: { kind: 'email' } }).includes('fill-invalid'),
+    'a type=email field owes a wrong-shape probe');
+  assert.ok(batteryFor({ role: 'textbox', fieldFacts: { pattern: '[0-9]+' } }).includes('fill-invalid'),
+    'a declared pattern still owes it (the pre-existing case, unbroken)');
+  // NOT MINTED — a plain text field declares no shape, so there is nothing to falsify.
+  assert.ok(!batteryFor({ role: 'textbox', fieldFacts: { kind: 'text', maxLength: 50 } }).includes('fill-invalid'),
+    'a plain text field owes NO wrong-shape probe — a blind invalid value would measure our own input');
+
+  // VALUED — genuinely wrong for the declaration, never a fixed innocuous string.
+  assert.ok(Number.isNaN(Number(valueForProbe('fill-invalid', { kind: 'number' }))),
+    'the wrong-shape value is genuinely non-numeric — letters into a number, not a value the field accepts');
+  assert.ok(!valueForProbe('fill-invalid', { kind: 'email' }).includes('@'),
+    'no `@`, so a type=email flags a typeMismatch');
+  assert.equal(valueForProbe('fill-invalid', { kind: 'text' }), null,
+    'a field with no declared shape gets no wrong-shape value');
+
+  // DRAINS — via a NOT_FILLABLE the type ENFORCED (native number refused the fill)…
+  const numField = { role: 'textbox', fieldFacts: { kind: 'number' } };
+  const enforced = probeStatus(numField, [
+    { kind: 'fill-valid', verdict: 'write' },
+    { kind: 'fill-invalid', blocked: 'NOT_FILLABLE' },   // browser refused letters — the answer, recorded
+  ]);
+  assert.deepEqual(enforced.outstanding, [],
+    'the wrong-shape obligation DRAINS on a NOT_FILLABLE — the type was enforced, and that is a terminal answer, never a retry');
+  // …or via an ANSWERED row (the app rejected the wrong shape).
+  const rejected = probeStatus(numField, [
+    { kind: 'fill-valid', verdict: 'write' },
+    { kind: 'fill-invalid', verdict: 'rejected' },
+  ]);
+  assert.deepEqual(rejected.outstanding, [], 'and it drains on a recorded rejection too');
+});
+
+// THE SCRIPT DRIVES THE STUDY — an element with an outstanding obligation does not leave the frontier.
+//
+// THE MEASURED FAILURE. `batteryFor` says what a control owes: a valid value, plus a boundary probe where
+// the field DECLARES a limit, an empty commit where it declares itself required, a wrong-shape value where
+// it declares a pattern. It was built, revert-proven, and CALLED BY NOTHING. Every act filled one valid
+// value and moved on, and `explored` — set the moment that one act returned — drained the element. So a
+// field was reported as studied on a single happy-path input: we learned it accepts something and never
+// what it refuses. Touching a control is not understanding it, and Phase 1 exists to turn a black box into
+// a white one WITHOUT the source.
+//
+// Guards: a field with unmet obligations stays walkable; discharging them all releases it; the grind is
+//   BOUNDED so a control that cannot answer does not loop forever.
+// FAIL-ON-REVERT: drop `batteryOwing` from `instanceDrained` → "a partly-probed field is still owed" reds,
+//   which is exactly the one-touch-is-coverage reading this replaces.
+test('a field is not done until its battery is', () => {
+  const field = (probes) => ({
+    elements: { 1: {
+      role: 'textbox', name: 'Title', route: '/f',
+      fieldFacts: { kind: 'text', maxLength: 50, required: true },   // owes: valid, overflow, empty
+      instances: [{ instanceKey: '#0', instanceSelector: '#t', explored: true }],
+      probes,
+    } },
+  });
+
+  // One valid fill, marked explored — the old rule called this covered.
+  const partly = field([{ kind: 'fill-valid', verdict: 'read', instanceKey: '#0' }]);
+  assert.equal(nextBatch(partly, { size: 5 }).length, 1,
+    'a partly-probed field is still owed — one accepted value says nothing about what it refuses');
+  assert.deepEqual(probeStatus(partly.elements[1], partly.elements[1].probes).outstanding,
+    ['fill-overflow', 'fill-empty'], 'and the script knows exactly which probes are missing');
+
+  // All three discharged → released.
+  const done = field([
+    { kind: 'fill-valid', verdict: 'read', instanceKey: '#0' },
+    { kind: 'fill-overflow', verdict: 'rejected', instanceKey: '#0' },
+    { kind: 'fill-empty', verdict: 'rejected', instanceKey: '#0' },
+  ]);
+  assert.equal(nextBatch(done, { size: 5 }).length, 0, 'battery discharged — now it is genuinely studied');
+
+  // BOUNDED: a field that keeps failing must not be handed out forever.
+  const stuck = field(Array.from({ length: 8 }, () => ({ kind: 'fill-valid', blocked: 'ACT_FAILED', instanceKey: '#0' })));
+  assert.equal(nextBatch(stuck, { size: 5 }).length, 0, 'the grind is capped — an unanswerable control is owed, not looped');
 });

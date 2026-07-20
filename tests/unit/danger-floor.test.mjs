@@ -15,7 +15,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dangerFloor, mutationFloor, routeRefused, REFUSED, isAccountDeletion, requiresOwnership } from '../../lib/recon/danger-floor.mjs';
+import { dangerFloor, mutationFloor, routeRefused, REFUSED, isAccountDeletion, requiresOwnership, authoredIdOf } from '../../lib/recon/danger-floor.mjs';
 
 test('destructive control names classify destructive', () => {
   for (const name of ['Delete', 'Delete row', 'Remove item', 'Discard changes', 'Reset', 'Purge cache']) {
@@ -173,4 +173,44 @@ test('requiresOwnership flags modify/destroy verbs, spares additive create/comme
   for (const name of ['Create post', 'Add', 'Compose', 'New message', 'Comment', 'Reply', 'Like', 'Follow', 'Share', 'Pay now', 'Search']) {
     assert.equal(requiresOwnership({ name }), false, `${name} is additive/create — no ownership needed`);
   }
+});
+
+// THE ICON-ONLY LOGOUT — the control that cost run goal1 70% of its acts.
+//
+// MEASURED. an icon-only logout control (its authored test id names it), `role=button`, accessible name `""`. The floor
+// classified from name+route only, so the haystack held just the route, the verdict was `safe`, the gate
+// passed it, and act 220 clicked it. The next 124 of 174 navigations landed on /login and collected
+// nothing, while the round ledger kept printing rising coverage — the run was logged out and said so
+// nowhere. The author had labelled the control precisely; nothing was reading the label.
+//
+// Guards: an authored identifier is part of the danger haystack, so an icon-only auth/destructive control
+//   is refused even with an empty accessible name; and the widen does NOT fire on ordinary authored ids.
+// FAIL-ON-REVERT: drop `authored` from `normalizeHay`/`dangerFloor` (restore the name+route haystack) →
+//   "an icon-only logout is refused on its authored id" reds with got 'safe'.
+test('an icon-only logout is refused on its authored id', () => {
+  // The exact live shape: no name, an innocuous route, the whole signal in the testid.
+  assert.equal(dangerFloor({ name: '', route: '/listing', authored: 'nav-logout-icon-button' }), 'auth',
+    'the author named it logout — an empty accessible name must not make it safe to click');
+  assert.ok(REFUSED.has('auth'), 'and auth is in the refused set, so the click gate stops it');
+
+  // Extraction from the instanceKey form the snapshot actually writes.
+  assert.equal(authoredIdOf(null, { instanceKey: 'data-testid:nav-logout-icon-button' }),
+    'nav-logout-icon-button', 'the value side of a testid-keyed instanceKey is the authored label');
+
+  // camelCase and snake_case authored ids expose their words too (normalizeHay already split these).
+  assert.equal(dangerFloor({ name: '', route: '/x', authored: 'signOutButton' }), 'auth');
+  assert.equal(dangerFloor({ name: '', route: '/x', authored: 'account_delete_action' }), 'destructive');
+});
+
+test('the authored-id widen does not refuse ordinary controls', () => {
+  // THE OVER-REFUSAL DIRECTION, which would silently delete coverage: most authored ids are mundane, and
+  // a floor that reads them must not start refusing save/search/filter because a word looks alarming.
+  for (const id of ['employee-save-button', 'sidebar-nav-link-people', 'vacancies-create-button',
+                    'settings-category-general', 'employee-row-42', 'toolbar-filter-input']) {
+    assert.equal(dangerFloor({ name: '', route: '/listing', authored: id }), 'safe',
+      `${id} is an ordinary control and must stay clickable`);
+  }
+  // And with no authored id at all the floor behaves exactly as it did before this existed.
+  assert.equal(dangerFloor({ name: 'Save', route: '/listing' }), 'safe');
+  assert.equal(dangerFloor({ name: 'Log out', route: '/listing' }), 'auth');
 });

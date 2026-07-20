@@ -29,7 +29,7 @@ import assert from 'node:assert/strict';
 import { start } from '../fixtures/outcome-app/server.mjs';
 import { launch, gotoGated, close } from '../../lib/browser/session.mjs';
 import { waitSettled } from '../../lib/browser/causal.mjs';
-import { attachPageSignals, readOutcome, wasRefused, announcedSuccess } from '../../lib/browser/observables.mjs';
+import { attachPageSignals, readOutcome, wasRefused, announcedSuccess, domFingerprint, domChanged } from '../../lib/browser/observables.mjs';
 
 test('each refusal tier is readable on its own, and silence is not a refusal', async (t) => {
   const server = await start(0);
@@ -84,4 +84,55 @@ test('each refusal tier is readable on its own, and silence is not a refusal', a
   assert.equal(server.postHits(), 1, 'the act really did reach the server (non-vacuous)');
   assert.equal(announcedSuccess(ok), true,
     `a success toast is recognised — got ${JSON.stringify(ok.liveRegions)}`);
+});
+
+// STATE IS AN OBSERVABLE — the ceiling that no number of extra acts could lift.
+//
+// MEASURED: 22% of probed controls held only `inert` rows, and the knowledge ladder deliberately refuses to
+// call an inert-only control understood (a battery completed by "we clicked and the page did nothing" would
+// re-import "clicked once and did not throw" one rung higher). So those controls were a HARD ceiling on
+// coverage — roughly 78% was the most the metric could ever report on that application.
+// A large share of them were not inert at all. `domFingerprint` is a census of TAGS BY DEPTH, deliberately
+// text-free so a live feed does not register as a change on every poll. But switching a tab, expanding a
+// section, ticking a checkbox or selecting a row changes only ATTRIBUTES — the tag census is byte-identical
+// — so the act that did exactly what the control exists to do was recorded as doing nothing.
+// The subtle half: COUNTING state-bearing elements is not enough. Switching a tab MOVES `aria-selected`
+// from one element to another, so the count stays 1. Each match therefore contributes its POSITION.
+//
+// Guards: a change that alters NO tags — only state attributes — is observed; and the signature stays
+//   content-free, so a text-only rewrite (the live-feed case the census exists to ignore) is NOT a change.
+// FAIL-ON-REVERT: drop the `states` array from the fingerprint (tag census alone) → "a tab switch is an
+//   observable change" reds with changed:false — the exact reading that produced the 22% inert bucket.
+test('a state-only change is observed, and a text-only rewrite still is not', async (t) => {
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch();
+  t.after(() => browser.close());
+  const page = await (await browser.newContext()).newPage();
+
+  // Two tabs. Clicking the second moves aria-selected — no element is added, removed, shown or hidden.
+  await page.setContent(`<!doctype html><body>
+    <div role="tablist">
+      <button id="t1" role="tab" aria-selected="true">One</button>
+      <button id="t2" role="tab" aria-selected="false">Two</button>
+    </div>
+    <div id="panel">identical structure either way</div>
+    <script>
+      t2.onclick = () => { t1.setAttribute('aria-selected','false'); t2.setAttribute('aria-selected','true'); };
+    </script></body>`);
+
+  const before = await domFingerprint(page);
+  await page.click('#t2');
+  await page.waitForTimeout(150);
+  const after = await domFingerprint(page);
+
+  assert.equal(before.nodes, after.nodes, 'the tag census is unchanged — this is the case that fooled it');
+  assert.equal(domChanged(before, after).changed, true,
+    'a tab switch is an observable change: the control did what it exists to do');
+
+  // THE OTHER DIRECTION. The census is text-free on purpose: a feed rewriting its own text must not read
+  // as a change on every poll, or every act near a live region would score client-change spuriously.
+  const t0 = await domFingerprint(page);
+  await page.evaluate(() => { document.getElementById('panel').textContent = 'completely different text'; });
+  const t1s = await domFingerprint(page);
+  assert.equal(domChanged(t0, t1s).changed, false, 'a text-only rewrite is NOT a structural change');
 });

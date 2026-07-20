@@ -66,3 +66,37 @@ test('endpoints are counted once each, not per call', () => {
   const out = classifyEndpoints(Array.from({ length: 40 }, () => ({ method: 'POST', urlPattern: '/app/listnuggets' })));
   assert.equal(out.reads.length, 1, '40 calls to one endpoint is ONE endpoint exercised');
 });
+
+// A SUBSTRING IS NOT A VERB — the false writes that made the headline count untrustworthy.
+//
+// MEASURED on one run: 15 endpoints were reported as writes; THREE were false, all the same shape —
+// `/settings/company` matched because "settings" CONTAINS "set", and one of the three was a plain GET
+// counted as a write. This project has retracted a write count once already ("18 write endpoints, the
+// truthful count was ONE"), and an inflated count is worse than none: it sends a human to verify writes
+// that never happened.
+//
+// Guards: short/ambiguous verbs are right-anchored so a longer word that merely STARTS with one is not a
+//   write; run-together names (`updateusersettings`) still classify, because that is why the LEFT boundary
+//   is deliberately loose.
+// FAIL-ON-REVERT: drop `(?![a-z])` from WRITE_VERB_ANCHORED (one undifferentiated verb list again) →
+//   "GET /settings/company is a read" reds with got 'write'.
+test('a verb that is merely a PREFIX of a longer word is not a write', () => {
+  // The exact live trio.
+  assert.equal(classifyEndpoint({ method: 'GET', urlPattern: '/api/v1/settings/company' }), 'read',
+    'a GET of settings is a read — "set" inside "settings" is not a mutation verb');
+  // Non-GETs of the same path are honestly UNNAMED rather than confidently "write": the name carries no verb.
+  assert.equal(classifyEndpoint({ method: 'PUT', urlPattern: '/api/v1/settings/company' }), 'write-unnamed');
+
+  // The same shape for other short verbs, all of which appear in real APIs.
+  assert.equal(classifyEndpoint({ method: 'GET', urlPattern: '/api/v1/orders' }), 'read', '"orders" is a listing');
+  assert.equal(classifyEndpoint({ method: 'GET', urlPattern: '/api/v1/address' }), 'read', '"address" is not "add"');
+  assert.equal(classifyEndpoint({ method: 'GET', urlPattern: '/api/v1/newsletter' }), 'read', '"newsletter" is not "new"');
+});
+
+test('run-together mutation names still classify as writes', () => {
+  // THE OTHER DIRECTION, and the reason the left boundary stays loose: these are the names the classifier
+  // exists to catch, and a wholesale right-anchor would have silently dropped them.
+  assert.equal(classifyEndpoint({ method: 'POST', urlPattern: '/api/v1/updateusersettings' }), 'write');
+  assert.equal(classifyEndpoint({ method: 'POST', urlPattern: '/api/v1/createlist' }), 'write');
+  assert.equal(classifyEndpoint({ method: 'POST', urlPattern: '/api/v1/deleteaccount' }), 'write');
+});

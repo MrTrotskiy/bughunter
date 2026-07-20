@@ -174,14 +174,21 @@ function listRowTemplate(g, templateId, n, { inRow = true } = {}) {
 //   counted, flagged, never walked), while `walkable`/`remaining` stay the DRILL_PER_LIST=1 representative.
 // FAIL-ON-REVERT: drop the `else if (node.listRow) drillSkipped += ...` accumulation in
 //   frontierInstanceStats → the 49 rows are un-counted → `drillSkipped === 49` reads 0, reds.
-test('frontierInstanceStats: a 50-row non-opener list flags 49 drill-skipped, walks 1 representative', () => {
+test('frontierInstanceStats: a 50-row list walks BOUNDARY rows and flags the rest', () => {
+  // WAS: one representative, 49 flagged. The "fifty rows are one control" assumption is only SOMETIMES
+  // true, and the data refuted it — of the row templates that ever had two rows probed, half behaved
+  // differently (one row returned server data, another was inert; one changed the page, another did
+  // nothing). Reporting a table as understood on evidence from one row out of fifty is the same shape as
+  // every coverage number this project has had to retract.
+  // NOW: boundary sampling — first, middle, last. Rows differ at the EDGES (the newest record, the
+  // archived one, the one with empty optional fields), not in the middle of the run. The remainder is
+  // still counted and flagged, never hidden.
   const g = makeGraph();
   listRowTemplate(g, 1, 50);
   const s = frontierInstanceStats(g);
-  assert.equal(s.drillSkipped, 50 - DRILL_PER_LIST, 'the 49 non-representative rows are counted+flagged, not hidden');
-  assert.equal(s.walkable, DRILL_PER_LIST, 'only the representative row (instance[0]) is walkable — nextBatch unchanged');
-  assert.equal(s.remaining, DRILL_PER_LIST, 'remaining is the representative alone (nothing drained yet), unchanged by the flag');
-  assert.equal(s.cappedRemainder, 0, 'a non-opener list uses drillSkipped, never cappedRemainder');
+  assert.equal(s.walkable, 3, 'first, middle and last row are walked — not one, not fifty');
+  assert.equal(s.drillSkipped, 47, 'the remaining rows are counted+flagged, not hidden');
+  assert.equal(s.walkable + s.drillSkipped, 50, 'and nothing falls out of the denominator');
 });
 
 // Guards: the flag is SCOPED — a non-listRow non-opener template (a lone control, no list-row ancestor)
@@ -231,7 +238,114 @@ test('frontierInstanceStats: a churned feed representative is peeled into churnS
 
   const s = frontierInstanceStats(g);
   assert.equal(s.churnSkipped, 1, 'the vanished representative is counted in churnSkipped');
-  assert.equal(s.remaining, 0, 'the STABLE set drains to remaining===0 — the peeled churn never blocks it');
   assert.equal(s.walked, 1, 'only the stable control counts as walked (the churned row is NOT inflated into walked)');
-  assert.equal(s.drillSkipped, 3, 'the other 3 feed rows are the usual DRILL_PER_LIST remainder (churn is separate)');
+  // The churned instance is peeled — never walkable, never `unreachable`, always quantified. That is the
+  // invariant this test exists for and it is unchanged.
+  assert.ok(!(g.elements[2].instances[0].explored), 'the churned row is not silently marked explored');
+  // WHAT CHANGED, and why the old expectation was itself the bug being guarded against. This asserted
+  // `remaining === 0` and `drillSkipped === 3`, which encoded the old `.some(x => x.churned)` collapse:
+  // ONE churned row made the whole template report a single (already-peeled) slot, so three untouched
+  // rows were declared finished. Measured on a live graph, that rule left 21 clean, never-tried rows in
+  // each employee-table template while the frontier counted them complete. The clean rows are real work,
+  // so they must show up as remaining — an honest denominator does not shrink because a sibling vanished.
+  assert.ok(s.remaining > 0, 'the surviving clean rows are still owed — they must not vanish from the denominator');
+  assert.equal(s.remaining + s.walked + s.unreachable, s.walkable, 'the arithmetic invariant still holds');
+});
+
+// TABLES ARE STUDIED, NOT SAMPLED-BY-ONE — and the sample GROWS when the rows disagree.
+//
+// MEASURED: of the four row templates that ever had two rows probed, TWO behaved differently — one row
+// returned server data while another was inert, one changed the page while another did nothing. The
+// single-representative rule reports such a table as understood on evidence from one row in fifty, which
+// is precisely the "counter that looks honest while hiding something else" failure this project keeps
+// retracting numbers over.
+//
+// Guards: a stable list is sampled at its BOUNDARIES; a list whose rows have already answered
+//   differently earns a WIDER sample; a CHURNING feed keeps one representative, because sampling rows
+//   that re-render away can never terminate.
+// FAIL-ON-REVERT: restore `return [0]` for list rows → "boundary rows are walked" reds (one row again);
+//   drop the `rowsDisagree` widen → "a disagreeing table earns a wider sample" reds.
+test('a list is sampled at its boundaries, wider once its rows disagree, and never on a churning feed', () => {
+  const rows = (n) => Array.from({ length: n }, (_, i) => ({ instanceKey: `#${i}`, instanceSelector: `#r${i}` }));
+  const listNode = (n, extra = {}) => ({ elements: { 1: { role: 'link', name: 'Row', route: '/list', listRow: true, instances: rows(n), ...extra } } });
+
+  // 1. Stable table → boundaries.
+  const plain = nextBatch(listNode(20), { size: 50 });
+  assert.equal(plain.length, 3, 'first, middle, last — one row is not a study of a table');
+  assert.deepEqual(plain.map((b) => b.instance.instanceKey), ['#0', '#10', '#19'],
+    'the boundaries are where rows actually differ: newest, middle, oldest');
+
+  // 2. Rows already answered differently → the table has DISPROVEN its own homogeneity, widen.
+  const disagreed = listNode(20, { probes: [
+    { kind: 'click', verdict: 'read', instanceKey: '#0' },
+    { kind: 'click', verdict: 'inert', instanceKey: '#19' },
+  ] });
+  assert.ok(nextBatch(disagreed, { size: 50 }).length > 3,
+    'a disagreeing table earns a wider sample — homogeneity was an assumption and it failed');
+
+  // 3. A FEW churned rows are NOT a churning feed — this is where the rule was wrong, and it cost a
+  //    whole class of coverage. The predicate was `.some(x => x.churned)`, so ONE vanished row out of
+  //    twenty collapsed the template to a single index, permanently (`churned` is write-once). MEASURED
+  //    on a live graph: all four employee-table row templates carried {churned: 3, clean: 21} and
+  //    `probes: 0` — 21 untouched rows each, reported as fully drained; 21 of 24 listRow templates in
+  //    that graph had zero probes while holding 431 instances. The rows were never refused, they were
+  //    never handed out.
+  const fewChurned = listNode(20);
+  fewChurned.elements[1].instances[3].churned = true;
+  const stillSampled = nextBatch(fewChurned, { size: 50 });
+  assert.equal(stillSampled.length, 3, 'one stale row out of twenty is not a moving target — the table is still sampled');
+  assert.ok(!stillSampled.some((b) => b.instance.instanceKey === '#3'),
+    'the churned row itself is not sampled — a vanished boundary must not consume a slot');
+
+  // 4. TERMINATION, and it does not depend on recognising a feed. My first rule counted SURVIVORS
+  //    (`cleanIdx.length < 2`) and could not work: a re-rendering feed MINTS new content-keyed instances
+  //    every snapshot, so the survivor count only grows and the rule never fires on the very class it
+  //    names. Boundary sampling always includes `len - 1`, which on a growing feed is always the freshest
+  //    unexplored row — an unbounded act source that stops only when the whole run runs out of budget.
+  //    Counting ATTEMPTS is monotone by construction: explored / unreachable / churned are never cleared.
+  const spent = listNode(20);
+  for (const k of [0, 10, 19]) spent.elements[1].instances[k].explored = true;
+  assert.equal(nextBatch(spent, { size: 50 }).length, 0,
+    'once ROW_SAMPLE rows have been ATTEMPTED the table drains — the rest stay counted in drillSkipped');
+
+  // The feed case the survivor rule was supposed to cover, stated the way a live feed actually looks:
+  // rows keep arriving, and the ones already walked churned away. It must still terminate.
+  const growing = listNode(20);
+  for (const k of [0, 10, 19]) growing.elements[1].instances[k].churned = true;
+  growing.elements[1].instances.push(...Array.from({ length: 10 }, (_, i) => ({ instanceKey: `#fresh${i}`, instanceSelector: `#f${i}` })));
+  assert.equal(nextBatch(growing, { size: 50 }).length, 0,
+    'a feed that re-rendered its walked rows away and minted ten fresh ones is DONE, not restarted — '
+    + 'the attempt budget is spent and no amount of new rows reopens it');
+});
+
+// A ROW IS NEVER `walked` WITHOUT AN ACT — the template flag is not evidence about a sibling.
+//
+// WHY THIS TEST EXISTS. `markInstanceExplored` stamps `inst.explored` AND unconditionally sets
+// `node.explored` (graph-store). `instanceDrained` then read `i === 0 && node.explored` as proof that
+// instance 0 was finished. While a non-opener list handed out exactly one index that was harmless — the
+// node flag could only have come from acting instance 0. The moment boundary sampling handed out three,
+// acting the middle row silently drained the FIRST row: an instance nobody resolved, nobody clicked, and
+// which in the live fixture did not exist in the DOM at all. It was counted `walked`.
+//
+// That is fabricated coverage, one fake row per multi-sampled list template, and it is invariant #8
+// (`explored ⟺ observed`) failing through a side door. It surfaced as a CONFUSING SYMPTOM rather than an
+// obvious one: the drained representative was never enumerated for retirement, so the churn signal went
+// silent and tests/live/churn-feed.test.mjs failed on `churnSkipped === 0`. I misread that as a fixture
+// problem and was about to edit the fixture; a reviewer refuted it against the source.
+//
+// FAIL-ON-REVERT: restore the unguarded `(i === 0 && node.explored)` clause in instanceDrained → the
+// untouched first row counts as walked → `walked === 1` reds.
+test('frontierInstanceStats: acting one sampled row never marks a SIBLING row walked', () => {
+  const g = makeGraph();
+  const rows = Array.from({ length: 20 }, (_, i) => ({ instanceKey: `#${i}`, instanceSelector: `#r${i}` }));
+  g.elements[1] = { templateId: 1, role: 'link', name: 'Row', route: '/list', listRow: true, instances: rows };
+  // Exactly what markInstanceExplored does for a MIDDLE row: the instance flag plus the template flag.
+  g.elements[1].instances[10].explored = true;
+  g.elements[1].explored = true;
+
+  const s = frontierInstanceStats(g);
+  assert.equal(s.walked, 1, 'only the row that was actually acted counts as walked');
+  const actedInstances = g.elements[1].instances.filter((i) => i.explored).length;
+  assert.equal(s.walked, actedInstances, 'walked equals the number of instances carrying evidence of an act');
+  assert.ok(!g.elements[1].instances[0].explored, 'the untouched first row never acquired an act it did not have');
 });

@@ -24,6 +24,11 @@ const PAGE = `<!doctype html>
   <input id="capped" maxlength="10" placeholder="Capped">
   <input id="uncapped" placeholder="Uncapped">
   <input id="leaky" data-maxlength="10" placeholder="Leaky">
+  <!-- Wrong-shape probing. #number is a NATIVE numeric input: the browser refuses letters at fill time, so
+       the type is enforced by construction (the probe records NOT_FILLABLE and does not retry). #uncapped
+       (a plain text input) HOLDS whatever it is given, so a wrong-shape value committed through it is the
+       "declared type not enforced" defect (the caller drives it with facts.kind = number). -->
+  <input id="number" type="number" placeholder="Amount">
   <button id="commit" type="button">Commit</button>
   <button id="ok" type="button">Post</button>
   <div id="toasts"></div>
