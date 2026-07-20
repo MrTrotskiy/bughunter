@@ -11,7 +11,8 @@
 // FAIL-ON-REVERT: (a) delete the loopbackHost 403 guard in lib/debug/admin-server.mjs → the
 //   foreign-Host request returns 200 → the "forbidden host" assertion goes red; (b) delete the
 //   tokenOk 403 guard → the no-token /api request returns 200 → the "token required" assertion
-//   goes red.
+//   goes red; (c) delete the `pipeline-shell.mjs` allowlist branch → the module 404s → the
+//   "pipeline-shell.mjs served" assertion goes red (the split-out chrome silently never mounts).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -122,4 +123,16 @@ test('admin serves the capture trail behind a loopback + containment fence', asy
   assert.equal(mod.status, 200, 'scrub-math.mjs served');
   assert.match(mod.headers['content-type'], /javascript/, 'served as javascript');
   assert.match(mod.body.toString(), /export function deriveSteps/, 'is the geometry module');
+
+  // The «Конвейер» view module and the CHROME module it re-exports from are BOTH served as code
+  // (token-free, fixed basename). pipeline-shell.mjs is fetched TRANSITIVELY by the page's single
+  // import of pipeline-view.mjs, so a dropped allowlist branch silently 404s the whole shell and the
+  // page mounts nothing — the exact failure a green suite would otherwise hide.
+  const pv = await get(port, '/pipeline-view.mjs');
+  assert.equal(pv.status, 200, 'pipeline-view.mjs served');
+  assert.match(pv.headers['content-type'], /javascript/, 'pipeline-view served as javascript');
+  const shell = await get(port, '/pipeline-shell.mjs');
+  assert.equal(shell.status, 200, 'pipeline-shell.mjs served (the split-out chrome module)');
+  assert.match(shell.headers['content-type'], /javascript/, 'pipeline-shell served as javascript');
+  assert.match(shell.body.toString(), /export function mountShell/, 'is the chrome module');
 });
