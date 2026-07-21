@@ -1459,6 +1459,30 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   hypothesis. Runs must carry `BUGHUNTER_STATE_DIR` and must not overlap — otherwise the artifact measured is
   the interleaving, not the change.
 
+### 2026-07-21 — admin viewer truth: server-side instance coverage vs a browser-side frontier import
+- CHOSE: `frontierInstanceStats` runs SERVER-SIDE in `admin-server.mjs` and ships `instanceStats` on the run
+  API — the viewer re-derives no cap or sampling rule. Re-implementing a rule a `lib/recon` module already
+  owns is the exact drift class this whole effort exists to kill (cf. the dead `contentSig` detector). The
+  numbers come from the run's OWN newest graph snapshot (never `state/graph.json`, which belongs to whichever
+  run wrote it last), memoized on file+mtime so a live re-poll parses ~1 MB once.
+- REJECTED: allowlist `frontier.mjs` as a browser module and import it in `admin.html`. It also means
+  allowlisting its transitive imports (`location-key.mjs`, `knowledge.mjs`) — three more fixed-basename
+  branches shipping recon internals to the browser and a second place to keep those imports in sync. One node
+  import at the server is strictly less surface.
+- CHOSE: extract every text-producing function into `walk-view.mjs` as PURE `(step, graph, run) → string`.
+  The six audited lies were each an inconsistency BETWEEN the writer, the projection and the renderer, and
+  none was visible in a diff because the renderer sat inline in a 1277-line HTML file no `node:test` could
+  import. The gate is a test that executes the three layers together on fix1-shaped payloads.
+- REJECTED: patch the strings in place inside `admin.html`. Leaves the renderer untestable, so the class
+  returns the moment a projection drifts again — which is how two code reviews passed a lying screen.
+- CHOSE: `verdictOf` respects the four `failure-hints` tones. A DISABLED act is a FINDING and an
+  OUTWARD_REFUSED act is a POLICY decision of ours; neither is «недостижим», and inverting a finding into a
+  defect of ours is precisely what `failure-hints` was written to end. The old line printed the FAILED-ACT
+  count (39 on fix1) under an "unreachable controls" caption on every class alike.
+- NOTE: the headline moves 40% → 21.4% because the old number counted TEMPLATES where the operator's
+  question is about CONTROLS (instances). Per the project rule this is a CORRECTION of a wrong population,
+  reported as such and audited against the artifact, not a regression.
+
 ### 2026-07-21 — form-study findings: closing the fill-probe honesty gaps
 - CHOSE: a wrong-shape probe throwing on a native constrained input records `NOT_FILLABLE` (terminal), not
   `ACT_FAILED` (transient). A native `input[type=number|date|…]` REFUSES a wrong-shape fill by THROWING
