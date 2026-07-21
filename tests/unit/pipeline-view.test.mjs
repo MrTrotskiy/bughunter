@@ -50,6 +50,7 @@ import {
   foldPipeline, routePattern, budgetOf, segmentsOf, pipelineKpis, pipelineScale,
   newestRunWithTrail, isEmptyRun, kindStyle, fmtMs, rowTitle, rowTitleFull, UNEXPLAINED_LABEL, DECISION_KINDS,
   runThresholds, foldIdenticalRuns, foldAll, RUN_MIN,
+  foldZeroActCycles, zeroActCycleStats, deriveDriver, DRIVER_LABEL,
   NAV_ITEMS, STUB_IDS, STUBS, navCount, stubHtml, SHELL_CSS,
 } from '../../lib/debug/pipeline-view.mjs';
 
@@ -370,6 +371,103 @@ test('rowTitle truncates a concatenated-subtree name; rowTitleFull keeps it', ()
   const plain = { seq: 2, kind: 'act', label: 'act Save', route: '/x', durMs: 10, stages: [] };
   assert.equal(rowTitle(plain), rowTitleFull(plain));
   assert.equal(rowTitle(plain), 'клик · Save');
+});
+
+// ---------------------------------------------------------------- zero-act drain-cycle fold (ITEM 3)
+
+// derivePipeline-shaped rows: a BARREN zero-act drain cycle on /a (route→pick→verdict→drain acts:0,
+// no act), then a productive cycle on /b that DID click (act present, drain acts:1), then a zero-act
+// drain whose window swept in a real act — the interleaving case that must NOT fold or it hides a click.
+function cycleRows() {
+  const drain = (route, acts, ts, dur) => ({ seq: ts, ts, kind: 'drain-outcome', route, durMs: dur, stages: [], outcome: null, requests: 0, payload: { route, acts, outcome: 'drained' } });
+  const step = (kind, route, ts, dur, extra = {}) => ({ seq: ts, ts, kind, route, durMs: dur, stages: [], outcome: null, requests: 0, payload: { route }, ...extra });
+  return [
+    step('route', '/a', 0, 0),
+    step('pick', '/a', 100, 100),
+    step('policy-verdict', '/a', 150, 50),
+    drain('/a', 0, 200, 50),                                   // barren zero-act cycle → folds (count 4)
+    step('route', '/b', 300, 100),
+    step('act', '/b', 500, 200, { requests: 3 }),              // a real click — the narrative
+    drain('/b', 1, 600, 100),                                  // productive drain → never folds
+    step('pick', '/c', 700, 100),
+    step('act', '/c', 900, 200, { requests: 1 }),              // an act inside the next zero-act window
+    drain('/c', 0, 1000, 100),                                 // zero-act BUT act-bearing → must NOT fold
+  ];
+}
+const sumD = (list) => list.reduce((s, r) => s + (Number.isFinite(r.durMs) ? r.durMs : 0), 0);
+
+test('a barren zero-act drain cycle folds to ONE conclusion row; an act is never hidden; time is conserved', () => {
+  const src = cycleRows();
+  const folded = foldAll(src);
+
+  // THE fold: the /a cycle (4 rows, zero acts) collapses to one row that STATES the conclusion.
+  const cycles = folded.filter((r) => r.foldKind === 'cycle');
+  assert.equal(cycles.length, 1, `exactly one barren zero-act cycle folds — got ${cycles.length}`);
+  const a = cycles[0];
+  assert.equal(a.count, 4, 'the whole drain window is one row');
+  assert.equal(a.cycleRoute, '/a');
+  assert.equal(a.members.length, 4, 'members stay reachable — the fold is a reading aid, never a filter');
+  assert.match(rowTitleFull(a), /Заход на \/a — 0 действий \(неизученных контролов не было\)/, 'the row reads the conclusion');
+
+  // THE NARRATIVE IS NEVER HIDDEN. Both acts survive as their own rows: the /b click (its cycle was
+  // productive) and the /c click (its drain reported acts:0 but a click landed in the window).
+  const acts = folded.filter((r) => r.kind === 'act');
+  assert.equal(acts.length, 2, `every act stays visible — got ${acts.length}`);
+  assert.ok(!folded.some((r) => r.foldKind === 'cycle' && r.members.some((m) => m.kind === 'act')),
+    'a cycle fold must never swallow an act row');
+
+  // Time is CONSERVED across the fold, exactly as foldPipeline/foldIdenticalRuns.
+  assert.equal(sumD(folded), sumD(src), `Σ durMs must survive the cycle fold — ${sumD(folded)} vs ${sumD(src)}`);
+
+  // FAIL-ON-REVERT sentinel: with the cycle fold disabled (the pre-Stage-4 foldAll) NOTHING folds on
+  // these rows — the other two folds need adjacency this stream does not have. Proves the fold has teeth.
+  const preStage4 = foldIdenticalRuns(foldPipeline(src));
+  assert.equal(preStage4.filter((r) => r.foldKind === 'cycle' || r.count > 1).length, 0,
+    'without foldZeroActCycles there are 0 folds — reverting foldAll reds the enforced viewer-truth gate');
+});
+
+test('foldZeroActCycles conserves time and never touches a run with no drain-outcome', () => {
+  // The shared fixture has no drain-outcome events, so the cycle fold is a pure pass-through — the
+  // guarantee foldAll relies on to keep conserving time on every other test's rows.
+  assert.equal(foldZeroActCycles(rows()).length, rows().length, 'no drain-outcome → no cycle fold');
+  assert.equal(sumD(foldZeroActCycles(rows())), sumD(rows()), 'a pass-through conserves time');
+  assert.deepEqual(foldZeroActCycles(null), [], 'a non-array input yields no rows');
+});
+
+test('the banner states the run conclusion: N of M drains produced zero actions, and their time share', () => {
+  const cyc = zeroActCycleStats(cycleRows());
+  assert.equal(cyc.drains, 3, 'three drain-outcome events');
+  assert.equal(cyc.zeroDrains, 2, 'two of them reported acts:0 — counted from the payload, not reconstructed');
+  // The time share is summed over the zero-act drain windows / total wall clock, so it is checkable.
+  assert.equal(cyc.totalMs, sumD(cycleRows()), 'the denominator is the whole run wall clock');
+  assert.ok(cyc.pct > 0 && cyc.pct <= 100, `the share is a real fraction — got ${cyc.pct}`);
+  // Degrade honestly: no drains → no banner claim at all (bannerHtml renders nothing).
+  const none = zeroActCycleStats([{ seq: 0, kind: 'act', durMs: 10 }]);
+  assert.equal(none.drains, 0);
+  assert.equal(none.zeroDrains, 0);
+});
+
+// ---------------------------------------------------------------- the derived driver label (ITEM 4)
+
+test('the driver label is DERIVED from the events, never hardcoded', () => {
+  // Agent path: an `observe` event (the LLM's written verdict) means the model chose the controls.
+  const agent = deriveDriver([{ kind: 'pick' }, { kind: 'observe' }, { kind: 'act' }]);
+  assert.equal(agent.driver, 'agent');
+  assert.equal(agent.label, DRIVER_LABEL.agent);
+  assert.match(agent.label, /АГЕНТ/, 'an agent-path run must say АГЕНТ');
+  // Script path: pick / route-choice with NO observe is the deterministic node loop (fix1's shape).
+  const script = deriveDriver([{ kind: 'route-choice' }, { kind: 'pick' }, { kind: 'act' }, { kind: 'drain-outcome' }]);
+  assert.equal(script.driver, 'script');
+  assert.equal(script.label, DRIVER_LABEL.script);
+  assert.match(script.label, /СКРИПТ/, 'a script-path run must say СКРИПТ');
+  // Neither signal → honest "unknown", never a guessed driver.
+  assert.equal(deriveDriver([{ kind: 'route' }, { kind: 'act' }]).driver, 'unknown');
+  assert.equal(deriveDriver([]).driver, 'unknown');
+
+  // FAIL-ON-REVERT: the whole point is that the label is not a constant. If deriveDriver were hardcoded
+  // to 'script', the agent-path assertion above would red — the agent run would be mislabelled СКРИПТ.
+  assert.notEqual(agent.label, script.label, 'agent and script must render DIFFERENT labels — a constant reds the agent case');
+  assert.doesNotMatch(script.label, /АГЕНТ/, 'the script label must not claim an agent drove the run');
 });
 
 test('the theme is dark-only, monospace, and self-contained', () => {

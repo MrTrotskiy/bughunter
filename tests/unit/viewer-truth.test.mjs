@@ -122,14 +122,18 @@ test('liveness: KIND_STYLE styles >=90% of the fixture rows', () => {
   assert.ok(pct >= 90, `KIND_STYLE covers ${pct}% of rows (${styled}/${rows.length}); needs >=90%`);
 });
 
-// RED today by design (Stage 4 debt): the existing folds demand adjacent rows and something always
-// sits between them, so they fire 0 times. The natural unit is the page-drain cycle (fires 54x on fix1).
-test('liveness: foldAll yields at least one fold',
-  { todo: 'ADMIN-TRUTH-PLAN Stage 4 — fold the CYCLE, not the row' }, () => {
-    const folded = foldAll(rows);
-    const folds = folded.filter((r) => (r.count > 1) || r.foldKind === 'repeat').length;
-    assert.ok(folds >= 1, `foldAll produced ${folds} folds on ${rows.length} rows`);
-  });
+// ENFORCED (ADMIN-TRUTH-PLAN Stage 4 — fold the CYCLE, not the row): the pre-existing folds demand
+// ADJACENT same-kind rows and something always sits between them, so they fired 0 times on 1092 real
+// rows. The natural unit is the page-drain CYCLE — a `drain-outcome` with acts:0 whose window swept
+// in no act collapses to one conclusion row (fires 54x on fix1; the golden slice has 1 such barren
+// cycle). Was a `todo` at 0 folds; now green through foldZeroActCycles.
+// FAIL-ON-REVERT: change foldAll back to `foldIdenticalRuns(foldPipeline(rows))` (drop the cycle fold)
+// → this reds ("foldAll produced 0 folds"), because neither surviving fold fires on this trail.
+test('liveness: foldAll yields at least one fold', () => {
+  const folded = foldAll(rows);
+  const folds = folded.filter((r) => (r.count > 1) || r.foldKind === 'repeat' || r.foldKind === 'cycle').length;
+  assert.ok(folds >= 1, `foldAll produced ${folds} folds on ${rows.length} rows`);
+});
 
 // GREEN: DECISION_KINDS fires 0 times on every trail on disk (no writer stamps such a stage). That
 // must be DECLARED unmeasurable, not silently an empty/unfireable Set that reports false confidence.
