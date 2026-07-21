@@ -1513,3 +1513,43 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   edges — both applied above); a second agent independently re-ran the full suite (516 pass / 0 fail). The
   two SHOULD FIX findings were the valuable part of the review, consistent with the project's rule that a
   finding contradicting the author is verified against the artifact before choosing a side.
+
+### 2026-07-21 — error-analysis fixes (malformed-fill / phantom-template / antd durable locator)
+- CONTEXT: two Fable analysts + run-fix-designer audited every act.failed class across the fix1/dashproof
+  trails. Verdict: the biggest COUNT class (ALIAS_COLLISION) is ~0 real lost coverage (all duplicates); the
+  biggest real losses are click-timeout and NO_INSTANCE, both on antd widgets. Logging is diagnosable for
+  27/49 failures; the 22 reveal-required NO_INSTANCE/ALIAS failures cannot be diagnosed from the trail (the
+  reveal-replay outcome is not attached) — that gap (L1) is DEFERRED as a design decision (recovery outcome
+  lives in the loop's recover pass, not the failure site).
+- CHOSE: the run's invisible ownership marker is NOT stamped onto a SHAPED input (`step.stampOwnership` skips
+  `isShapedType(factsKind)`). The zero-width mark makes a value the browser parses by type ("0" into a range,
+  a date into type=date) invalid, so `handle.fill` throws "Malformed value" and the fill-valid probe failed on
+  a cosmetic marker (every malformed-fill in the trails was a shaped field carrying the mark). The mark is
+  pointless there — a numeric value has no free text for it, and ownership of a shaped field is proven through
+  its record. Threaded to the PREFILL path too (form-fill carries the native `type` as `factsKind`) — the
+  reviewer's SHOULD FIX, since actuateAll's per-field catch would swallow the throw and submit under-filled.
+- REJECTED: don't stamp probe-fills at all — cleaner water-line, but a probe that DOES create a record would
+  leave it unmarked and invisible to the foreign-content rail / cleanup. Skipping only shaped types keeps the
+  mark where it is both needed and safe (text/textarea).
+- CHOSE: strip the transient `-dragged`/`-dragging` (react-draggable) state class in `dom-snapshot.isStateClass`
+  (the INC.6 state-class class, one library over). A draggable control acquired `react-draggable-dragged` after
+  a drag, fragmenting one control into two templates (ALIAS_COLLISION, phantom denominator). Structural
+  `react-draggable` anchor KEPT; SCHEMA_VERSION 7→8 (intentional identity re-key, legacy graph reset).
+- CHOSE: a durable `locator.type:'widget'` for an antd Select/Picker inner input (`dom-snapshot` locator ladder
+  + `resolve-handle` branch) — the `.ant-select-selector`/`.ant-picker` clickable scoped by the form-item LABEL
+  text. The bare inner input has no testid/id/role/name, so it fell to a positional selector and went
+  NO_INSTANCE the instant antd re-mounted the widget. One durable locator fixes BOTH NO_INSTANCE (CLASS 2) and
+  the antd click-interception (CLASS 1a) — resolving to the clickable affordance is also what clears the
+  display-span-over-input interception, and actuateSelect/actuatePicker click exactly that affordance.
+- REJECTED: `click({force:true})` for the interception — force masks a genuine stuck-modal defect GOAL.md wants
+  recorded as a finding, and clicking the covered input is wrong actuation. REJECTED: `dispatchEvent('click')`
+  — worse for rc-select (listens to mousedown/pointer). REJECTED: re-snapshot-and-re-resolve after reveal — a
+  DOM roundtrip that risks the causal window and costs on every act.
+- CHOSE (review CONSIDER b): the widget hit is `representative:false` only when its widget subtree structurally
+  contains the recorded template element; otherwise `representative:true` so actStep re-checks the live identity
+  — a label is not identity, and a generic label ("Status") on a select in another form must not resolve
+  cross-control silently (the same-name class that hid a wrong-control bug for seven runs).
+- IDENTITY: the widget locator writes ONLY `e.locator` (derived from fieldFacts, additive) — never
+  templateSelector/instanceSelector/instanceKey — so NO schemaVersion bump; confirmed additive by bughunter-reviewer.
+- MEASURED: bughunter-reviewer SHIP AFTER FIXES (0 MUST FIX, 1 SHOULD FIX + 2 CONSIDER — SHOULD FIX and
+  CONSIDER b applied). Full suite 568 pass / 0 fail. Every fix carries a revert-proven FAIL-ON-REVERT test.
