@@ -12,13 +12,13 @@
 // drain-outcomes against 2 `budget`, so the inverted seam WAS the crawl's breadth policy. Consequences,
 // all read off that run's trail: 30 of 35 route transitions used `least-visited` and only 5 `bfs-queue`;
 // the final graph held 13 routes visited against 53 pending, and those 53 were 52 DISTINCT first-segment
-// sections (/groups, /events, /nuggets, /setting, /reports, /media, /sermons, /donations, /earnings,
+// sections (/groups, /events, /items, /setting, /reports, /media, /articles, /billing, /earnings,
 // /membership …) — not one a variant of a page already seen; 33 navigations produced no act at all
 // (`pick-empty`), 16 of them on profile pages and 12 on the dashboard.
 //
 // NO VISIT CAP HERE, DELIBERATELY. A per-pattern repeat cap belongs with the URL-masker change that is
 // sequenced next, not with this reorder, and the evidence is arithmetic: the pages the diagnosis cites are
-// `/viewprofile/<base64>`, and `toUrlPattern` masks only digit / uuid / long-hex segments — so it returns
+// `/profile/<base64>`, and `toUrlPattern` masks only digit / uuid / long-hex segments — so it returns
 // each of those routes UNCHANGED and each profile is its own pattern. A cap keyed on today's masker would
 // group nothing and never fire on the very case it was proposed for. GOAL.md also requires such a cap to
 // WIDEN when pages disagree, and the disagreement signal (`contentSig`) is written only by

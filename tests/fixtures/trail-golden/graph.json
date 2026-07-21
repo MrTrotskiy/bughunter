@@ -609,7 +609,7 @@
   "/route-ap": {
    "type": "route",
    "url": "/route-ap",
-   "paramInstanceOf": "/viewprofile/:user_id"
+   "paramInstanceOf": "/profile/:user_id"
   },
   "/route-aq": {
    "type": "route",
@@ -619,12 +619,12 @@
   "/route-bk": {
    "type": "route",
    "url": "/route-bk",
-   "paramInstanceOf": "/viewprofile/:user_id"
+   "paramInstanceOf": "/profile/:user_id"
   },
   "/route-bl": {
    "type": "route",
    "url": "/route-bl",
-   "paramInstanceOf": "/viewprofile/:user_id"
+   "paramInstanceOf": "/profile/:user_id"
   }
  },
  "elements": {
@@ -660,7 +660,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/addnuggetview -> 200"
+      "POST /app/addview -> 200"
      ],
      "revealed": 0
     }
@@ -979,7 +979,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listnuggets -> 200"
+      "POST /app/listitems -> 200"
      ],
      "revealed": 0
     }
@@ -1030,8 +1030,8 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listnuggets -> 200",
-      "POST /app/get_ad -> 200"
+      "POST /app/listitems -> 200",
+      "POST /app/get-item -> 200"
      ],
      "revealed": 0
     }
@@ -1104,7 +1104,7 @@
   "27": {
    "type": "element",
    "templateId": 27,
-   "templateSelector": "#home-container > div > div > div > div > div > div > div.PostNuggets_searchUser__TEncI > div.d- …",
+   "templateSelector": "#home-container > div > div > div > div > div > div > div.PostItems_searchUser__TEncI > div.d- …",
    "role": "textbox",
    "name": "Control 110",
    "route": "/",
@@ -1144,7 +1144,7 @@
    },
    "fieldFacts": {
     "kind": "text",
-    "placeholder": "hey Test User, share some nuggets...",
+    "placeholder": "hey Test User, share some items...",
     "readOnly": true,
     "disabled": false
    },
@@ -1172,7 +1172,7 @@
   "29": {
    "type": "element",
    "templateId": 29,
-   "templateSelector": "#nugget_video",
+   "templateSelector": "#item_video",
    "role": "textbox",
    "name": "",
    "route": "/",
@@ -1184,10 +1184,10 @@
     {
      "instanceId": 30,
      "instanceKey": "#1",
-     "instanceSelector": "#nugget_video",
+     "instanceSelector": "#item_video",
      "locator": {
       "type": "id",
-      "value": "#nugget_video"
+      "value": "#item_video"
      },
      "explored": false,
      "hiddenWhenSeen": true
@@ -1227,7 +1227,7 @@
   "31": {
    "type": "element",
    "templateId": 31,
-   "templateSelector": "#nugget_image",
+   "templateSelector": "#item_image",
    "role": "textbox",
    "name": "",
    "route": "/",
@@ -1239,10 +1239,10 @@
     {
      "instanceId": 32,
      "instanceKey": "#1",
-     "instanceSelector": "#nugget_image",
+     "instanceSelector": "#item_image",
      "locator": {
       "type": "id",
-      "value": "#nugget_image"
+      "value": "#item_image"
      },
      "explored": false,
      "hiddenWhenSeen": true
@@ -1312,7 +1312,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listallfriendgroups -> 200"
+      "POST /app/listgroups -> 200"
      ],
      "revealed": 0
     }
@@ -1382,7 +1382,7 @@
      "via": "label",
      "representative": false,
      "requests": [
-      "POST /app/listallfriendgroups -> 200"
+      "POST /app/listgroups -> 200"
      ],
      "revealed": 0
     }
@@ -1642,7 +1642,7 @@
   "51": {
    "type": "element",
    "templateId": 51,
-   "templateSelector": "div > div > div > div > div > div > div > div.ant-spin-container > div > div > div.Nuggets_proNa …",
+   "templateSelector": "div > div > div > div > div > div > div > div.ant-spin-container > div > div > div.Items_proNa …",
    "role": "generic",
    "name": "Control 129",
    "route": "/",
@@ -1715,16 +1715,16 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listnuggets -> 200",
-      "POST /app/getinfluencercategory -> 200",
+      "POST /app/listitems -> 200",
+      "POST /app/getcreatorcategory -> 200",
       "POST /app/community_dropdown?page=:param&size=:param -> 200",
       "POST /app/listevents -> 200",
       "POST /app/getothersprofile -> 200",
-      "POST /app/get_ad -> 200",
-      "POST /app/list_ad_slot -> 200",
+      "POST /app/get-item -> 200",
+      "POST /app/list-slot -> 200",
       "POST /app/getfollowlist -> 200",
-      "POST /app/listallfriends -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/listallcontacts -> 200",
+      "POST /app/addview -> 200"
      ],
      "revealed": 0
     }
@@ -1886,7 +1886,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/nuggetcontentaudio -> 200"
+      "POST /app/itemcontentaudio -> 200"
      ],
      "revealed": 0
     }
@@ -1968,8 +1968,8 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/nuggetcontentaudio -> 200",
-      "GET /nuggets/converted_audio_80551784614944.mp3 -> 200"
+      "POST /app/itemcontentaudio -> 200",
+      "GET /items/converted_audio_80551784614944.mp3 -> 200"
      ],
      "revealed": 0
     }
@@ -1978,7 +1978,7 @@
   "59": {
    "type": "element",
    "templateId": 59,
-   "templateSelector": "div > div > div > div > div > div > div.ant-spin-container > div > div.Nuggets_contentSec__GIyqB …",
+   "templateSelector": "div > div > div > div > div > div > div.ant-spin-container > div > div.Items_contentSec__GIyqB …",
    "role": "generic",
    "name": "Control 108",
    "route": "/",
@@ -2047,7 +2047,7 @@
   "65": {
    "type": "element",
    "templateId": 65,
-   "templateSelector": "div > div > div > div > div > div > div.ant-spin-container > div > div.Nuggets_contentSec__GIyqB …",
+   "templateSelector": "div > div > div > div > div > div > div.ant-spin-container > div > div.Items_contentSec__GIyqB …",
    "role": "generic",
    "name": "Control 109",
    "route": "/",
@@ -2831,15 +2831,15 @@
      "requests": [
       "GET /socket.io/?EIO=:param&transport=:param&t=:param -> 200",
       "GET /api/chats -> 200",
-      "POST /app/get_ad -> 200",
-      "POST /app/listnuggets -> 200",
-      "POST /app/listallfriendgroups -> 200",
-      "POST /app/listallfriendrequests -> 200",
-      "POST /app/list_ad_slot -> 200",
+      "POST /app/get-item -> 200",
+      "POST /app/listitems -> 200",
+      "POST /app/listgroups -> 200",
+      "POST /app/listrequests -> 200",
+      "POST /app/list-slot -> 200",
       "GET /api/events/search-list?searchEventType=:param&take=:param&skip=:param -> 200",
       "POST /socket.io/?EIO=:param&transport=:param&t=:param&sid=:param -> 200",
       "GET /socket.io/?EIO=:param&transport=:param&t=:param&sid=:param -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/addview -> 200"
      ],
      "revealed": 0
     }
@@ -3437,13 +3437,13 @@
      "representative": false,
      "requests": [
       "GET /api/chats -> 200",
-      "POST /app/get_ad -> 200",
-      "POST /app/listnuggets -> 200",
-      "POST /app/listallfriendgroups -> 200",
-      "POST /app/listallfriendrequests -> 200",
-      "POST /app/list_ad_slot -> 200",
+      "POST /app/get-item -> 200",
+      "POST /app/listitems -> 200",
+      "POST /app/listgroups -> 200",
+      "POST /app/listrequests -> 200",
+      "POST /app/list-slot -> 200",
       "GET /api/events/search-list?searchEventType=:param&take=:param&skip=:param -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/addview -> 200"
      ],
      "revealed": 0
     }
@@ -3533,13 +3533,13 @@
      "representative": false,
      "requests": [
       "GET /api/chats -> 200",
-      "POST /app/get_ad -> 200",
-      "POST /app/listnuggets -> 200",
-      "POST /app/listallfriendgroups -> 200",
-      "POST /app/listallfriendrequests -> 200",
-      "POST /app/list_ad_slot -> 200",
+      "POST /app/get-item -> 200",
+      "POST /app/listitems -> 200",
+      "POST /app/listgroups -> 200",
+      "POST /app/listrequests -> 200",
+      "POST /app/list-slot -> 200",
       "GET /api/events/search-list?searchEventType=:param&take=:param&skip=:param -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/addview -> 200"
      ],
      "revealed": 0
     }
@@ -10022,8 +10022,8 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listnuggets -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/listitems -> 200",
+      "POST /app/addview -> 200"
      ],
      "revealed": 2
     }
@@ -10063,8 +10063,8 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listnuggets -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/listitems -> 200",
+      "POST /app/addview -> 200"
      ],
      "revealed": 2
     }
@@ -10619,15 +10619,15 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listnuggets -> 200",
-      "POST /app/getinfluencercategory -> 200",
+      "POST /app/listitems -> 200",
+      "POST /app/getcreatorcategory -> 200",
       "POST /app/community_dropdown?page=:param&size=:param -> 200",
       "POST /app/listevents -> 200",
       "POST /app/getothersprofile -> 200",
-      "POST /app/get_ad -> 200",
-      "POST /app/list_ad_slot -> 200",
+      "POST /app/get-item -> 200",
+      "POST /app/list-slot -> 200",
       "POST /app/getfollowlist -> 200",
-      "POST /app/listallfriends -> 200"
+      "POST /app/listallcontacts -> 200"
      ],
      "revealed": 19
     }
@@ -10883,7 +10883,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/nuggetcontentaudio -> 200"
+      "POST /app/itemcontentaudio -> 200"
      ],
      "revealed": 0
     }
@@ -10962,8 +10962,8 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/nuggetcontentaudio -> 200",
-      "GET /nuggets/converted_audio_33451784614210.mp3 -> 200"
+      "POST /app/itemcontentaudio -> 200",
+      "GET /items/converted_audio_33451784614210.mp3 -> 200"
      ],
      "revealed": 0
     }
@@ -11003,7 +11003,7 @@
      "representative": false,
      "requests": [
       "POST /app/getcountylist -> 200",
-      "POST /app/list_ad_slot -> 200"
+      "POST /app/list-slot -> 200"
      ],
      "revealed": 10
     }
@@ -11012,7 +11012,7 @@
   "678": {
    "type": "element",
    "templateId": 678,
-   "templateSelector": "#post_nugget_image",
+   "templateSelector": "#post_item_image",
    "role": "textbox",
    "name": "",
    "route": "/route-ap",
@@ -11024,10 +11024,10 @@
     {
      "instanceId": 679,
      "instanceKey": "#1",
-     "instanceSelector": "#post_nugget_image",
+     "instanceSelector": "#post_item_image",
      "locator": {
       "type": "id",
-      "value": "#post_nugget_image"
+      "value": "#post_item_image"
      },
      "explored": false,
      "hiddenWhenSeen": true
@@ -11035,10 +11035,10 @@
     {
      "instanceId": 680,
      "instanceKey": "#2",
-     "instanceSelector": "#post_nugget_image",
+     "instanceSelector": "#post_item_image",
      "locator": {
       "type": "id",
-      "value": "#post_nugget_image"
+      "value": "#post_item_image"
      },
      "explored": false,
      "hiddenWhenSeen": true
@@ -11530,13 +11530,13 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listnuggets -> 200",
+      "POST /app/listitems -> 200",
       "POST /app/listevents -> 200",
       "POST /app/getothersprofile -> 200",
-      "POST /app/get_ad -> 200",
+      "POST /app/get-item -> 200",
       "POST /app/getfollowlist -> 200",
-      "POST /app/listallfriends -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/listallcontacts -> 200",
+      "POST /app/addview -> 200"
      ],
      "revealed": 48
     }
@@ -12084,7 +12084,7 @@
   "725": {
    "type": "element",
    "templateId": 725,
-   "templateSelector": "#home-container > div > div.mainWrapper.innerContent > div.Influencers_headerSec__tiVsI > div.In …",
+   "templateSelector": "#home-container > div > div.mainWrapper.innerContent > div.Creators_headerSec__tiVsI > div.In …",
    "role": "button",
    "name": "Control 46",
    "route": "/route-at",
@@ -12096,7 +12096,7 @@
     {
      "instanceId": 726,
      "instanceKey": "#1",
-     "instanceSelector": "#home-container > div:nth-child(1) > div.mainWrapper.innerContent:nth-child(1) > div.Influencers …",
+     "instanceSelector": "#home-container > div:nth-child(1) > div.mainWrapper.innerContent:nth-child(1) > div.Creators …",
      "locator": {
       "type": "role-name",
       "role": "button",
@@ -12114,15 +12114,15 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/listallfriendgroups -> 200",
+      "POST /app/listgroups -> 200",
       "GET /api/events/search-list?searchEventType=:param&take=:param&skip=:param -> 200",
       "GET /api/chats -> 200",
       "POST /app/community_dropdown?page=:param&size=:param -> 200",
-      "POST /app/get_ad -> 200",
-      "POST /app/listnuggets -> 200",
-      "POST /app/listallfriendrequests -> 200",
-      "POST /app/list_ad_slot -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/get-item -> 200",
+      "POST /app/listitems -> 200",
+      "POST /app/listrequests -> 200",
+      "POST /app/list-slot -> 200",
+      "POST /app/addview -> 200"
      ],
      "revealed": 0
     }
@@ -12171,8 +12171,8 @@
    },
    "fieldFacts": {
     "kind": "text",
-    "label": "Search Influencer by name",
-    "placeholder": "Search Influencer by name",
+    "label": "Search Creator by name",
+    "placeholder": "Search Creator by name",
     "readOnly": false,
     "disabled": false
    }
@@ -12226,7 +12226,7 @@
   "731": {
    "type": "element",
    "templateId": 731,
-   "templateSelector": "#searchInfluencer",
+   "templateSelector": "#searchCreator",
    "role": "generic",
    "name": "Control 81",
    "route": "/route-at",
@@ -12238,10 +12238,10 @@
     {
      "instanceId": 732,
      "instanceKey": "#1",
-     "instanceSelector": "#searchInfluencer",
+     "instanceSelector": "#searchCreator",
      "locator": {
       "type": "id",
-      "value": "#searchInfluencer"
+      "value": "#searchCreator"
      },
      "explored": false,
      "hiddenWhenSeen": false
@@ -12696,7 +12696,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/list_ad -> 422"
+      "POST /app/list-item -> 422"
      ],
      "revealed": 0,
      "announced": [
@@ -12710,7 +12710,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/list_ad -> 200"
+      "POST /app/list-item -> 200"
      ],
      "revealed": 0,
      "filled": 2
@@ -15630,7 +15630,7 @@
   "857": {
    "type": "element",
    "templateId": 857,
-   "templateSelector": "#post_nugget_video",
+   "templateSelector": "#post_item_video",
    "role": "textbox",
    "name": "",
    "route": "/route-a",
@@ -15642,10 +15642,10 @@
     {
      "instanceId": 858,
      "instanceKey": "#1",
-     "instanceSelector": "#post_nugget_video",
+     "instanceSelector": "#post_item_video",
      "locator": {
       "type": "id",
-      "value": "#post_nugget_video"
+      "value": "#post_item_video"
      },
      "explored": false,
      "hiddenWhenSeen": true,
@@ -15696,7 +15696,7 @@
   "859": {
    "type": "element",
    "templateId": 859,
-   "templateSelector": "#post_nugget_textarea",
+   "templateSelector": "#post_item_textarea",
    "role": "textbox",
    "name": "Control 205",
    "route": "/route-a",
@@ -15708,10 +15708,10 @@
     {
      "instanceId": 860,
      "instanceKey": "#1",
-     "instanceSelector": "#post_nugget_textarea",
+     "instanceSelector": "#post_item_textarea",
      "locator": {
       "type": "id",
-      "value": "#post_nugget_textarea"
+      "value": "#post_item_textarea"
      },
      "explored": false,
      "hiddenWhenSeen": true,
@@ -16517,7 +16517,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/addfriendgroup -> 500"
+      "POST /app/groups -> 500"
      ],
      "revealed": 0,
      "announced": [
@@ -16531,7 +16531,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/addfriendgroup -> 500"
+      "POST /app/groups -> 500"
      ],
      "revealed": 0,
      "filled": 1
@@ -17784,7 +17784,7 @@
      "representative": false,
      "requests": [
       "POST /app/getcountylist -> 200",
-      "POST /app/addnuggetview -> 200"
+      "POST /app/addview -> 200"
      ],
      "revealed": 0
     }
@@ -17793,7 +17793,7 @@
   "952": {
    "type": "element",
    "templateId": 952,
-   "templateSelector": "#banner_container > div > div > div > div > div.ant-spin-container > div > div > div.Nuggets_pro …",
+   "templateSelector": "#banner_container > div > div > div > div > div.ant-spin-container > div > div > div.Items_pro …",
    "role": "generic",
    "name": "Control 97",
    "route": "/route-bk",
@@ -18109,7 +18109,7 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/nuggetcontentaudio -> 200"
+      "POST /app/itemcontentaudio -> 200"
      ],
      "revealed": 0
     }
@@ -18118,7 +18118,7 @@
   "958": {
    "type": "element",
    "templateId": 958,
-   "templateSelector": "#banner_container > div > div > div > div > div.ant-spin-container > div > div > div.Nuggets_rea …",
+   "templateSelector": "#banner_container > div > div > div > div > div.ant-spin-container > div > div > div.Items_rea …",
    "role": "generic",
    "name": "Control 35",
    "route": "/route-bk",
@@ -18202,8 +18202,8 @@
      "via": "selector",
      "representative": false,
      "requests": [
-      "POST /app/nuggetcontentaudio -> 200",
-      "GET /nuggets/converted_audio_53421784614670.mp3 -> 200"
+      "POST /app/itemcontentaudio -> 200",
+      "GET /items/converted_audio_53421784614670.mp3 -> 200"
      ],
      "revealed": 0
     }
@@ -18212,7 +18212,7 @@
   "960": {
    "type": "element",
    "templateId": 960,
-   "templateSelector": "#banner_container > div > div > div > div > div.ant-spin-container > div > div.Nuggets_contentSe …",
+   "templateSelector": "#banner_container > div > div > div > div > div.ant-spin-container > div > div.Items_contentSe …",
    "role": "generic",
    "name": "Control 108",
    "route": "/route-bk",
@@ -19816,7 +19816,7 @@
   "1043": {
    "type": "element",
    "templateId": 1043,
-   "templateSelector": "#banner_container > div > div > div > div > div.ant-spin-container > div > div.Nuggets_contentSe …",
+   "templateSelector": "#banner_container > div > div > div > div > div.ant-spin-container > div > div.Items_contentSe …",
    "role": "generic",
    "name": "Control 109",
    "route": "/route-bk",
@@ -21949,10 +21949,10 @@
     "https://host-a.example.test"
    ]
   },
-  "POST /app/get_ad": {
+  "POST /app/get-item": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/get_ad",
+   "urlPattern": "/app/get-item",
    "statuses": {
     "200": 8
    },
@@ -21961,10 +21961,10 @@
     "https://host-b.example.test"
    ]
   },
-  "POST /app/listnuggets": {
+  "POST /app/listitems": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/listnuggets",
+   "urlPattern": "/app/listitems",
    "statuses": {
     "200": 11
    },
@@ -21973,10 +21973,10 @@
     "https://host-b.example.test"
    ]
   },
-  "POST /app/listallfriendgroups": {
+  "POST /app/listgroups": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/listallfriendgroups",
+   "urlPattern": "/app/listgroups",
    "statuses": {
     "200": 6
    },
@@ -21985,10 +21985,10 @@
     "https://host-b.example.test"
    ]
   },
-  "POST /app/listallfriendrequests": {
+  "POST /app/listrequests": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/listallfriendrequests",
+   "urlPattern": "/app/listrequests",
    "statuses": {
     "200": 4
    },
@@ -21997,10 +21997,10 @@
     "https://host-b.example.test"
    ]
   },
-  "POST /app/list_ad_slot": {
+  "POST /app/list-slot": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/list_ad_slot",
+   "urlPattern": "/app/list-slot",
    "statuses": {
     "200": 7
    },
@@ -22045,10 +22045,10 @@
     "https://host-a.example.test"
    ]
   },
-  "POST /app/addnuggetview": {
+  "POST /app/addview": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/addnuggetview",
+   "urlPattern": "/app/addview",
    "statuses": {
     "200": 10
    },
@@ -22069,10 +22069,10 @@
     "https://host-b.example.test"
    ]
   },
-  "POST /app/nuggetcontentaudio": {
+  "POST /app/itemcontentaudio": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/nuggetcontentaudio",
+   "urlPattern": "/app/itemcontentaudio",
    "statuses": {
     "200": 6
    },
@@ -22081,10 +22081,10 @@
     "https://host-b.example.test"
    ]
   },
-  "GET /nuggets/converted_audio_33451784614210.mp3": {
+  "GET /items/converted_audio_33451784614210.mp3": {
    "type": "request",
    "method": "GET",
-   "urlPattern": "/nuggets/converted_audio_33451784614210.mp3",
+   "urlPattern": "/items/converted_audio_33451784614210.mp3",
    "statuses": {
     "200": 1
    },
@@ -22093,10 +22093,10 @@
     "https://host-c.example.test"
    ]
   },
-  "POST /app/getinfluencercategory": {
+  "POST /app/getcreatorcategory": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/getinfluencercategory",
+   "urlPattern": "/app/getcreatorcategory",
    "statuses": {
     "200": 2
    },
@@ -22153,10 +22153,10 @@
     "https://host-b.example.test"
    ]
   },
-  "POST /app/listallfriends": {
+  "POST /app/listallcontacts": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/listallfriends",
+   "urlPattern": "/app/listallcontacts",
    "statuses": {
     "200": 3
    },
@@ -22177,10 +22177,10 @@
     "https://host-b.example.test"
    ]
   },
-  "POST /app/list_ad": {
+  "POST /app/list-item": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/list_ad",
+   "urlPattern": "/app/list-item",
    "statuses": {
     "200": 1,
     "422": 1
@@ -22202,10 +22202,10 @@
     "https://host-b.example.test"
    ]
   },
-  "POST /app/addfriendgroup": {
+  "POST /app/groups": {
    "type": "request",
    "method": "POST",
-   "urlPattern": "/app/addfriendgroup",
+   "urlPattern": "/app/groups",
    "statuses": {
     "500": 2
    },
@@ -22238,10 +22238,10 @@
     "https://host-b.example.test"
    ]
   },
-  "GET /nuggets/converted_audio_53421784614670.mp3": {
+  "GET /items/converted_audio_53421784614670.mp3": {
    "type": "request",
    "method": "GET",
-   "urlPattern": "/nuggets/converted_audio_53421784614670.mp3",
+   "urlPattern": "/items/converted_audio_53421784614670.mp3",
    "statuses": {
     "200": 1
    },
@@ -22287,10 +22287,10 @@
     "https://host-d.example.test"
    ]
   },
-  "GET /nuggets/converted_audio_80551784614944.mp3": {
+  "GET /items/converted_audio_80551784614944.mp3": {
    "type": "request",
    "method": "GET",
-   "urlPattern": "/nuggets/converted_audio_80551784614944.mp3",
+   "urlPattern": "/items/converted_audio_80551784614944.mp3",
    "statuses": {
     "200": 1
    },
@@ -22327,31 +22327,31 @@
   },
   {
    "from": "element:116",
-   "to": "request:POST /app/get_ad",
+   "to": "request:POST /app/get-item",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:116",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:116",
-   "to": "request:POST /app/listallfriendgroups",
+   "to": "request:POST /app/listgroups",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:116",
-   "to": "request:POST /app/listallfriendrequests",
+   "to": "request:POST /app/listrequests",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:116",
-   "to": "request:POST /app/list_ad_slot",
+   "to": "request:POST /app/list-slot",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22375,7 +22375,7 @@
   },
   {
    "from": "element:116",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22414,31 +22414,31 @@
   },
   {
    "from": "element:143",
-   "to": "request:POST /app/get_ad",
+   "to": "request:POST /app/get-item",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:143",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:143",
-   "to": "request:POST /app/listallfriendgroups",
+   "to": "request:POST /app/listgroups",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:143",
-   "to": "request:POST /app/listallfriendrequests",
+   "to": "request:POST /app/listrequests",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:143",
-   "to": "request:POST /app/list_ad_slot",
+   "to": "request:POST /app/list-slot",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22450,7 +22450,7 @@
   },
   {
    "from": "element:143",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22491,55 +22491,55 @@
   },
   {
    "from": "element:602",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:602",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:670",
-   "to": "request:POST /app/nuggetcontentaudio",
+   "to": "request:POST /app/itemcontentaudio",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:672",
-   "to": "request:POST /app/nuggetcontentaudio",
+   "to": "request:POST /app/itemcontentaudio",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:672",
-   "to": "request:GET /nuggets/converted_audio_33451784614210.mp3",
+   "to": "request:GET /items/converted_audio_33451784614210.mp3",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:604",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:604",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:606",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:606",
-   "to": "request:POST /app/getinfluencercategory",
+   "to": "request:POST /app/getcreatorcategory",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22563,13 +22563,13 @@
   },
   {
    "from": "element:606",
-   "to": "request:POST /app/get_ad",
+   "to": "request:POST /app/get-item",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:606",
-   "to": "request:POST /app/list_ad_slot",
+   "to": "request:POST /app/list-slot",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22581,13 +22581,13 @@
   },
   {
    "from": "element:606",
-   "to": "request:POST /app/listallfriends",
+   "to": "request:POST /app/listallcontacts",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "route:/referel",
-   "to": "route:/viewprofile/b64seg",
+   "to": "route:/profile/b64seg",
    "type": "nav",
    "provenance": "act",
    "via": 606
@@ -22600,12 +22600,12 @@
   },
   {
    "from": "element:676",
-   "to": "request:POST /app/list_ad_slot",
+   "to": "request:POST /app/list-slot",
    "type": "triggers",
    "provenance": "causal"
   },
   {
-   "from": "route:/viewprofile/b64seg",
+   "from": "route:/profile/b64seg",
    "to": "route:/claim/b64seg",
    "type": "nav",
    "provenance": "act",
@@ -22613,7 +22613,7 @@
   },
   {
    "from": "element:725",
-   "to": "request:POST /app/listallfriendgroups",
+   "to": "request:POST /app/listgroups",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22637,36 +22637,36 @@
   },
   {
    "from": "element:725",
-   "to": "request:POST /app/get_ad",
+   "to": "request:POST /app/get-item",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:725",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:725",
-   "to": "request:POST /app/listallfriendrequests",
+   "to": "request:POST /app/listrequests",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:725",
-   "to": "request:POST /app/list_ad_slot",
+   "to": "request:POST /app/list-slot",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:725",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
   {
-   "from": "route:/selectinfluencers",
+   "from": "route:/selectcreators",
    "to": "route:/dashboard",
    "type": "nav",
    "provenance": "act",
@@ -22674,31 +22674,31 @@
   },
   {
    "from": "element:746",
-   "to": "request:POST /app/list_ad",
+   "to": "request:POST /app/list-item",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:1",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:20",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:22",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:22",
-   "to": "request:POST /app/get_ad",
+   "to": "request:POST /app/get-item",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22710,7 +22710,7 @@
   },
   {
    "from": "element:889",
-   "to": "request:POST /app/addfriendgroup",
+   "to": "request:POST /app/groups",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22734,7 +22734,7 @@
   },
   {
    "from": "element:695",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22752,7 +22752,7 @@
   },
   {
    "from": "element:695",
-   "to": "request:POST /app/get_ad",
+   "to": "request:POST /app/get-item",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22764,19 +22764,19 @@
   },
   {
    "from": "element:695",
-   "to": "request:POST /app/listallfriends",
+   "to": "request:POST /app/listallcontacts",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:695",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
   {
-   "from": "route:/viewprofile/b64seg",
-   "to": "route:/viewprofile/b64seg",
+   "from": "route:/profile/b64seg",
+   "to": "route:/profile/b64seg",
    "type": "nav",
    "provenance": "act",
    "via": 695
@@ -22789,37 +22789,37 @@
   },
   {
    "from": "element:935",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:956",
-   "to": "request:POST /app/nuggetcontentaudio",
+   "to": "request:POST /app/itemcontentaudio",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:958",
-   "to": "request:POST /app/nuggetcontentaudio",
+   "to": "request:POST /app/itemcontentaudio",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:958",
-   "to": "request:GET /nuggets/converted_audio_53421784614670.mp3",
+   "to": "request:GET /items/converted_audio_53421784614670.mp3",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:33",
-   "to": "request:POST /app/listallfriendgroups",
+   "to": "request:POST /app/listgroups",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:35",
-   "to": "request:POST /app/listallfriendgroups",
+   "to": "request:POST /app/listgroups",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22910,31 +22910,31 @@
   },
   {
    "from": "element:145",
-   "to": "request:POST /app/get_ad",
+   "to": "request:POST /app/get-item",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:145",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:145",
-   "to": "request:POST /app/listallfriendgroups",
+   "to": "request:POST /app/listgroups",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:145",
-   "to": "request:POST /app/listallfriendrequests",
+   "to": "request:POST /app/listrequests",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:145",
-   "to": "request:POST /app/list_ad_slot",
+   "to": "request:POST /app/list-slot",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22946,7 +22946,7 @@
   },
   {
    "from": "element:145",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22964,13 +22964,13 @@
   },
   {
    "from": "element:51",
-   "to": "request:POST /app/listnuggets",
+   "to": "request:POST /app/listitems",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:51",
-   "to": "request:POST /app/getinfluencercategory",
+   "to": "request:POST /app/getcreatorcategory",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -22994,13 +22994,13 @@
   },
   {
    "from": "element:51",
-   "to": "request:POST /app/get_ad",
+   "to": "request:POST /app/get-item",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:51",
-   "to": "request:POST /app/list_ad_slot",
+   "to": "request:POST /app/list-slot",
    "type": "triggers",
    "provenance": "causal"
   },
@@ -23012,38 +23012,38 @@
   },
   {
    "from": "element:51",
-   "to": "request:POST /app/listallfriends",
+   "to": "request:POST /app/listallcontacts",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:51",
-   "to": "request:POST /app/addnuggetview",
+   "to": "request:POST /app/addview",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "route:/dashboard",
-   "to": "route:/viewprofile/b64seg",
+   "to": "route:/profile/b64seg",
    "type": "nav",
    "provenance": "act",
    "via": 51
   },
   {
    "from": "element:55",
-   "to": "request:POST /app/nuggetcontentaudio",
+   "to": "request:POST /app/itemcontentaudio",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:57",
-   "to": "request:POST /app/nuggetcontentaudio",
+   "to": "request:POST /app/itemcontentaudio",
    "type": "triggers",
    "provenance": "causal"
   },
   {
    "from": "element:57",
-   "to": "request:GET /nuggets/converted_audio_80551784614944.mp3",
+   "to": "request:GET /items/converted_audio_80551784614944.mp3",
    "type": "triggers",
    "provenance": "causal"
   },

@@ -14,7 +14,7 @@
 //   comment is prepended each open so that nth-child index SHIFTS (exercises the durable role-name fallback).
 // - menuitems are `<li class="ant-dropdown-menu-item" role="menuitem" data-menu-id="rc-menu-uuid-…">` (the
 //   framework-noise data-menu-id must NOT become a discriminator; the NAME must).
-// - own row → Edit / Delete / Share Link; other row → Share Link / Block User / Report Abuse / Become a Fan (N)
+// - own row → Edit / Delete / Share Link; other row → Share Link / Block account / Report content / Save Item (N)
 //   where N INCREMENTS each open (count-badge → must strip to a stable template, no per-render explosion).
 // - one item carries value="MY_EVENTS" (semantic enum → folds from value, not text).
 // - "Share Link" is the SAFE reach target (fires GET /share); Delete/Block/Report would be danger-floored.
@@ -35,7 +35,7 @@ const PAGE = `<!doctype html>
     var fanCount = 11;
     // action label -> [safe GET endpoint | null]. Only "Share Link" is safe to fire in a read-only crawl.
     var OWN = [['Edit', null], ['Delete', null], ['Share Link', '/share']];
-    var OTHER = [['Share Link', '/share'], ['block Block User', null], ['report Report Abuse', null], ['Become a Fan', null], ['My Events', null]];
+    var OTHER = [['Share Link', '/share'], ['block Block account', null], ['report Report content', null], ['Save Item', null], ['My Events', null]];
     function mountMenu(items) {
       document.querySelectorAll('div[data-portal]').forEach(function (o) { o.remove(); });      // teardown (data-portal is identity-invisible)
       document.body.insertBefore(document.createComment('spacer'), document.body.firstChild);   // shift portal nth-child
@@ -43,7 +43,7 @@ const PAGE = `<!doctype html>
       var ul = document.createElement('ul'); ul.className = 'ant-dropdown-menu ant-dropdown-menu-root'; ul.setAttribute('role', 'menu');
       items.forEach(function (it, i) {
         var label = it[0];
-        if (label === 'Become a Fan') label = 'Become a Fan (' + (++fanCount) + ')';            // count-badge that grows each open
+        if (label === 'Save Item') label = 'Save Item (' + (++fanCount) + ')';                   // count-badge that grows each open
         var li = document.createElement('li');
         li.className = 'ant-dropdown-menu-item'; li.setAttribute('role', 'menuitem');
         li.setAttribute('data-menu-id', 'rc-menu-uuid-99-' + i);                                // framework noise — must NOT key identity

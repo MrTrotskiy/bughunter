@@ -23,7 +23,7 @@
 //    "fast" when the truth is "nobody measured it".
 //  - newestRunWithTrail defaults to the newest run that HAS events; zero-event runs stay listed.
 //  - THE SHELL (the left rail + the honest placeholders). NAV_ITEMS is the one section list, and the
-//    four sections with no screen yet MUST be marked `stub` — an unmarked stub is a rail that
+//    three sections with no screen yet MUST be marked `stub` — an unmarked stub is a rail that
 //    promises a screen the tool does not have. navCount renders a missing number as the house '—'
 //    and NEVER as 0: 0 is a claim ("we looked, there are none"), '—' is the absence of one, and
 //    inventing the former is the exact dishonesty this whole section exists to correct.
@@ -315,8 +315,11 @@ test('the rail lists every section once, and marks the ones with no screen', () 
   assert.equal(new Set(ids).size, ids.length, 'a duplicated id would make two rail items route to one view');
   assert.deepEqual(ids, ['runs', 'walk', 'pipe', 'graph', 'reqs', 'finds', 'cover', 'tests'],
     'the operator fixed this order; Прогоны first and Тесты last');
-  // The four unbuilt sections MUST declare themselves. An unmarked stub is a rail promising a screen.
-  assert.deepEqual([...STUB_IDS].sort(), ['cover', 'finds', 'reqs', 'walk']);
+  // The remaining unbuilt sections MUST declare themselves. An unmarked stub is a rail promising a
+  // screen the tool does not have. «Покрытие» graduated to a real screen (coverage-view.mjs), so it
+  // is NO LONGER a stub — it is absent from STUB_IDS and from STUBS.
+  assert.deepEqual([...STUB_IDS].sort(), ['finds', 'reqs', 'walk']);
+  assert.ok(!STUB_IDS.has('cover'), 'the built «Покрытие» screen is not marked a stub');
   for (const id of STUB_IDS) assert.ok(STUBS[id], `${id} is marked a stub but has no placeholder text`);
   // …and every stub id must be reachable from the rail, or the placeholder is dead code.
   for (const id of Object.keys(STUBS)) assert.ok(ids.includes(id), `${id} has placeholder text but no rail item`);
@@ -349,19 +352,20 @@ test('every placeholder explains itself instead of rendering blank', () => {
   }
   // The counts that ARE derivable reach the page, so the rail and the placeholder cannot disagree.
   assert.match(stubHtml('reqs', { edges: 26 }), /<b>26<\/b>/);
-  assert.match(stubHtml('cover', { cover: 117 }), /<b>117<\/b>/);
+  // «Покрытие» is a built screen now, so it has no placeholder — stubHtml degrades it like any unknown id.
+  assert.equal(stubHtml('cover', { cover: 117 }), '<div class="empty">—</div>', 'the graduated section has no stub');
   assert.equal(stubHtml('nope', {}), '<div class="empty">—</div>', 'an unknown section degrades quietly');
 });
 
 test('rowTitle truncates a concatenated-subtree name; rowTitleFull keeps it', () => {
-  // The reported defect: `generic "Add GroupuploadCreatesearchConnections (0)No dataNo Connections
-  // Found"` rendered as if it were a label. Display-side only — the derivation is untouched.
-  const long = 'Add GroupuploadCreatesearchConnections (0)No dataNo Connections Found and more text still';
+  // The reported defect: `generic "Control A Control B Control C (0)No dataNo results
+  // found"` rendered as if it were a label. Display-side only — the derivation is untouched.
+  const long = 'Control A Control B Control C (0)No dataNo results found and more text still';
   const row = { seq: 1, kind: 'act', label: `act ${long}`, route: '/x', durMs: 10, stages: [] };
   const short = rowTitle(row), full = rowTitleFull(row);
   assert.ok(short.length < full.length, 'a subtree-length name must be cut for display');
   assert.ok(short.endsWith('…'), 'truncation is marked, not silent');
-  assert.ok(full.includes('No Connections Found'), 'the tooltip keeps the whole string');
+  assert.ok(full.includes('No results found'), 'the tooltip keeps the whole string');
   // A short name is left exactly alone — truncation must not fire on ordinary labels.
   const plain = { seq: 2, kind: 'act', label: 'act Save', route: '/x', durMs: 10, stages: [] };
   assert.equal(rowTitle(plain), rowTitleFull(plain));

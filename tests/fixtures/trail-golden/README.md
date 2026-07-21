@@ -7,10 +7,12 @@ rejected by the plan — it would miss exactly the defects the gate exists to
 catch. So this is a real slice with sensitive identifiers masked and every
 diagnostic field preserved.
 
-**The test depends only on the committed output here — never on the tmp source.**
-`build.mjs` is the reproducible masker; re-run it (`node build.mjs`) to
-regenerate. It reads the real `fix1` paths, applies a consistent mask map, and
-writes `events.ndjson`, `graph/`, `run.json`, `graph.json`, `manifest.json`.
+**The test depends only on the committed output here.** This is now a STATIC
+masked artifact: the files below (`events.ndjson`, `graph/`, `run.json`,
+`graph.json`, `manifest.json`) are the fixture. The generator that produced them
+was removed on purpose — a committed masker enumerating the customer's brand,
+test-account names and endpoints would itself be a trace of the customer's app,
+which the fixture exists to carry none of.
 
 ## Files
 - `events.ndjson` — 63 masked events, original order preserved.
@@ -20,7 +22,6 @@ writes `events.ndjson`, `graph/`, `run.json`, `graph.json`, `manifest.json`.
 - `graph.json` — the masked FINAL graph (693 instances; the coverage denominator,
   `notFoundSig`, and the absence of `contentSig` are what the gate reads).
 - `manifest.json` — machine-readable case → witnessing seq(s); import it in the test.
-- `build.mjs` — the masker + a self-check that fails loudly on a leak or a missing case.
 
 ## Graph join semantics (for the test author)
 Graph state "at step N" = the nearest snapshot whose seq ≤ N. Snapshots exist
@@ -59,9 +60,9 @@ snapshot ≤ the drain seq.
 
 ### The load-bearing cases
 - **request `status >= 500`** — seq **694**: an `act` whose `requests[]` carries
-  `POST /app/addfriendgroup 500` (real event; the 500, method, resourceType,
-  durationMs and the `addfriendgroup` endpoint tail are kept byte-for-byte; only
-  the host and the brand path-segment are masked to `app`). This is the
+  `POST /app/groups 500` (real event; the 500, method, resourceType and
+  durationMs are kept byte-for-byte; the endpoint tail is masked to a neutral
+  `groups`, and the host and path-segment to `app`). This is the
   «Находки»-declares-impossible defect (Stage 1 item 3).
 - **`act.failed` with `target.attempts` (6 per-strategy records)** — seq **225**:
   the `attempts` array (`strategy/ran/raw/visible/sameTemplate`) is preserved
@@ -78,7 +79,7 @@ snapshot ≤ the drain seq.
   client-404-detector case (Stage 2 writer-reader parity). `notFoundSig` is kept
   byte-for-byte (`2110f3b4`); NO route carries `contentSig`, and none is added.
 
-## Masking rules applied (build.mjs)
+## Masking rules applied
 **Masked, consistently (same input → same placeholder, so joins survive):**
 - host / origin → `app.example.test` (target) and `host-b/c/…​.example.test` (others).
 - page-route paths → `/route-a`, `/route-b`, … (whole path; this also neutralises
@@ -87,13 +88,17 @@ snapshot ≤ the drain seq.
 - non-structural instanceKeys (numeric ids, dates, text keys) → `key-1`, … (a
   `#N` structural index is kept).
 - request `urlPattern` API paths keep their SHAPE (`:param`, endpoint verb tail);
-  only the host and the brand path-segment are neutralised (`→ app`, as in
-  `POST /app/addfriendgroup`).
+  the host and the brand path-segment are neutralised (`→ app`), and any customer
+  feature word in the tail is masked to a neutral equivalent (as in
+  `POST /app/groups`).
 - global safety scrub over EVERY string value (free text included — DOM
   placeholders, titles, aria-labels, probe text): the brand, the test-account
   names (→ `Test User`, …), any leaked host, any email (`→ user@example.test`),
-  any base64 profile segment. The token lists live in `build.mjs`
-  (`NAME_TOKENS` for masking, `LEAK_TOKENS` for the self-check).
+  any base64 profile segment. Customer feature vocabulary (the signature
+  content-unit term and any endpoint tail carrying an app-specific feature word)
+  is masked to neutral equivalents (the content unit → `item`, endpoint tails →
+  `groups`/`listitems`/`addview`/…), consistently with the same masking applied
+  repo-wide to `lib/` and `tests/`.
 - long CSS selectors (`templateSelector`, `instanceSelector`, `locator.value`) are
   truncated — they are NOT diagnostic for any truth claim (identity is
   `instanceKey`) and dominate snapshot size.
@@ -114,11 +119,10 @@ the ABSENCE of `contentSig`, `probeKind`, and all decision fields.
 - Nothing required by the contract was un-representable in `fix1`; no case is
   fabricated. If a future gate assertion needs a case the real run does not
   contain, it must be added to the run — not synthesised here.
-- The self-check at the bottom of `build.mjs` re-asserts: zero leaks (brand /
-  test-account names / host / email / credential fragments / base64 — checked
-  case-insensitively across EVERY committed data file, graph snapshots included),
-  all 13 kinds, all 5 codes, every case witnessed, and the byte-for-byte
-  spot-checks (the 500, the attempts shape, `notFoundSig`, zero `contentSig`).
-  It exits non-zero on any failure. Revert-proven: disabling the name scrub makes
-  the build die with a `SELF-CHECK FAILED: leak(s): token "…"` message naming the
-  leaked token.
+- The invariants a regeneration used to self-check still hold on the committed
+  artifact and can be re-verified against it: zero leaks (brand / test-account
+  names / host / email / credential fragments / base64 / customer feature words —
+  checked case-insensitively across EVERY committed data file, graph snapshots
+  included), all 13 kinds, all 5 codes, every case witnessed, and the
+  byte-for-byte spot-checks (the 500, the attempts shape, `notFoundSig`, zero
+  `contentSig`).

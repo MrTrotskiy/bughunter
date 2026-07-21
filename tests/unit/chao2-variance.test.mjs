@@ -3,7 +3,7 @@
 // explore different subsets (identical full drains give Q1=0, a degenerate 100%). routeItemKeys must key a
 // concrete `:param` instance by its PATTERN so different concretes across shuffled runs count as ONE item.
 // FAIL-ON-REVERT: make seededOrder ignore the seed → same-seed/diff-seed produce identical order → the
-//   "a seed permutes" assertion reds. Drop the paramInstanceOf key in routeItemKeys → /nugget/1 keys as
+//   "a seed permutes" assertion reds. Drop the paramInstanceOf key in routeItemKeys → /item/1 keys as
 //   itself → the "concrete keys by pattern" assertion reds.
 
 import { test } from 'node:test';
@@ -31,14 +31,14 @@ test('seededOrder: no seed is identity; a seed permutes deterministically; the s
 test('routeItemKeys: a concrete :param instance keys by its PATTERN, not the concrete route', () => {
   const graph = { routes: {
     '/dashboard': { url: '/dashboard' },
-    '/nugget/:id': { url: '/nugget/:id', unreachable: 'param-pattern' }, // pattern excluded (a denominator, not a detection)
-    '/nugget/1': { url: '/nugget/1', paramInstanceOf: '/nugget/:id' },   // run A's concrete
+    '/item/:id': { url: '/item/:id', unreachable: 'param-pattern' }, // pattern excluded (a denominator, not a detection)
+    '/item/1': { url: '/item/1', paramInstanceOf: '/item/:id' },   // run A's concrete
     '/pending/x': { url: '/pending/x', pending: true },                   // not visited → excluded
   } };
   const keys = routeItemKeys(graph);
   assert.ok(keys.has('/dashboard'), 'a static visited route keys by itself');
-  assert.ok(keys.has('/nugget/:id'), 'the concrete /nugget/1 keys by its PATTERN /nugget/:id (cross-run stable)');
-  assert.ok(!keys.has('/nugget/1'), 'the concrete route key is NOT emitted (would inflate Q1 across shuffled runs)');
+  assert.ok(keys.has('/item/:id'), 'the concrete /item/1 keys by its PATTERN /item/:id (cross-run stable)');
+  assert.ok(!keys.has('/item/1'), 'the concrete route key is NOT emitted (would inflate Q1 across shuffled runs)');
   assert.ok(!keys.has('/pending/x'), 'a pending (unvisited) route is not a detection');
-  assert.equal(keys.size, 2, 'exactly dashboard + the nugget pattern');
+  assert.equal(keys.size, 2, 'exactly dashboard + the item pattern');
 });

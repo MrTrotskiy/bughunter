@@ -154,7 +154,7 @@ test('the guard working is not breakage: DANGER_REFUSED and REVEAL_FIREWALL are 
   const danger = explainFailure({ error: 'refusing to fire a destructive control "Delete" (template 12)' }, null);
   assert.equal(danger.code, 'DANGER_REFUSED');
   assert.equal(danger.tone, TONES.PLANNED.key);
-  const fw = explainFailure({ error: 'reveal step 76 fired a firewall-refused request POST /x/addnuggetview (off-origin) at replay time — blocked (account unmutated), path refused' }, null);
+  const fw = explainFailure({ error: 'reveal step 76 fired a firewall-refused request POST /x/addview (off-origin) at replay time — blocked (account unmutated), path refused' }, null);
   assert.equal(fw.code, 'REVEAL_FIREWALL');
   assert.equal(fw.tone, TONES.PLANNED.key);
   for (const ex of [danger, fw]) assert.notEqual(ex.tone, TONES.BROKEN.key, 'ПО ПЛАНУ must never render red');
@@ -178,13 +178,13 @@ test('a Close button blocked by the firewall is not reported as a danger refusal
   // "Close" as safe, so «предохранитель» on this row was a fabrication.
   // FAIL-ON-REVERT: move any /refus/-matching class above REVEAL_FIREWALL in CLASSES → this fails.
   const ex = explainFailure({
-    error: 'reveal step 76 fired a firewall-refused request POST /rawcaster/addnuggetview (off-origin) at replay time — blocked (account unmutated), path refused',
+    error: 'reveal step 76 fired a firewall-refused request POST /api/addview (off-origin) at replay time — blocked (account unmutated), path refused',
     role: 'button', name: 'Close',
   }, null);
   assert.equal(ex.code, 'REVEAL_FIREWALL');
   assert.notEqual(ex.code, 'DANGER_REFUSED');
   assert.ok(!/предохранител|классификатор/.test(ex.sentence));
-  assert.ok(/Файрвол/.test(ex.sentence) && /POST \/rawcaster\/addnuggetview/.test(ex.sentence),
+  assert.ok(/Файрвол/.test(ex.sentence) && /POST \/api\/addview/.test(ex.sentence),
     'the sentence must name the request that was blocked — that is the evidence');
 });
 
@@ -221,7 +221,7 @@ test('a communication refusal names communication, and never borrows another rul
 
   // The OTHER outward rule is a DIFFERENT rule with a different justification, and must not be
   // collapsed into this one: it is refused on every tier, danger-floor's class is not.
-  const outward = explainFailure({ code: 'OUTWARD_REFUSED', error: 'reaches a person or a third party outside the app — refused on every tier — "Report Abuse" (template 297)' }, null);
+  const outward = explainFailure({ code: 'OUTWARD_REFUSED', error: 'reaches a person or a third party outside the app — refused on every tier — "Report content" (template 297)' }, null);
   assert.equal(outward.code, 'OUTWARD_REFUSED');
   assert.notEqual(outward.sentence, ex.sentence, 'two different rules must not produce one sentence');
 });
@@ -252,7 +252,7 @@ test('the explore-all rails read as deliberate and never suggest a flag that wou
   // FAIL-ON-REVERT: mark any of the three `lifted: true` in REFUSAL_RULES → the explore-all
   // assertion reds (the sentence starts advertising a flag that cannot lift it).
   const rails = {
-    OUTWARD_REFUSED: 'reaches a person or a third party outside the app — refused on every tier — "Block User" (template 297)',
+    OUTWARD_REFUSED: 'reaches a person or a third party outside the app — refused on every tier — "Block account" (template 297)',
     FOREIGN_DESTROY: "refusing to destroy another user's content (irreversible) — \"Delete\" (template 44)",
     ACCOUNT_PROTECTED: 'refusing to delete an account this run did not create — "Delete account" (template 51)',
   };
@@ -300,7 +300,7 @@ test('NO REFUSAL SENTENCE NAMES A CAUSE BELONGING TO ANOTHER RULE', () => {
     { what: 'ROUTE_DANGER', allow: [],
       step: { code: 'ROUTE_DANGER', error: 'refusing to navigate to a danger route /account/delete' } },
     { what: 'OUTWARD_REFUSED', allow: ['outward'],
-      step: { code: 'OUTWARD_REFUSED', error: 'reaches a person or a third party outside the app — refused on every tier — "Report Abuse" (template 297)' } },
+      step: { code: 'OUTWARD_REFUSED', error: 'reaches a person or a third party outside the app — refused on every tier — "Report content" (template 297)' } },
     { what: 'FOREIGN_DESTROY', allow: ['destroy'],
       step: { code: 'FOREIGN_DESTROY', error: "refusing to destroy another user's content (irreversible)" } },
     { what: 'ACCOUNT_PROTECTED', allow: ['destroy'],
@@ -452,9 +452,9 @@ test('a control with no accessible name still gets an anchor a human can act on'
   assert.equal(testid.kind, 'testid');
   assert.match(testid.text, /submit-btn/);
 
-  const byId = displayName({ name: '', role: 'textbox', error: 'cannot resolve instance #nugget_video' });
+  const byId = displayName({ name: '', role: 'textbox', error: 'cannot resolve instance #video_upload' });
   assert.equal(byId.kind, 'id', 'the archived runs embed the selector in the failure message');
-  assert.equal(byId.text, 'без имени · #nugget_video');
+  assert.equal(byId.text, 'без имени · #video_upload');
 
   const byClass = displayName({ name: '', role: 'button', instanceSelector: 'div:nth-child(1) > button.ant-btn.ant-btn-primary:nth-child(2)' });
   assert.equal(byClass.kind, 'class');
@@ -597,9 +597,9 @@ test('a field the author captioned is named by its caption, not by its markup', 
     instanceSelector: 'div.x > input' });
   assert.equal(byLabel.kind, 'caption');
   assert.equal(byLabel.text, 'поле ввода с подписью «Дата рождения»');
-  const byPlaceholder = anchorOf({ name: '', fieldFacts: { placeholder: 'Search Rawcaster' } });
+  const byPlaceholder = anchorOf({ name: '', fieldFacts: { placeholder: 'Search items' } });
   assert.equal(byPlaceholder.kind, 'caption');
-  assert.equal(byPlaceholder.text, 'Search Rawcaster');
+  assert.equal(byPlaceholder.text, 'Search items');
   // A real name still wins, and an empty fieldFacts changes nothing.
   assert.equal(anchorOf({ name: 'Save', fieldFacts: { label: 'X' } }).kind, 'name');
   assert.equal(anchorOf({ name: '', fieldFacts: {}, templateId: 5 }).kind, 'template');
@@ -624,7 +624,7 @@ test('a CSS-module hash never survives into a label, even when the selector esca
 
 test('a subtree-text name is truncated for display and keeps the full string', () => {
   // The operator was shown this as if it were a label.
-  const blob = 'Add GroupuploadCreatesearchConnections (0)No dataNo Connections Found';
+  const blob = 'Control A Control B Control C (0)No dataNo results found';
   const d = displayName(blob, 44);
   assert.ok(d.truncated);
   assert.ok(d.text.length <= 44);

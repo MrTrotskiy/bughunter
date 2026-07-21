@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { matchParamPattern, tagParamInstance, isParamPath } from '../../lib/graph/graph-store.mjs';
 
 const graph = () => ({ routes: {
-  '/nugget/:id': { url: '/nugget/:id', unreachable: 'param-pattern' },
+  '/item/:id': { url: '/item/:id', unreachable: 'param-pattern' },
   '/user/:handle': { url: '/user/:handle', unreachable: 'param-pattern' },
   '/a/:x/edit': { url: '/a/:x/edit', unreachable: 'param-pattern' },
   '/dashboard': { url: '/dashboard' }, // a static route — never a param target
@@ -18,13 +18,13 @@ const graph = () => ({ routes: {
 
 test('matchParamPattern aligns a concrete to its :param pattern by segment structure', () => {
   const g = graph();
-  assert.equal(matchParamPattern(g, '/nugget/123'), '/nugget/:id', 'numeric concrete');
+  assert.equal(matchParamPattern(g, '/item/123'), '/item/:id', 'numeric concrete');
   assert.equal(matchParamPattern(g, '/user/alice'), '/user/:handle', 'STRING-keyed concrete (toUrlPattern would miss it)');
   assert.equal(matchParamPattern(g, '/a/5/edit'), '/a/:x/edit', 'a param slot in the middle, literal tail');
-  assert.equal(matchParamPattern(g, '/nugget/1/2'), null, 'wrong segment count → no match');
+  assert.equal(matchParamPattern(g, '/item/1/2'), null, 'wrong segment count → no match');
   assert.equal(matchParamPattern(g, '/other/1'), null, 'no declared pattern for this shape');
   assert.equal(matchParamPattern(g, '/dashboard'), null, 'a static route is not a param instance');
-  assert.equal(matchParamPattern(g, '/nugget/:id'), null, 'a pattern literal is not itself a concrete instance');
+  assert.equal(matchParamPattern(g, '/item/:id'), null, 'a pattern literal is not itself a concrete instance');
 });
 
 test('matchParamPattern prefers the MOST-LITERAL (most specific) pattern over a bare catch-all', () => {
@@ -56,12 +56,12 @@ test('tagParamInstance NEVER tags a declared static section (denominator-collaps
 
 test('tagParamInstance links only a present, untagged, matching concrete node', () => {
   const g = graph();
-  g.routes['/nugget/7'] = { url: '/nugget/7' };
-  assert.equal(tagParamInstance(g, '/nugget/7'), '/nugget/:id', 'tags a matching concrete');
-  assert.equal(g.routes['/nugget/7'].paramInstanceOf, '/nugget/:id', 'the paramInstanceOf link is written');
-  assert.equal(tagParamInstance(g, '/nugget/7'), null, 'idempotent — an already-tagged node is a no-op');
+  g.routes['/item/7'] = { url: '/item/7' };
+  assert.equal(tagParamInstance(g, '/item/7'), '/item/:id', 'tags a matching concrete');
+  assert.equal(g.routes['/item/7'].paramInstanceOf, '/item/:id', 'the paramInstanceOf link is written');
+  assert.equal(tagParamInstance(g, '/item/7'), null, 'idempotent — an already-tagged node is a no-op');
   assert.equal(tagParamInstance(g, '/missing/1'), null, 'an absent node is a no-op');
-  assert.equal(tagParamInstance(g, '/nugget/:id'), null, 'a pattern node is never tagged');
+  assert.equal(tagParamInstance(g, '/item/:id'), null, 'a pattern node is never tagged');
 });
 
 // SOME ROUTERS WRITE `$id`, NOT `:id` — and reading only `:` made a param route look STATIC.

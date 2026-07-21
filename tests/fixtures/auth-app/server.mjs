@@ -6,7 +6,7 @@
 //                      control, absent when logged out), plus the real traffic classes the
 //                      test doctrine requires — a load-burst fetch (GET /api/me on load), a
 //                      background poll (GET /api/ping every 400ms), and a click-caused request
-//                      (#load-more → POST /api/nuggets). No cookie → 302 /login.
+//                      (#load-more → POST /api/items). No cookie → 302 /login.
 //   GET  /logout     — clears the cookie, 302 /login, and COUNTS hits so a test can assert the
 //                      crawl never logged itself out by navigation (logoutHits() === 0).
 //   GET  /welcome    — a public page with one safe control (#go), used as the crawl's progress
@@ -52,7 +52,7 @@ const DASHBOARD = `<!doctype html>
     setInterval(() => { fetch('/api/ping').catch(() => {}); }, 400);
     // click-caused request: the real control→request edge.
     document.getElementById('load-more').addEventListener('click', () => {
-      fetch('/api/nuggets', { method: 'POST' }).catch(() => {});
+      fetch('/api/items', { method: 'POST' }).catch(() => {});
     });
   </script>
 </body></html>`;

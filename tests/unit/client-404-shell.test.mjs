@@ -8,7 +8,7 @@
 //
 // That assumption is false on the live target. Its Not-Found shell renders ONE control, so every dead route
 // had content, landed in `collected`, and never reached the empty-only 404 filter. Measured: 18 declared
-// routes — /groups, /feed, /reports, /engine.io, /sermons, /ministries, … — all carry the probe's sig
+// routes — /groups, /feed, /reports, /engine.io, /articles, /teams, … — all carry the probe's sig
 // (2110f3b4) with exactly 1 own control each, and all 18 were reported as genuinely collected sections. That
 // inflates the numerator AND the collectable base, which is the coverage lie the honesty invariant is about.
 //

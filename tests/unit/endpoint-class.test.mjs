@@ -2,14 +2,14 @@
 //
 // Guards the instrument itself. The old rule was "write := non-GET", and on the live target — which
 // speaks POST-for-read — it reported 18 write endpoints when exactly ONE was a mutation. Several rounds
-// of fixes were prioritized off that number. A classifier that cannot tell `POST /listnuggets` from
+// of fixes were prioritized off that number. A classifier that cannot tell `POST /listitems` from
 // `POST /updateusersettings` makes every downstream verdict about the run untrustworthy.
 //
 // Guards: a read verb travelling by POST classifies READ; an explicit mutation verb classifies WRITE
 //   whatever the method; telemetry never counts as an application write; and a non-GET with no verb at
 //   all is classified write but SURFACED as a fallback guess rather than asserted.
 // FAIL-ON-REVERT: replace classifyEndpoint's body with the old method test
-//   (`method === 'GET' ? 'read' : 'write'`) → "POST /app/listnuggets is a READ" fails.
+//   (`method === 'GET' ? 'read' : 'write'`) → "POST /app/listitems is a READ" fails.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +17,7 @@ import { classifyEndpoint, classifyEndpoints } from '../../lib/recon/endpoint-cl
 
 test('a read travelling by POST is a read, not a write', () => {
   // The exact endpoints the live crawl mis-counted as writes.
-  for (const p of ['/app/listnuggets', '/app/getothersprofile', '/app/searchusers',
+  for (const p of ['/app/listitems', '/app/getprofile', '/app/searchusers',
     '/app/getfaq', '/app/listevents', '/app/get_status_detail', '/app/getcountylist',
     '/app/listallfriends', '/app/getusersettings']) {
     assert.equal(classifyEndpoint({ method: 'POST', urlPattern: p }), 'read', `POST ${p} is a READ`);
@@ -41,7 +41,7 @@ test('telemetry is never an application write', () => {
 test('a verbless non-GET is a GUESS, and says so in its own class', () => {
   // `write-unnamed`, not `write`. On a target that reads over POST this fallback is where most READS land:
   // measured after wiring the classifier into probe rows, 28 acts recorded `write` and two or three were
-  // real — `nuggetcontentaudio` (text-to-speech), `texttoaudio`, `influencerlist` all arrived by this path.
+  // real — `audiocontent` (text-to-speech), `texttoaudio`, `itemlist` all arrived by this path.
   // And so did `contactus`, which genuinely does write. From the name alone they are indistinguishable, so
   // the honest answer is a separate class rather than a confident guess in either direction. This repeats a
   // failure already on record ("18 write endpoints, the truthful count was ONE") and takes the same fix:
@@ -52,18 +52,18 @@ test('a verbless non-GET is a GUESS, and says so in its own class', () => {
   const out = classifyEndpoints([
     { method: 'POST', urlPattern: '/app/community_dropdown' },
     { method: 'POST', urlPattern: '/app/updateusersettings' },
-    { method: 'POST', urlPattern: '/app/listnuggets' },
+    { method: 'POST', urlPattern: '/app/listitems' },
     { method: 'POST', urlPattern: '/g/collect' },
   ]);
   assert.equal(out.writes.length, 2, 'two writes');
-  assert.equal(out.reads.length, 1, 'listnuggets is the read');
+  assert.equal(out.reads.length, 1, 'listitems is the read');
   assert.equal(out.telemetry.length, 1, 'collect is telemetry');
   assert.deepEqual(out.unnamedWrites, ['POST /app/community_dropdown'],
     'the verbless one must be flagged as classified-by-fallback, not silently counted as a confirmed write');
 });
 
 test('endpoints are counted once each, not per call', () => {
-  const out = classifyEndpoints(Array.from({ length: 40 }, () => ({ method: 'POST', urlPattern: '/app/listnuggets' })));
+  const out = classifyEndpoints(Array.from({ length: 40 }, () => ({ method: 'POST', urlPattern: '/app/listitems' })));
   assert.equal(out.reads.length, 1, '40 calls to one endpoint is ONE endpoint exercised');
 });
 

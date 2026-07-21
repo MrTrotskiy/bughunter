@@ -27,16 +27,16 @@ import { classifyMessage, KNOWN_CODES, CENSUS_BUCKET_OF } from '../../lib/recon/
 // the failure-hints fixtures. The AGREEMENT assertion runs `classifyMessage` over these, so a canonical
 // message must be present for every class (asserted below) — a new class cannot skip the check.
 const CANON = {
-  REVEAL_FIREWALL: 'reveal step 76 fired a firewall-refused request POST /x/addnuggetview (off-origin)',
+  REVEAL_FIREWALL: 'reveal step 76 fired a firewall-refused request POST /x/addview (off-origin)',
   REVEAL_HOP_MISSING: 'reveal step selector div > button not present',
-  REVEAL_NAVIGATED: 'reveal step changed route to /viewprofile/xxx — no longer stay-on-page',
+  REVEAL_NAVIGATED: 'reveal step changed route to /profile/xxx — no longer stay-on-page',
   REVEAL_REFUSED: 'reveal step 3 is a danger route',
   REVEAL_UNWALKABLE: 'reveal path is cyclic',
   NOT_VISIBLE: 'instance #upload is present but not visible in the current viewport',
   DISABLED: 'instance #save is visible but disabled — it cannot be operated in this state',
   DANGER_REFUSED: 'refusing to fire a destructive control "Delete" (template 12)',
   ROUTE_REFUSED: 'refusing to navigate to a danger route /logout',
-  OUTWARD_REFUSED: 'reaches a person or a third party outside the app — refused on every tier — "Report Abuse"',
+  OUTWARD_REFUSED: 'reaches a person or a third party outside the app — refused on every tier — "Report content"',
   FOREIGN_DESTROY: "refusing to destroy another user's content (irreversible)",
   ACCOUNT_PROTECTED: 'refusing to delete an account this run did not create',
   OFF_ORIGIN: 'off-origin link to https://example.com',

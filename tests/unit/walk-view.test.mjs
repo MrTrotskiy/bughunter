@@ -29,7 +29,7 @@ import { frontierInstanceStats } from '../../lib/recon/frontier.mjs';
 // trail): `target` carries the six per-strategy resolver records + hadRevealPath, `skeleton` names
 // the DOM skeleton file, `shots` are null (the run had no BUGHUNTER_VIEW). `strategies` lets a test
 // dial which one resolved.
-function failedAct(seq, code, { name = '', role = 'combobox', route = '/post_ad', hadRevealPath = false, ranStrategy = 'selector' } = {}) {
+function failedAct(seq, code, { name = '', role = 'combobox', route = '/form-a', hadRevealPath = false, ranStrategy = 'selector' } = {}) {
   const STRATS = ['selector', 'testid', 'id', 'role-name', 'label', 'text'];
   const attempts = STRATS.map((strategy) => strategy === ranStrategy
     ? { strategy, ran: true, raw: 1, visible: 1, sameTemplate: null }
@@ -50,13 +50,13 @@ function failedAct(seq, code, { name = '', role = 'combobox', route = '/post_ad'
 
 // A successful `act` carrying a causally-attributed request WITH a response status — the seven-field
 // shape verified on fix1 (method/urlPattern/origin/startedAt/status/resourceType/durationMs).
-function act(seq, requests, route = '/post_ad') {
+function act(seq, requests, route = '/form-a') {
   return {
     seq, ts: 1784613900000 + seq, kind: 'act',
     payload: { templateId: 100 + seq, name: 'btn', role: 'button', route, requests, revealed: 1, timings: { actMs: 700, settleMs: 120, snapMs: 60 } },
   };
 }
-const req = (method, urlPattern, status, durationMs = 150) => ({ method, urlPattern, origin: 'https://devapi.rawcaster.com', startedAt: 1784614000000, status, resourceType: 'XHR', durationMs });
+const req = (method, urlPattern, status, durationMs = 150) => ({ method, urlPattern, origin: 'https://devapi.example.com', startedAt: 1784614000000, status, resourceType: 'XHR', durationMs });
 
 // A graph whose instance-level partition matches fix1's numbers closely enough to exercise the split
 // (walked/remaining/declined sum to the denominator with zero residue). Built through the real
@@ -168,14 +168,14 @@ test('only a genuine reach-gap says "Отмечен недостижимым", a
 /* -------------------------------------------------------------------- 4. request status */
 
 test('a request row carries its response status and marks an anomaly', () => {
-  const rows = W.requestRowsHtml([req('POST', '/rawcaster/addfriendgroup', 500, 205), req('GET', '/api/chats', 200, 381)]);
+  const rows = W.requestRowsHtml([req('POST', '/api/groups', 500, 205), req('GET', '/api/chats', 200, 381)]);
   assert.match(rows, /500/, 'the 500 status is rendered — the field the render used to drop');
   assert.match(rows, /205мс/, 'the duration is rendered too');
   assert.match(rows, /200/, 'an ordinary status still renders');
   assert.match(rows, /anomaly/, 'the 5xx row is marked as an anomaly at a glance');
 
   // The anomaly detector over a step's requests (used by the finds count + the note).
-  const step = act(9, [req('POST', '/rawcaster/list_ad', 422)]);
+  const step = act(9, [req('POST', '/api/list-b', 422)]);
   assert.equal(W.anomalousRequests(step.payload.requests).length, 1, 'a 422 is anomalous');
   const detail = W.stepDetailHtml(deriveSteps([step])[0]);
   assert.match(detail, /материал для Phase 2/, 'the anomaly is framed as Phase-2 data, not our defect');
@@ -197,7 +197,7 @@ test('the DOM skeleton renders as an SVG stage for a failed act', () => {
   // A minimal fix1-shaped skeleton: {v,w,h,truncated,nodes:[{d,tag,...,vis}]}.
   const skel = { v: 1, w: 1440, h: 900, truncated: 3, nodes: [
     { d: 4, tag: 'div', x: 0, y: 0, w: 1440, h: 69, vis: 1 },
-    { d: 9, tag: 'p', name: 'Post Ad', x: 605, y: 22, w: 76, h: 24, vis: 1 },
+    { d: 9, tag: 'p', name: 'Title', x: 605, y: 22, w: 76, h: 24, vis: 1 },
     { d: 9, tag: 'img', name: 'hidden', x: 0, y: 0, w: 0, h: 0, vis: 0 },
   ] };
   const svg = W.skeletonSvg(skel, { x: 1062, y: 368, width: 273, height: 30 });
@@ -212,7 +212,7 @@ test('the DOM skeleton renders as an SVG stage for a failed act', () => {
 
 test('sectionCounts reports both finding classes and the instance coverage totals', async () => {
   const instanceStats = await fix1LikeStats();
-  const steps = deriveSteps([failedAct(1, 'DISABLED'), act(2, [req('POST', '/rawcaster/addfriendgroup', 500)])]);
+  const steps = deriveSteps([failedAct(1, 'DISABLED'), act(2, [req('POST', '/api/groups', 500)])]);
   const c = W.sectionCounts({ runs: [{}], run: { stats: { routes: 65 } }, steps, instanceStats, pipeRows: 1092 });
   assert.equal(c.findsSplit.disabled, 1, 'a DISABLED finding is counted');
   assert.equal(c.findsSplit.anomalies, 1, 'a 5xx response is counted as a finding');

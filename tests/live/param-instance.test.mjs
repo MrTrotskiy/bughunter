@@ -1,12 +1,12 @@
 // Live proof of GOAL 2 — param-instance harvest (collect the dark `:param` patterns). The manifest seeds
-// `/nugget/:id` + `/user/:handle` into the denominator as `param-pattern` (counted, never navigated, 0
+// `/item/:id` + `/user/:handle` into the denominator as `param-pattern` (counted, never navigated, 0
 // collected). This drives the EDGE-FREE seed path (baseline → manifest seed → harvest → BFS visit) and
 // asserts each pattern flips to collected VIA a genuinely-visited concrete representative — census-bounded
 // (one visit per pattern, the rest folded), and for a STRING-keyed param the toUrlPattern census can't fold.
 //
 // Guards:
-//   (NUMERIC) `/nugget/:id`: exactly ONE concrete (/nugget/1) is visited (census bound), tagged
-//     paramInstanceOf `/nugget/:id`, the other rows folded as siblings.
+//   (NUMERIC) `/item/:id`: exactly ONE concrete (/item/1) is visited (census bound), tagged
+//     paramInstanceOf `/item/:id`, the other rows folded as siblings.
 //   (STRING-KEYED) `/user/:handle`: the STRUCTURAL matchParamPattern (segment-align) links /user/alice →
 //     `/user/:handle` — toUrlPattern leaves a word segment unmasked, so pattern-equality would miss it —
 //     and folds /user/bob as a sibling (one visit).
@@ -66,16 +66,16 @@ test('param-instance: a :param pattern is collected via a visited concrete (nume
   await harvestRoutes(page, graph, origin);
   await seedRoutes(page, graph, ledger, { origin });
 
-  // The patterns were seeded, never navigated as literals (the literal /nugget/:id would 404).
-  assert.equal(graph.routes['/nugget/:id'] && graph.routes['/nugget/:id'].unreachable, 'param-pattern', '/nugget/:id seeded as a param pattern');
+  // The patterns were seeded, never navigated as literals (the literal /item/:id would 404).
+  assert.equal(graph.routes['/item/:id'] && graph.routes['/item/:id'].unreachable, 'param-pattern', '/item/:id seeded as a param pattern');
   assert.equal(graph.routes['/user/:handle'] && graph.routes['/user/:handle'].unreachable, 'param-pattern', '/user/:handle seeded (string-keyed)');
 
   // NUMERIC: exactly ONE concrete visited (census bound), linked to the pattern, others folded.
-  const nuggets = Object.values(graph.routes).filter((r) => /^\/nugget\/\d+$/.test(r.url));
-  const visitedNuggets = nuggets.filter((r) => !r.pending && !r.unreachable);
-  assert.equal(visitedNuggets.length, 1, `exactly one /nugget concrete visited (census), got ${visitedNuggets.length}`);
-  assert.equal(visitedNuggets[0].paramInstanceOf, '/nugget/:id', 'the representative is linked to /nugget/:id');
-  assert.ok((visitedNuggets[0].siblings || 0) >= 1, 'the other /nugget rows folded as siblings');
+  const items = Object.values(graph.routes).filter((r) => /^\/item\/\d+$/.test(r.url));
+  const visitedItems = items.filter((r) => !r.pending && !r.unreachable);
+  assert.equal(visitedItems.length, 1, `exactly one /item concrete visited (census), got ${visitedItems.length}`);
+  assert.equal(visitedItems[0].paramInstanceOf, '/item/:id', 'the representative is linked to /item/:id');
+  assert.ok((visitedItems[0].siblings || 0) >= 1, 'the other /item rows folded as siblings');
 
   // STRING-KEYED: the structural matcher linked ONE /user concrete (alice) → /user/:handle and folded bob.
   const userInsts = Object.values(graph.routes).filter((r) => r.paramInstanceOf === '/user/:handle' && !r.pending && !r.unreachable);
@@ -95,7 +95,7 @@ test('param-instance: a :param pattern is collected via a visited concrete (nume
   assert.equal(rc.paramCollected, 2, `both :param patterns collected via a concrete, got ${rc.paramCollected}`);
   assert.equal(rc.collectedTotal, rc.collected + 2, 'collectedTotal folds in the 2 param patterns');
   assert.ok(
-    rc.paramCollectedList.some((x) => x.pattern === '/nugget/:id') && rc.paramCollectedList.some((x) => x.pattern === '/user/:handle'),
+    rc.paramCollectedList.some((x) => x.pattern === '/item/:id') && rc.paramCollectedList.some((x) => x.pattern === '/user/:handle'),
     'both patterns are listed collected-via a concrete',
   );
   assert.ok(rc.paramCollectedList.every((x) => x.via !== '/user/settings'), '/user/settings is never a param representative');

@@ -65,28 +65,28 @@ test('portal-menu identity: distinct-name menuitems get distinct templates, coll
   assert.match(del.templateSelector, /@menu\(delete\)$/, 'Delete template carries its name discriminator');
   assert.match(share.templateSelector, /@menu\(share link\)$/, 'Share Link template carries its name discriminator');
 
-  // Act the OTHER post's "…": Share Link / Block User / Report Abuse / Become a Fan (N) / My Events.
+  // Act the OTHER post's "…": Share Link / Block account / Report content / Save Item (N) / My Events.
   const otherKey = moreInstance(graph, 'other').key;
   await run({ url, actTemplate: more.templateId, instance: otherKey });
   graph = loadGraph(graphFile);
   // Share Link is the SAME action → SAME template across both menus (folded name is identical).
   assert.equal(byName(graph, 'Share Link').templateId, share.templateId, 'Share Link is ONE template across both menus (same folded action)');
-  // COLLISION GUARD: Delete (own) and Block User (other) both sat at open-order position #2 → under the old
+  // COLLISION GUARD: Delete (own) and Block account (other) both sat at open-order position #2 → under the old
   // model they would share instanceId #2 and one would be dropped. With the fold each is its own instance.
-  const block = byName(graph, 'block Block User');
-  assert.ok(block, 'Block User survived (own menu already held a template at its old #N slot)');
-  assert.notEqual(del.instances[0].instanceId, block.instances[0].instanceId, 'Delete and Block User are DISTINCT instances (positional collision gone)');
+  const block = byName(graph, 'block Block account');
+  assert.ok(block, 'Block account survived (own menu already held a template at its old #N slot)');
+  assert.notEqual(del.instances[0].instanceId, block.instances[0].instanceId, 'Delete and Block account are DISTINCT instances (positional collision gone)');
   // value-enum fold: My Events carries value="MY_EVENTS" → folds from the enum, not the visible text.
   assert.match(byName(graph, 'My Events').templateSelector, /@menu\(my_events\)$/, 'a semantic value enum folds the template, not the visible label');
 
-  // Count-badge STABILITY: re-open the other menu (fan count grows 12→13). The stripped name must keep ONE
-  // "Become a Fan" template — a per-render count in the key would mint a new template every open (explosion).
-  const fanTemplatesBefore = menuitems(graph).filter((n) => /become a fan/i.test(n.name)).length;
+  // Count-badge STABILITY: re-open the other menu (item count grows 12→13). The stripped name must keep ONE
+  // "Save Item" template — a per-render count in the key would mint a new template every open (explosion).
+  const fanTemplatesBefore = menuitems(graph).filter((n) => /save item/i.test(n.name)).length;
   await run({ url, actTemplate: more.templateId, instance: otherKey });
   graph = loadGraph(graphFile);
-  const fanTemplatesAfter = menuitems(graph).filter((n) => /become a fan/i.test(n.name)).length;
-  assert.equal(fanTemplatesBefore, 1, 'exactly one Become-a-Fan template after the first open');
-  assert.equal(fanTemplatesAfter, 1, 'STILL one Become-a-Fan template after re-open with a grown count — the badge is stripped, no per-render explosion');
+  const fanTemplatesAfter = menuitems(graph).filter((n) => /save item/i.test(n.name)).length;
+  assert.equal(fanTemplatesBefore, 1, 'exactly one Save-Item template after the first open');
+  assert.equal(fanTemplatesAfter, 1, 'STILL one Save-Item template after re-open with a grown count — the badge is stripped, no per-render explosion');
 
   // REACH end-to-end: a cold whats-new act on Share Link REPLAYS its stamped reveal path ([own "…"]),
   // re-opens the dropdown, and the durable role-name locator resolves it despite the positional selector

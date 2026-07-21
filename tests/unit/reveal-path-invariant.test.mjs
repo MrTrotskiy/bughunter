@@ -24,7 +24,7 @@ import { isDismissControl } from '../../lib/recon/danger-floor.mjs';
 // A graph carrying the exact shape the live crawl recorded for tpl 933 "Group Name".
 const graph = {
   elements: {
-    26: { name: 'hey Stierlitz, share some nuggets...' },
+    26: { name: 'hey Account A, share some items...' },
     98: { name: 'Create Event' },
     79: { name: 'add' },
     900: { name: 'cancel' },

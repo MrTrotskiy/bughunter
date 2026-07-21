@@ -99,9 +99,9 @@ test('T1: storageState from login makes the crawl authenticated', async (t) => {
   // token+CDP-initiator attribution). This discharges the "auth doesn't touch causal" claim.
   const loadMore = Object.values(graph.elements).find((n) => n.name === 'Load more');
   assert.ok(loadMore, 'the authed Load more control is mapped');
-  assert.ok(Object.keys(graph.requests).some((k) => /\/api\/nuggets/.test(k)), 'POST /api/nuggets is credited on the authed page');
+  assert.ok(Object.keys(graph.requests).some((k) => /\/api\/items/.test(k)), 'POST /api/items is credited on the authed page');
   assert.ok(
-    graph.edges.some((e) => e.from === `element:${loadMore.templateId}` && /nuggets/.test(e.to)),
+    graph.edges.some((e) => e.from === `element:${loadMore.templateId}` && /items/.test(e.to)),
     'the causal edge is attributed to Load more (capture works while logged in)',
   );
   assert.ok(

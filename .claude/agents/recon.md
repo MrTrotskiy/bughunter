@@ -98,7 +98,7 @@ State dir is `BUGHUNTER_STATE_DIR` (or `state/`). Localhost fixtures need `PW_AL
    reachable.
    `--opener-replayable=true` — pass this ONLY when acting an OPENER (a control that reveals a
    modal/panel/list) whose caused request is a POST **that only READS** (a list/search/detail
-   query — e.g. `POST /listnuggets`, `POST /search`), so the controls it reveals become reachable.
+   query — e.g. `POST /listitems`, `POST /search`), so the controls it reveals become reachable.
    Judge from the endpoint name + effect: a read/list/get/search/detail POST is replayable; a
    create/update/delete/save/like/follow/vote POST is a MUTATION — do NOT pass the flag (its
    children stay honestly unreachable, never re-fired). When unsure, OMIT it. GET openers never

@@ -1,7 +1,7 @@
 // OUTWARD-FACING ACTS — refused on every tier, because an environment cannot vouch for the outside world.
 //
 // THE GAP THIS CLOSES, measured. On another user's content, `decide()` returned allow=true for "Report
-// Abuse" and "Block User" — classified FOREIGN_ADDITIVE, "creates nothing of theirs to lose". That is true
+// content" and "Block account" — classified FOREIGN_ADDITIVE, "creates nothing of theirs to lose". That is true
 // of a like and false of a complaint: a report reaches a moderator and nothing downstream undoes it, and
 // unblocking is a separate act the crawler will never perform. The category conflated ADDITIVE-TO-THE-DATA-
 // MODEL with HARMLESS-TO-A-PERSON, and on a live social app the second is what matters.
@@ -37,14 +37,14 @@ import { isOutwardFacing } from '../../lib/recon/danger-floor.mjs';
 
 test('acts that leave the system are refused whoever owns the content', () => {
   for (const ownership of [OWNERSHIP.FOREIGN, OWNERSHIP.OWN, OWNERSHIP.NONE]) {
-    for (const name of ['Report Abuse', 'Block User', 'Invite by email', 'Send SMS']) {
+    for (const name of ['Report content', 'Block account', 'Invite by email', 'Send SMS']) {
       const v = decide({ name, route: '/dashboard', ownership });
       assert.equal(v.allow, false, `"${name}" must be refused even on ${ownership} content`);
       assert.equal(v.code, 'OUTWARD_REFUSED', `and refused for the right reason — got ${v.code}`);
     }
   }
   // The one that motivated the whole guard: a complaint reaches a moderator and nothing undoes it.
-  const report = decide({ name: 'Report Abuse', route: '/dashboard', ownership: OWNERSHIP.FOREIGN });
+  const report = decide({ name: 'Report content', route: '/dashboard', ownership: OWNERSHIP.FOREIGN });
   assert.match(report.reason, /outside the app|leaves the system/i,
     'the refusal says WHY, so it reads as a boundary and not as squeamishness');
 });
