@@ -117,7 +117,8 @@ async function withTrail(t, fn) {
   return fn(dir);
 }
 
-const STRATEGIES = ['selector', 'testid', 'id', 'role-name', 'label', 'text'];
+// Mirrors resolve-handle.mjs STRATEGIES — `widget` (antd Select/Picker durable locator) sits after `id`.
+const STRATEGIES = ['selector', 'testid', 'id', 'widget', 'role-name', 'label', 'text'];
 
 test('a failed stateful act records WHAT THE RESOLVER TRIED, even when the envelope carries no evidence', async (t) => {
   await withTrail(t, async (dir) => {
