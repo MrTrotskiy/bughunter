@@ -1553,3 +1553,28 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   templateSelector/instanceSelector/instanceKey — so NO schemaVersion bump; confirmed additive by bughunter-reviewer.
 - MEASURED: bughunter-reviewer SHIP AFTER FIXES (0 MUST FIX, 1 SHOULD FIX + 2 CONSIDER — SHOULD FIX and
   CONSIDER b applied). Full suite 568 pass / 0 fail. Every fix carries a revert-proven FAIL-ON-REVERT test.
+
+### 2026-07-21 — L1: the reveal-replay outcome inline on a recovery act.failed
+- CONTEXT: the fix1/dashproof audit flagged the ~22 reveal-required NO_INSTANCE/ALIAS failures as the ONE
+  class the trail could not explain from the failure row alone — a reader could not tell "the container never
+  opened" from "it opened and the control STILL would not act". Investigating the code showed the reveal-replay
+  diagnosis ALREADY existed in the trail as `reopen`/`reopen-delivered` events, but keyed separately and never
+  joined onto the `act.failed` row that `readActFailed` / the admin walk consume.
+- CHOSE: stamp `target.revealReplay` in `recoverGated` before its recovery act and emit it on the act.failed
+  payload (`stateful-step.recordFail`), default `{replayed:false}` for the live-state main pass. A recovery act
+  that fails after a successful reopen now carries `{replayed:true, ok:true, code, rung}` — the self-describing
+  form of the reopen{ok:true}→act.failed pair. Surfaced in the admin (`scrub-math.deriveSteps` carries it,
+  `walk-view.failurePanel` renders "контейнер переоткрыли … акт всё равно не прошёл" for replayed:true only),
+  registered as claim `reveal-replay-reopened-failed` (the anti-lie gate).
+- REJECTED: recomputing the reveal-replay outcome at the failure site — it does not exist there; the main pass
+  acts on accumulated live state and replays nothing, so `{replayed:false}` is the honest value.
+- REJECTED (reviewer SHOULD FIX): enriching golden-trail seq 675 with a lone `revealReplay:{replayed:true}` —
+  it made the slice internally incoherent (a recovery outcome with no backing reopen{ok:true}). Fixed by adding
+  a COHERENT reopen{ok:true}@673 + reopen-delivered{delivered:false}@679 pair for template 836, so the trail
+  tells one consistent story. The attempts list + the teeth count of 10 are untouched.
+- SCOPED OUT (reviewer CONSIDER): a main-pass `{replayed:false}` still does not point the reader to the LATER
+  recovery attempt for the same template — the "22 unexplainable" class is fully closed only for the recovery
+  row. Deferred as a separate correlation improvement.
+- MEASURED: bughunter-reviewer SHIP AFTER FIXES (0 MUST FIX). Stamp-bleed verified clean (candidates() mints
+  fresh per-target wrappers). Two revert-proven tests: live (reopen-ok→act-fail carries replayed:true) + unit
+  (deriveSteps carries it, failurePanel renders only for replayed:true). Full suite green.

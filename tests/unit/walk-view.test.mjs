@@ -29,7 +29,7 @@ import { frontierInstanceStats } from '../../lib/recon/frontier.mjs';
 // trail): `target` carries the six per-strategy resolver records + hadRevealPath, `skeleton` names
 // the DOM skeleton file, `shots` are null (the run had no BUGHUNTER_VIEW). `strategies` lets a test
 // dial which one resolved.
-function failedAct(seq, code, { name = '', role = 'combobox', route = '/form-a', hadRevealPath = false, ranStrategy = 'selector' } = {}) {
+function failedAct(seq, code, { name = '', role = 'combobox', route = '/form-a', hadRevealPath = false, ranStrategy = 'selector', revealReplay = null } = {}) {
   const STRATS = ['selector', 'testid', 'id', 'role-name', 'label', 'text'];
   const attempts = STRATS.map((strategy) => strategy === ranStrategy
     ? { strategy, ran: true, raw: 1, visible: 1, sameTemplate: null }
@@ -41,6 +41,7 @@ function failedAct(seq, code, { name = '', role = 'combobox', route = '/form-a',
       instanceSelector: '#device', code, clicked: false, message: `elementHandle.click: Timeout`,
       error: `elementHandle.click: Timeout 5000ms exceeded.`,
       target: { templateId: 400 + seq, instanceKey: '#1', selector: '#device', attempts, hadRevealPath, locatorType: 'id' },
+      ...(revealReplay ? { revealReplay } : {}),
       requests: [], revealed: 0, timings: { attemptMs: 2200 },
       shots: { before: null, after: null, rect: { x: 1062, y: 368, width: 273, height: 30 }, viewport: { width: 1440, height: 900 } },
       skeleton: `skel/f${String(seq).padStart(4, '0')}-t${400 + seq}-fail.json`,
@@ -102,6 +103,23 @@ test('hadRevealPath survives the projection and the two tabs agree', () => {
   assert.match(p1, /путь к контролу был записан/, 'a recorded path is stated (matches the pipeline tab)');
   const p2 = W.failurePanel(noPath, null, W.outcomeOf(noPath), { steps: [noPath] });
   assert.match(p2, /пути к контролу записано не было/, 'an absent path is stated, opposite of p1');
+});
+
+// L1: the reveal-replay OUTCOME is carried by the projection and rendered ONLY for the informative case —
+// the recovery pass reopened the container and the act STILL failed. Guards: deriveSteps carries
+// `revealReplay`, and failurePanel prints the "reopened, acted, still failed" line for replayed:true while a
+// main-pass failure (replayed:false / absent) prints nothing about reopening.
+// FAIL-ON-REVERT: drop `revealReplay: ...` from deriveSteps (scrub-math) OR the `rr` block in failurePanel
+//   (walk-view) → the reopened-and-still-failed line vanishes → "the reopened-but-failed line is rendered" reds.
+test('a recovery failure states the container reopened and the act still failed; a main-pass failure does not', () => {
+  const [recovered] = deriveSteps([failedAct(7, 'NO_INSTANCE', { hadRevealPath: true, revealReplay: { replayed: true, ok: true, rung: 'in-place' } })]);
+  assert.equal(recovered.revealReplay?.replayed, true, 'deriveSteps carries the revealReplay outcome');
+  const pr = W.failurePanel(recovered, null, W.outcomeOf(recovered), { steps: [recovered] });
+  assert.match(pr, /контейнер переоткрыли.*акт всё равно не прошёл/s, 'the reopened-but-failed line is rendered');
+
+  const [mainPass] = deriveSteps([failedAct(8, 'NO_INSTANCE', { hadRevealPath: true })]);
+  const pm = W.failurePanel(mainPass, null, W.outcomeOf(mainPass), { steps: [mainPass] });
+  assert.ok(!/контейнер переоткрыли/.test(pm), 'a main-pass failure says nothing about reopening a container');
 });
 
 /* -------------------------------------------------------------------- 2. instance headline */

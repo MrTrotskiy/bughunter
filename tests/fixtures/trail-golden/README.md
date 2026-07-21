@@ -126,3 +126,12 @@ the ABSENCE of `contentSig`, `probeKind`, and all decision fields.
   included), all 13 kinds, all 5 codes, every case witnessed, and the
   byte-for-byte spot-checks (the 500, the attempts shape, `notFoundSig`, zero
   `contentSig`).
+
+## L1 enrichment (2026-07-21)
+A COHERENT reopen-ok→act-fail sequence for template 836 (instanceKey key-10) was added so the slice exercises
+the L1 claim `reveal-replay-reopened-failed` (walk-view.failurePanel, tests/unit/viewer-truth.test.mjs)
+WITHOUT asserting a state the event stream contradicts (bughunter-reviewer SHOULD FIX): `reopen{ok:true,
+code:REOPEN_OK, rung:in-place}` at seq 673, the existing `act.failed{NO_INSTANCE}` at seq 675 carrying
+`payload.revealReplay={replayed:true, ok:true, code:REOPEN_OK, rung:in-place, hops:1}`, and
+`reopen-delivered{delivered:false}` at seq 679 — the container reopened, the recovery act still failed. The
+act.failed attempts list (and the teeth count of 10 act.failed events) is untouched.
