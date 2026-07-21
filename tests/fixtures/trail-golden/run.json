@@ -1,0 +1,16 @@
+{
+  "id": "fix1",
+  "target": "https://app.example.test/",
+  "startedAt": "2026-07-21T06:05:24.324Z",
+  "status": "done",
+  "stats": {
+    "discovered": 295,
+    "explored": 118,
+    "unreachable": 21,
+    "remaining": 129,
+    "routes": 65
+  },
+  "stopped": "budget",
+  "steps": 200,
+  "finishedAt": "2026-07-21T06:22:29.910Z"
+}

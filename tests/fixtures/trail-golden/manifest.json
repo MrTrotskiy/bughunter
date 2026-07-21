@@ -1,0 +1,47 @@
+{
+  "source": "run fix1 (masked slice)",
+  "eventCount": 63,
+  "graphSnapshots": [
+    "0-59316.json",
+    "4-59316.json",
+    "7-59316.json",
+    "587-59316.json",
+    "694-59316.json",
+    "893-59316.json"
+  ],
+  "kinds": {
+    "route": 0,
+    "drain-outcome": 1,
+    "retire": 2,
+    "route-choice": 3,
+    "pick": 5,
+    "policy-verdict": 6,
+    "act": 7,
+    "act.failed": 225,
+    "pick-empty": 82,
+    "reopen": 86,
+    "reopen-delivered": 477,
+    "retire-answered": 230,
+    "reloc-census": 1091
+  },
+  "failureCodes": {
+    "ACT_FAILED": 225,
+    "ALIAS_COLLISION": 855,
+    "OUTWARD_REFUSED": 781,
+    "NO_INSTANCE": 675,
+    "DISABLED": 328
+  },
+  "cases": {
+    "request status>=500": [
+      694
+    ],
+    "act.failed with target.attempts (6 strategy records)": 225,
+    "act.failed hadRevealPath:true": 448,
+    "act shots.before === null": 7,
+    "entry-route mislabel (drain-outcome acts:0, graph holds many instances)": [
+      597,
+      895
+    ],
+    "notFoundSig present, zero contentSig (dead client-404 detector)": "graph.json"
+  }
+}
