@@ -31,6 +31,7 @@ import path from 'node:path';
 import { start } from '../fixtures/modal-cover-app/server.mjs';
 import { crawl } from '../../lib/recon/recon-run.mjs';
 import { loadGraph } from '../../lib/graph/graph-store.mjs';
+import { findingsOf } from '../../lib/recon/findings.mjs';
 
 test('the loop closes a leftover blocking modal and reaches the obscured opener + its form', async (t) => {
   const server = await start(0);
@@ -88,4 +89,13 @@ test('the loop closes a leftover blocking modal and reaches the obscured opener 
     ['/api/event'],
     'the modal-close forged no server request — only Create Event hit the server',
   );
+
+  // (e) CLASS 1b FINDING — the obstruction is SURFACED, not silently recovered. A prior act's modal covered
+  // Create Event; the crawler closed it and reached the control, but the app leaving a dialog over an
+  // unrelated control is a defect the operator must see (docs/GOAL.md — the interesting event must not
+  // vanish once reach is recovered). FAIL-ON-REVERT: remove the `node.obstructions` record block at the
+  // interception site in stateful-step.mjs → no obstruction recorded → this finding is absent → reds.
+  const { findings } = findingsOf(graph);
+  const obstruction = findings.find((f) => f.kind === 'obstructed-control' && f.where && f.where.name === 'Create Event');
+  assert.ok(obstruction, 'the leftover-modal obstruction of Create Event is surfaced as an obstructed-control finding');
 });

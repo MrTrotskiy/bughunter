@@ -128,3 +128,39 @@ test('report: a multi-line unreachable reason renders on one line', (t) => {
   assert.ok(line, 'the disabled control has a rendered line');
   assert.ok(line.includes('click: timeout - waiting for element'), 'the multi-line reason is collapsed onto the control line');
 });
+
+// L2: the default report HANDS the operator the findings summary — the capability (httpAnomalies elevating
+// a 4xx/5xx to a finding keyed to its causing control) existed only behind `report --findings`, so a run's
+// own conclusion never surfaced the repeatable 500 the fix1 audit measured. docs/GOAL.md: an anomalous
+// response is the most valuable thing a crawl can find.
+// FAIL-ON-REVERT: drop the `renderFindings(graph)` append (and the `rep.findings` assignment) in report.mjs's
+// default return → the default text carries no server-error line and the JSON default has no `findings` →
+// both assertions below red.
+test('report: the default output surfaces a server-error finding keyed to its control (L2)', (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'bughunter-rep-find-'));
+  const prev = process.env.BUGHUNTER_STATE_DIR;
+  process.env.BUGHUNTER_STATE_DIR = dir;
+  t.after(() => {
+    rmSync(dir, { recursive: true, force: true });
+    if (prev === undefined) delete process.env.BUGHUNTER_STATE_DIR; else process.env.BUGHUNTER_STATE_DIR = prev;
+  });
+  const g = makeGraph();
+  mergeSnapshot(g, '/', [
+    { templateId: 7, instanceId: 8, templateSelector: 'button#save', role: 'button', name: 'Save', instanceKey: '#1', instanceSelector: 'button#save' },
+  ]);
+  addTrigger(g, 7, { method: 'POST', urlPattern: '/app/save', status: 500 });
+  addTrigger(g, 7, { method: 'POST', urlPattern: '/app/save', status: 500 }); // hit twice → count 2
+  markExplored(g, 7);
+  saveGraph(path.join(dir, 'graph.json'), g);
+
+  const text = report({ json: false });
+  assert.match(text, /Findings:/, 'the default report carries a findings section');
+  const findingLine = text.split('\n').find((l) => l.includes('/app/save') && l.includes('500'));
+  assert.ok(findingLine, 'the 500 is surfaced as a finding line in the default output (not only via --findings)');
+  assert.match(text, /caused by:.*Save/, 'the finding names the control that caused it');
+
+  const json = report({ json: true });
+  assert.ok(json.findings && Array.isArray(json.findings.findings), 'the JSON default carries the findings product');
+  assert.ok(json.findings.findings.some((f) => f.status === 500 && f.kind === 'server-error'),
+    'the server-error finding for the 500 is in the JSON default');
+});

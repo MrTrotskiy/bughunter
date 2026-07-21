@@ -1578,3 +1578,29 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
 - MEASURED: bughunter-reviewer SHIP AFTER FIXES (0 MUST FIX). Stamp-bleed verified clean (candidates() mints
   fresh per-target wrappers). Two revert-proven tests: live (reopen-ok→act-fail carries replayed:true) + unit
   (deriveSteps carries it, failurePanel renders only for replayed:true). Full suite green.
+
+### 2026-07-21 — L2 (findings in default report) + CLASS 1b (obstructed-control finding)
+- L2 CONTEXT: the audit called the repeatable 500 "unflagged", but `findings.httpAnomalies` ALREADY elevates
+  a 4xx/5xx to a finding keyed to its causing control, wired to `report --findings`, and `req.statuses` is
+  populated. The real gap was SURFACING — findings were behind a separate command the operator had to know to
+  run, so a `/recon` run's own conclusion never showed them.
+- CHOSE: the DEFAULT `report()` appends `renderFindings(graph)` (text) and `rep.findings` (json). docs/GOAL.md
+  ("an anomalous response is the most valuable thing a crawl can find") is now honoured by the default output,
+  not a hand-run report. `renderFindings` returns "Findings: none recorded." on a clean run.
+- REJECTED: a dedicated admin findings panel as the FIRST step — the default report reaches every consumer
+  (the /recon conclusion, any `report` call) for near-zero cost; an admin panel can follow.
+- CLASS 1b CONTEXT: a leftover modal from a prior act covering a base-page control is RECOVERED by
+  closeAppModal (reach restored, guarded by modal-cover.test) — but the obstruction was invisible once
+  recovery worked. docs/GOAL.md: the interesting event must not vanish.
+- CHOSE: record the obstruction at the interception site in an ADDITIVE `node.obstructions` field (NEVER a
+  probe row — a probe row would touch the knowledge ladder / carry a block code and risk discharging an
+  obligation; NEVER identity), deduped by the obscuring modal, and surface it via `findings.obstructedControls`
+  as `obstructed-control` (medium), naming the modal where known. Recorded whether or not the retry succeeds,
+  so a recovered obstruction is still a finding.
+- REJECTED: a `blocked:'OBSCURED'` probe row (the designer's first shape) — it would enter node.probes and the
+  knowledge ladder, where an unrecognised block code could wrongly discharge or stall an obligation. A separate
+  additive field keeps it purely a finding signal.
+- REJECTED (for now): a new `CLICK_INTERCEPTED` envelope code — reach is already recovered, so the failure
+  code only matters if the retry ALSO fails; deferred as it buys nothing while recovery works.
+- MEASURED: both revert-proven (L2: default report loses the server-error line; CLASS 1b: modal-cover guard e
+  loses the obstructed-control finding). Full suite green.
