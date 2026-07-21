@@ -12,7 +12,8 @@
 //     violations" flips: expected 10 violations of attempts-not-recorded).
 //   - make model-decides-nothing licensedBy: () => true → conditionality reds ("unconditional:
 //     licensed on 63/63 rows").
-//   - remove 'route' (or any kind) from KIND_STYLE → liveness todo prints the lowered % (25.4% → 20.6%).
+//   - remove any kind from KIND_STYLE → the KIND_STYLE liveness assertion reds with the lowered % (13
+//     of 13 styled → drops below 90%).
 //   - contentSig stays read with 0 stateful writers → parity todo reds ("written on 0 of 88 routes").
 
 import { test } from 'node:test';
@@ -93,7 +94,7 @@ test('conditionality: no step/row claim is unconditional (and prose claims rende
 
 /* ------------------------------------------------------------------ 3. Completeness */
 
-const VIEW_FILES = ['walk-view.mjs', 'pipeline-view.mjs', 'pipeline-shell.mjs'].map((f) => path.join(DEBUG, f));
+const VIEW_FILES = ['walk-view.mjs', 'pipeline-view.mjs', 'pipeline-shell.mjs', 'row-vocabulary.mjs', 'coverage-view.mjs'].map((f) => path.join(DEBUG, f));
 
 test('completeness: every operator sentence longer than WORD_FLOOR words is registered', () => {
   const reg = registeredTexts();
@@ -113,14 +114,13 @@ test('completeness: every operator sentence longer than WORD_FLOOR words is regi
 
 const evKinds = new Set(events.map((e) => e && e.kind));
 
-// RED today by design (Stage 4 debt): KIND_STYLE styles 3 of 13 kinds, so a real Russian UI renders
-// most rows with a raw English kind name. The todo prints the number; enforced when Stage 4 lands.
-test('liveness: KIND_STYLE styles >=90% of the fixture rows',
-  { todo: 'ADMIN-TRUTH-PLAN Stage 4 — 13 kinds, 3 styled; row vocabulary gives every kind a badge' }, () => {
-    const styled = rows.filter((r) => KIND_STYLE[r.kind]).length;
-    const pct = Math.round((styled / rows.length) * 1000) / 10;
-    assert.ok(pct >= 90, `KIND_STYLE covers ${pct}% of rows (${styled}/${rows.length}); needs >=90%`);
-  });
+// ENFORCED (ADMIN-TRUTH-PLAN Stage 4, row vocabulary): all 13 kinds a real run emits are in
+// KIND_STYLE, so no row renders a raw English kind name. Was a `todo` at 24.5% (3 of 13 styled).
+test('liveness: KIND_STYLE styles >=90% of the fixture rows', () => {
+  const styled = rows.filter((r) => KIND_STYLE[r.kind]).length;
+  const pct = Math.round((styled / rows.length) * 1000) / 10;
+  assert.ok(pct >= 90, `KIND_STYLE covers ${pct}% of rows (${styled}/${rows.length}); needs >=90%`);
+});
 
 // RED today by design (Stage 4 debt): the existing folds demand adjacent rows and something always
 // sits between them, so they fire 0 times. The natural unit is the page-drain cycle (fires 54x on fix1).
