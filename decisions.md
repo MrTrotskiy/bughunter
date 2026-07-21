@@ -1604,3 +1604,24 @@ what six 20-round crawls could not. Two findings, and the second is the root cau
   code only matters if the retry ALSO fails; deferred as it buys nothing while recovery works.
 - MEASURED: both revert-proven (L2: default report loses the server-error line; CLASS 1b: modal-cover guard e
   loses the obstructed-control finding). Full suite green.
+
+### 2026-07-21 — `-hidden` visibility state stripped (schemaVersion 9)
+- CHOSE (operator delegated the call, agent consensus not user): strip `ant-dropdown-hidden`'s `-hidden`
+  suffix in `dom-snapshot.isStateClass`. It was deliberately KEPT ("describes what the UI IS"), but the
+  measured ALIAS_COLLISION (1092/1098↔1100/1108) is exactly the phantom-denominator fragmentation the rule
+  exists to stop, and visibility is ALREADY recorded in the additive non-identity `visible` field — so keeping
+  `-hidden` in the selector duplicated that fact into identity and split one dropdown control into two
+  templates. Consistent with its already-stripped siblings `-open`/`-collapsed`. schemaVersion 8→9.
+- REJECTED: keep it (the prior decision) — inconsistent with isStateClass stripping every other interaction
+  state, and it demonstrably fragments.
+- CORRECTED (bughunter-reviewer SHOULD FIX): the strip is SCOPED to the framework-toggled form
+  (`/^(?:ant|rc|mui|radix|headlessui)-[\w-]*-hidden$/`), NOT a bare `-hidden` suffix. My first cut used the
+  bare suffix and justified its safety as "a permanent `visually-hidden` is a constant on every snapshot, so
+  stripping is a no-op" — the reviewer showed that reasoning is FALSE for the SPATIAL case: two co-existing
+  distinct controls sharing a structural path + rowKey and differing ONLY by such a permanent utility class
+  (`visually-hidden`/`sr-hidden`/`mobile-hidden`) would MERGE, dropping one from the denominator (invariant
+  #2/#3). A permanent class is temporally constant but NOT spatially unique. The framework-prefixed match
+  de-fragments the antd/rc dropdown without touching a utility-hidden twin. (I had earlier rejected exactly
+  this scoping "for consistency" — the wrong reason; a real, if narrow, coverage-loss beats consistency.)
+- MEASURED: revert-proven (drop the `-hidden` clause → the toggled dropdown mints 2 templates → reds).
+  bughunter-reviewer SHIP AFTER FIXES (0 MUST FIX); the spatial-merge SHOULD FIX applied. Full suite green.
