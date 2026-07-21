@@ -17,12 +17,21 @@
 //   served" assertion goes red (the «Покрытие» screen silently never mounts); (d) below still holds:
 //   (d) delete the `walk-view.mjs` allowlist branch → the module 404s → the "walk-view.mjs served"
 //   assertion goes red (the split-out walk text silently never mounts).
+//
+// GRAPH-SNAPSHOT COMPRESSION (the disk-bloat fix): trace.snapshotGraph gzips a snapshot on write and
+// admin-server serves it with `content-encoding: gzip`. Guards: the on-disk snapshot is MATERIALLY
+// smaller than the source graph (compression actually happened), the served body carries the gzip
+// header + a real gzip stream, and a client that inflates it recovers the source graph BIT-FOR-BIT
+// (the scrubber's "graph at step N" is unchanged). FAIL-ON-REVERT: restore the `copyFileSync` in
+// snapshotGraph (no gzip) → the on-disk snapshot equals the source → the "materially smaller"
+// assertion reds AND the `content-encoding: gzip` header is absent → the header assertion reds.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { openRun, traceEvent, snapshotGraph, closeRun, runDir } from '../../lib/debug/trace.mjs';
@@ -92,10 +101,12 @@ test('admin serves the capture trail behind a loopback + containment fence', asy
   assert.deepEqual(act.payload.requests, [{ method: 'POST', urlPattern: '/api/save' }], 'causal edge carried in the trail');
   assert.equal(act.payload.shots.before, 't1-before.png', 'key-frame ref carried');
 
-  // graph snapshot
+  // graph snapshot — stored gzip-framed, served content-encoded (Node's http client does NOT
+  // auto-inflate, so gunzip here as the browser's fetch() would for free).
   const gsnap = await get(port, q(`/api/runs/${runId}/graph/${actSeq}`));
   assert.equal(gsnap.status, 200);
-  assert.ok(JSON.parse(gsnap.body).elements['1'], 'graph snapshot has the control');
+  assert.equal(gsnap.headers['content-encoding'], 'gzip', 'snapshot served with content-encoding: gzip');
+  assert.ok(JSON.parse(zlib.gunzipSync(gsnap.body)).elements['1'], 'graph snapshot has the control');
 
   // key-frame PNG
   const png = await get(port, q(`/api/runs/${runId}/shots/t1-before.png`));
@@ -161,3 +172,51 @@ test('admin serves the capture trail behind a loopback + containment fence', asy
   assert.equal(oneJson.instanceBuckets.walked[0].name, 'Save', 'the walked control is attributed by name');
 });
 
+// Guards: graph snapshots are gzip-compressed on disk (the ~126 MB/run disk-bloat fix) and inflate
+// BIT-FOR-BIT through the server, so the admin scrubber's "graph at step N" is unchanged.
+// FAIL-ON-REVERT: restore `fs.copyFileSync` in trace.snapshotGraph → the on-disk snapshot equals the
+//   source graph → "snapshot is materially smaller" reds AND no gzip framing → the content-encoding
+//   header assertion reds. Verified red by hand.
+test('graph snapshots are gzip-compressed on disk and inflate bit-for-bit through the server', async (t) => {
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'bughunter-admin-gz-'));
+  const prevState = process.env.BUGHUNTER_STATE_DIR;
+  process.env.BUGHUNTER_STATE_DIR = stateDir;
+
+  const runId = 'r-20260101000001-bbbb';
+  openRun({ runId, target: 'http://example.test/' });
+  // A realistically-sized graph — the disk-bloat this compresses is a ~1 MB graph copied 200×/run.
+  const elements = {};
+  for (let i = 1; i <= 400; i++) {
+    elements[i] = { type: 'element', templateId: i, role: 'button', name: 'Control ' + i, route: '/',
+      explored: true, locator: { type: 'css' }, instances: [{ instanceKey: '' }],
+      semantics: { danger: 'safe', effect: 'request', acted: true, purpose: 'do the thing number ' + i } };
+  }
+  const graph = { routes: { '/': { type: 'route', url: '/' } }, elements, requests: {}, edges: [] };
+  fs.writeFileSync(path.join(stateDir, 'graph.json'), JSON.stringify(graph));
+  const seq = traceEvent(runId, 'act', { templateId: 1 });
+  snapshotGraph(runId, seq);
+
+  // COMPRESSION ACTUALLY HAPPENED — the on-disk snapshot is materially smaller than the source graph.
+  const srcBytes = fs.statSync(path.join(stateDir, 'graph.json')).size;
+  const snapName = fs.readdirSync(path.join(runDir(runId), 'graph'))[0];
+  const snapPath = path.join(runDir(runId), 'graph', snapName);
+  const snapBytes = fs.statSync(snapPath).size;
+  assert.ok(snapBytes * 3 < srcBytes, `snapshot is materially smaller than the source (${snapBytes} vs ${srcBytes})`);
+  const onDisk = fs.readFileSync(snapPath);
+  assert.ok(onDisk[0] === 0x1f && onDisk[1] === 0x8b, 'the on-disk snapshot is a real gzip stream');
+
+  const TOK = 'testtoken00000001';
+  const { server, port } = await startAdmin({ port: 0, token: TOK });
+  const q = (p) => p + (p.includes('?') ? '&' : '?') + 't=' + TOK;
+  t.after(() => { server.close(); rmSync(stateDir, { recursive: true, force: true });
+    if (prevState === undefined) delete process.env.BUGHUNTER_STATE_DIR; else process.env.BUGHUNTER_STATE_DIR = prevState; });
+
+  const gsnap = await get(port, q(`/api/runs/${runId}/graph/${seq}`));
+  assert.equal(gsnap.status, 200);
+  // Served gzip-encoded so the browser's fetch() inflates it transparently (zero server CPU).
+  assert.equal(gsnap.headers['content-encoding'], 'gzip', 'snapshot served with content-encoding: gzip');
+  assert.equal(Number(gsnap.headers['content-length']), snapBytes, 'content-length is the compressed (on-the-wire) size');
+  // A client inflates it (as the browser does for free) → BIT-IDENTICAL to the source graph on disk.
+  const served = JSON.parse(zlib.gunzipSync(gsnap.body));
+  assert.deepEqual(served, graph, 'the snapshot round-trips bit-for-bit through gzip');
+});
