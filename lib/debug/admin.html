@@ -79,6 +79,7 @@
   </div>
   <div class="gwrap"><canvas id="gcanvas"></canvas><div class="gempty hide" id="gEmpty">на этой точке прогона ещё нет элементов — двигай полосу вправо</div></div>
 </div>
+<div id="coverView" class="stub hide"></div>
 <div id="stubView" class="stub hide"></div>
 </div></div>
 <div id="lb"><img id="lbImg" alt=""></div>
@@ -99,6 +100,10 @@ import { classify, explainFailure, displayName, anchorSource, plural } from './f
 import { esc, shortRoute, controlHtml as ctlHtml, controlText as ctlText, outcomeOf,
   stepDetailHtml as stepDetail, failurePanel as failCard, kpiHtml, sectionCounts as counts,
   distinctRoutes as routesOf, lastStats as statsOf, stageNotice, skeletonSvg } from './walk-view.mjs';
+// The «Покрытие» screen — the answer to "почему не нажал остальное". Pure (instanceStats,
+// instanceBuckets) → string, like walk-view; both numbers come from lib/recon/frontier.mjs via
+// admin-server (the page re-derives no sampling rule).
+import { coverageScreen } from './coverage-view.mjs';
 
 // The house theme, injected before anything paints. It lives in the module (not in this file's
 // <style>) because admin.html is already far over the project's file-size convention — see the
@@ -116,7 +121,7 @@ async function jget(url) { const r = await fetch(api(url)); if (!r.ok) throw new
 // `instanceStats` is the INSTANCE-level coverage split, computed server-side by admin-server from the
 // run's own newest graph snapshot via lib/recon/frontier.mjs frontierInstanceStats. The page never
 // re-derives a cap or sampling rule — that module owns them (see admin-server instanceStatsFor).
-const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before', pageFilter: null, sgSeq: null, sgGraph: null, idGraph: null, idGraphRun: null, walkOpen: new Set(), instanceStats: null, skel: null, skelKey: null };
+const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before', pageFilter: null, sgSeq: null, sgGraph: null, idGraph: null, idGraphRun: null, walkOpen: new Set(), instanceStats: null, instanceBuckets: null, skel: null, skelKey: null };
 // «Конвейер»: its own tab, fed the SAME events the walk uses but through derivePipeline (every
 // kind, not just the acts). It owns its markup + styles; the page only hands it rows — and, on
 // demand, the graph snapshot for the row it has selected (pipeGraphFor below).
@@ -181,7 +186,7 @@ async function loadRuns() {
   const { runs } = await jget('/api/runs');
   S.runs = runs || [];
   if (!S.runs.length) { // no runs (e.g. the last one was just deleted): clear the CENTER too, not only the list
-    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.skel = null; S.skelKey = null;
+    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.instanceBuckets = null; S.skel = null; S.skelKey = null;
     $('#runsList').innerHTML = '<div class="empty">Пока ни одного прогона.<br>Запусти <code>/recon &lt;url&gt;</code> — здесь появится его обход.</div>'; $('#kpis').innerHTML = '';
     S.pipeRows = null;
     renderHeader(); renderSteps(); renderStrip(); renderStage(); PIPE.update([]); refreshShell(); return;
@@ -218,9 +223,9 @@ function renderRunsList() {
 async function loadRun(reset) {
   // fresh run: drop the filter + the per-run graph cache + the selected step's cached snapshot (it
   // belongs to the OLD run; keeping it would explain this run's failures with another run's graph)
-  if (reset) { S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.skel = null; S.skelKey = null; if (typeof G !== 'undefined' && G.cache) G.cache.clear(); PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null; }
+  if (reset) { S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.instanceBuckets = null; S.skel = null; S.skelKey = null; if (typeof G !== 'undefined' && G.cache) G.cache.clear(); PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null; }
   const data = await jget('/api/runs/' + S.runId);
-  S.run = data.run; S.events = data.events || []; S.instanceStats = data.instanceStats || null;
+  S.run = data.run; S.events = data.events || []; S.instanceStats = data.instanceStats || null; S.instanceBuckets = data.instanceBuckets || null;
   const steps = deriveSteps(S.events);
   const atEnd = reset || S.i >= S.steps.length - 1 || !S.steps.length;
   S.steps = steps;
@@ -229,6 +234,7 @@ async function loadRun(reset) {
   renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage(); refreshStepGraph();
   S.pipeRows = PIPE.update(derivePipeline(S.events)); // Конвейер reads EVERY event kind, not just the acts
   refreshShell();                                     // the rail's counts follow the loaded run
+  if (S.tab === 'cover') renderCover();               // a live refresh must repaint the open coverage screen
   loadIdentityGraph();                                // background: names the nameless controls, then repaints
   if ((S.tab === 'graph' || S.tab === 'page')) drawGraphView();
 }
@@ -237,7 +243,7 @@ async function loadRun(reset) {
 // (collapse pages + clear the walk). userCleared stops the live-refresh tick from re-opening the newest.
 function toggleRun(id) {
   if (S.runId === id) {
-    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.skel = null; S.skelKey = null; S.userCleared = true; S.pipeRows = null; PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null;
+    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.instanceBuckets = null; S.skel = null; S.skelKey = null; S.userCleared = true; S.pipeRows = null; PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null;
     renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage(); PIPE.update([]); refreshShell();
   } else { S.userCleared = false; S.runId = id; loadRun(true); }
 }
@@ -252,6 +258,13 @@ const lastStats = () => statsOf(S.events, S.run);
 // The KPI strip is walk-view's `kpiHtml`; the page only hands it the loaded run.
 function renderKpis() {
   $('#kpis').innerHTML = kpiHtml({ run: S.run, steps: S.steps, stats: lastStats(), instanceStats: S.instanceStats });
+}
+// The «Покрытие» screen is coverage-view's `coverageScreen`; the page only hands it the loaded run's
+// server-computed split + drill-down. No run loaded → the honest empty state, not a fabricated zero.
+function renderCover() {
+  $('#coverView').innerHTML = S.instanceStats
+    ? coverageScreen(S.instanceStats, S.instanceBuckets)
+    : '<div class="stub-in"><div class="eyebrow">покрытие</div><h2>Покрытие</h2><p class="lede">Выбери прогон со снимком графа — тогда здесь появится разбиение всех контролов по владельцу: кого прошли, кого отклонила выборка, кого не смогли, кто ещё должен.</p></div>';
 }
 // The step-detail panel is walk-view's `stepDetailHtml`; this binds the two graph lookups the page
 // owns (see graphForStep / nameGraph below) so the module stays pure.
@@ -499,9 +512,9 @@ track.addEventListener('pointerleave', () => { $('#tip').style.display = 'none';
 
 /* ---- sections + wiring ---- */
 // The router. `runs` is the only section that owns the 3-pane walk (grid + KPI strip + scrubber);
-// every other section replaces it wholesale. The four unbuilt sections all render into the SAME
+// every other section replaces it wholesale. The remaining unbuilt sections all render into the SAME
 // #stubView — one container, content chosen by id — so adding a section costs a NAV_ITEMS row and
-// a STUBS entry, not another view div.
+// a STUBS entry, not another view div. «Покрытие» is a BUILT screen with its own #coverView.
 function setTab(t) {
   S.tab = t;
   SHELL.setActive(t);
@@ -515,8 +528,10 @@ function setTab(t) {
   $('#testsView').classList.toggle('hide', t !== 'tests');
   $('#pipeView').classList.toggle('hide', t !== 'pipe');
   $('#graphView').classList.toggle('hide', t !== 'graph');
+  $('#coverView').classList.toggle('hide', t !== 'cover');
   $('#stubView').classList.toggle('hide', !stub);
   if (stub) $('#stubView').innerHTML = stubHtml(t, sectionCounts());
+  if (t === 'cover') renderCover();
   if (t === 'graph') { G.hover = null; requestAnimationFrame(drawGraphView); }
 }
 $('#gSub').querySelectorAll('button').forEach((b) => b.onclick = () => {   // Obsidian (force) vs Схема (bipartite) sub-tab
@@ -540,7 +555,7 @@ async function doDeleteRun() {
     const r = await fetch(api('/api/runs/' + id), { method: 'DELETE' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     closeConfirm();
-    if (S.runId === id) { S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.skel = null; S.skelKey = null; }
+    if (S.runId === id) { S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.instanceBuckets = null; S.skel = null; S.skelKey = null; }
     S.runs = S.runs.filter((x) => x.id !== id);
     if (typeof G !== 'undefined' && G.cache) G.cache.clear();
     await loadRuns();
@@ -571,7 +586,7 @@ G.viewMode = 'force'; G.radialPage = null; // 'force' = connected web (Граф 
 window.G = G; // debug handle: inspect the live graph model / sim from the console
 const gcanvas = $('#gcanvas'), gctx = gcanvas.getContext('2d');
 const gcol = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const WRITE_RE = /\b(follow|unfollow|like|unlike|delete|create|remove|update|save|block|report|vote|pay|subscribe|checkout|addnugget|post_)/i;
+const WRITE_RE = /\b(follow|unfollow|like|unlike|delete|create|remove|update|save|block|report|vote|pay|subscribe|checkout|additem|publish)/i;
 const ICON_RE = /(phone_iphone|desktop_mac|more_horiz|expand_more|expand_less|arrow_forward|arrow_back|chevron_right|check_circle|open_in_new)/g;
 function classifyEp(key) {
   const method = key.split(' ')[0], p = key.replace(/^\S+\s+/, '');

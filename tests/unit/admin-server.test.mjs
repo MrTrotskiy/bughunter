@@ -13,6 +13,8 @@
 //   tokenOk 403 guard → the no-token /api request returns 200 → the "token required" assertion
 //   goes red; (c) delete the `pipeline-shell.mjs` allowlist branch → the module 404s → the
 //   "pipeline-shell.mjs served" assertion goes red (the split-out chrome silently never mounts);
+//   (e) delete the `coverage-view.mjs` allowlist branch → the module 404s → the "coverage-view.mjs
+//   served" assertion goes red (the «Покрытие» screen silently never mounts); (d) below still holds:
 //   (d) delete the `walk-view.mjs` allowlist branch → the module 404s → the "walk-view.mjs served"
 //   assertion goes red (the split-out walk text silently never mounts).
 
@@ -144,4 +146,18 @@ test('admin serves the capture trail behind a loopback + containment fence', asy
   assert.equal(wv.status, 200, 'walk-view.mjs served (the split-out walk text module)');
   assert.match(wv.headers['content-type'], /javascript/, 'walk-view served as javascript');
   assert.match(wv.body.toString(), /export function kpiHtml/, 'is the walk text module');
+
+  // coverage-view.mjs — the «Покрытие» screen's TEXT module — is served the same way. A dropped
+  // allowlist branch 404s it under `script-src 'self'` and the coverage screen mounts NOTHING.
+  const cv = await get(port, '/coverage-view.mjs');
+  assert.equal(cv.status, 200, 'coverage-view.mjs served (the split-out coverage screen module)');
+  assert.match(cv.headers['content-type'], /javascript/, 'coverage-view served as javascript');
+  assert.match(cv.body.toString(), /export function coverageScreen/, 'is the coverage screen module');
+
+  // The run payload ships `instanceBuckets` beside `instanceStats` — the «Покрытие» drill-down (which
+  // controls the sampling policy declined / the app broke / churned). Same rule, same snapshot; a
+  // dropped payload field leaves the screen with counts and no per-control lists.
+  assert.ok(oneJson.instanceBuckets, 'instanceBuckets shipped on /api/runs/:id');
+  assert.equal(oneJson.instanceBuckets.walked[0].name, 'Save', 'the walked control is attributed by name');
 });
+
