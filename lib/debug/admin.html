@@ -91,7 +91,14 @@
 <script type="module">
 import { deriveSteps, derivePipeline, clampIndex, dotLeftPct, indexFromClientX, boxFromRect, dotClass } from './scrub-math.mjs';
 import { mountPipeline, newestRunWithTrail, isEmptyRun, mountShell, stubHtml, NAV_ITEMS, STUB_IDS, SHELL_CSS } from './pipeline-view.mjs';
-import { classify, explainFailure, displayName, anchorSource, controlPhrase, roleRu, plural } from './failure-hints.mjs';
+import { classify, explainFailure, displayName, anchorSource, plural } from './failure-hints.mjs';
+// EVERY SENTENCE AND NUMBER THE WALK PRINTS lives in walk-view.mjs, not here. It was extracted so a
+// node:test can execute it against a real trail: the six false claims audited on run `fix1` were all
+// inconsistencies BETWEEN the writer, the projection and the renderer, and while the renderer sat
+// inline in this file nothing could run the three together. Pure (step, graph, run) → string.
+import { esc, shortRoute, controlHtml as ctlHtml, controlText as ctlText, outcomeOf,
+  stepDetailHtml as stepDetail, failurePanel as failCard, kpiHtml, sectionCounts as counts,
+  distinctRoutes as routesOf, lastStats as statsOf, stageNotice, skeletonSvg } from './walk-view.mjs';
 
 // The house theme, injected before anything paints. It lives in the module (not in this file's
 // <style>) because admin.html is already far over the project's file-size convention — see the
@@ -99,7 +106,6 @@ import { classify, explainFailure, displayName, anchorSource, controlPhrase, rol
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: SHELL_CSS }));
 
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
 const api = (p) => p + (p.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(TOKEN);
 async function jget(url) { const r = await fetch(api(url)); if (!r.ok) throw new Error(r.status); return r.json(); }
@@ -107,7 +113,10 @@ async function jget(url) { const r = await fetch(api(url)); if (!r.ok) throw new
 // sgSeq/sgGraph: the graph snapshot cached for the CURRENTLY selected step (see stepGraph below).
 // `walkOpen` holds the repeat-groups the operator expanded in the Прогоны walk (keys, not indexes,
 // so the set survives a re-render and a live refresh that shifts every index).
-const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before', pageFilter: null, sgSeq: null, sgGraph: null, idGraph: null, idGraphRun: null, walkOpen: new Set() };
+// `instanceStats` is the INSTANCE-level coverage split, computed server-side by admin-server from the
+// run's own newest graph snapshot via lib/recon/frontier.mjs frontierInstanceStats. The page never
+// re-derives a cap or sampling rule — that module owns them (see admin-server instanceStatsFor).
+const S = { tab: 'runs', runs: [], runId: null, run: null, events: [], steps: [], i: 0, frame: 'before', pageFilter: null, sgSeq: null, sgGraph: null, idGraph: null, idGraphRun: null, walkOpen: new Set(), instanceStats: null, skel: null, skelKey: null };
 // «Конвейер»: its own tab, fed the SAME events the walk uses but through derivePipeline (every
 // kind, not just the acts). It owns its markup + styles; the page only hands it rows — and, on
 // demand, the graph snapshot for the row it has selected (pipeGraphFor below).
@@ -115,30 +124,9 @@ const PIPE = mountPipeline($('#pipeView'), { graphFor: pipeGraphFor, identityGra
 // The left rail. It owns its own markup + active state; this page owns routing and the counts.
 const SHELL = mountShell($('#side'), { onNav: setTab });
 
-// The counts shown beside each rail item, and on a placeholder page. EVERY one is derived from the
-// RUN ALREADY LOADED — nothing here fetches, and nothing invents. A section whose number cannot be
-// derived returns null, which navCount renders as '—': zero would be a claim, '—' is the absence of
-// one. `finds` is deliberately narrow — the ONLY anomaly class derivable today is DISABLED, and the
-// Находки placeholder says so rather than letting the number imply full anomaly coverage.
+// The rail counts, from walk-view (pure). The page only supplies the loaded run's state.
 function sectionCounts() {
-  const st = (S.run && S.run.stats) || lastStats();
-  const has = S.steps.length > 0;
-  const edges = new Set(); let finds = 0;
-  for (const s of S.steps) {
-    (s.requests || []).forEach((q) => edges.add(q.method + ' ' + q.urlPattern));
-    const cls = classify(s);
-    if (cls && cls.tone.key === 'finding') finds++;
-  }
-  return {
-    runs: S.runs.length,
-    pages: has ? distinctRoutes().size : null,
-    rows: Number.isFinite(S.pipeRows) ? S.pipeRows : null,
-    els: Number.isFinite(st.discovered) ? st.discovered : null,
-    edges: has ? edges.size : null,
-    finds: has ? finds : null,
-    cover: Number.isFinite(st.explored) ? st.explored : null,
-    tests: null,                       // Phase-2 has produced nothing yet — '—', never 0
-  };
+  return counts({ runs: S.runs, run: S.run, steps: S.steps, stats: lastStats(), instanceStats: S.instanceStats, pipeRows: S.pipeRows });
 }
 // Repaint the rail's counts and, if a placeholder is open, its number too.
 function refreshShell() {
@@ -162,18 +150,6 @@ function snapToView() {
   if (view.length && !view.includes(S.i)) S.i = view.reduce((best, si) => Math.abs(si - S.i) < Math.abs(best - S.i) ? si : best, view[0]);
 }
 
-// Classify a blocked/failed act. Returns null on success. THE TAXONOMY LIVES IN failure-hints.mjs —
-// this is a thin adapter, and it must stay thin: the previous version guessed the cause from message
-// TEXT with an ordered pile of regexes, and the first of them (`/refus/`) matched the words
-// "firewall-refused", so all 43 REVEAL_FIREWALL acts of run `raw1` were reported as danger-floor
-// refusals — including a `button "Close"` that danger-floor classifies as SAFE. It also printed
-// «не удалось найти на странице» above a message saying the element IS present but not visible.
-// Prefer the stamped `code`; fall back to the module's ordered matchers for runs already on disk.
-function outcomeOf(s) {
-  const cls = classify(s);
-  if (!cls) return null;
-  return { kind: cls.code, label: cls.chip, tone: cls.tone.key, why: cls.tone.hint };
-}
 // The graph snapshot for the SELECTED step, used to split NO_INSTANCE into "no reveal path was ever
 // recorded" vs "a path was recorded and it broke" — two different diagnoses behind one message, and
 // the difference is only knowable from the graph. Failed acts write no snapshot, so walk BACK to the
@@ -205,7 +181,7 @@ async function loadRuns() {
   const { runs } = await jget('/api/runs');
   S.runs = runs || [];
   if (!S.runs.length) { // no runs (e.g. the last one was just deleted): clear the CENTER too, not only the list
-    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null;
+    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.skel = null; S.skelKey = null;
     $('#runsList').innerHTML = '<div class="empty">Пока ни одного прогона.<br>Запусти <code>/recon &lt;url&gt;</code> — здесь появится его обход.</div>'; $('#kpis').innerHTML = '';
     S.pipeRows = null;
     renderHeader(); renderSteps(); renderStrip(); renderStage(); PIPE.update([]); refreshShell(); return;
@@ -228,7 +204,10 @@ function renderRunsList() {
       <div class="top"><span class="sdot ${r.status === 'running' ? 'run' : ''}"></span><span class="id mono">${esc(r.id)}</span>${mt}
         <span style="flex:1"></span><button class="runx" data-del="${esc(r.id)}" title="удалить прогон" aria-label="удалить прогон"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6 4V2.8c0-.45.35-.8.8-.8h2.4c.45 0 .8.35.8.8V4M12 4l-.5 8.6c-.03.5-.45.9-1 .9H5.5c-.55 0-.97-.4-1-.9L4 4M6.5 6.6v4.6M9.5 6.6v4.6"/></svg></button></div>
       <div class="sub">${esc(r.target || '')}</div>
-      <div class="sub">${st.explored == null && st.discovered == null ? 'итоги считаются по завершении' : `изучено ${st.explored ?? '–'} из ${st.discovered ?? '–'} · страниц ${st.routes ?? '–'}`}</div></div>`;
+      <div class="sub">${st.explored == null && st.discovered == null ? 'итоги считаются по завершении' : `шаблонов изучено ${st.explored ?? '–'} из ${st.discovered ?? '–'} · страниц ${st.routes ?? '–'}`}</div></div>`;
+    // «шаблонов», not «контролов»: run.json.stats is a TEMPLATE count and a template is not a control
+    // (a 50-row table is one template with 50 addressable instances). The per-instance number needs the
+    // run's graph snapshot and is only fetched for the OPEN run — it is the KPI strip's headline.
     return row + (sel ? runPagesHtml() : ''); // the SELECTED run drills down into its pages (toggle to collapse)
   }).join('');
   $('#runsList').querySelectorAll('.runrow').forEach((el) => el.onclick = () => toggleRun(el.dataset.id));
@@ -239,9 +218,9 @@ function renderRunsList() {
 async function loadRun(reset) {
   // fresh run: drop the filter + the per-run graph cache + the selected step's cached snapshot (it
   // belongs to the OLD run; keeping it would explain this run's failures with another run's graph)
-  if (reset) { S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; if (typeof G !== 'undefined' && G.cache) G.cache.clear(); PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null; }
+  if (reset) { S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.skel = null; S.skelKey = null; if (typeof G !== 'undefined' && G.cache) G.cache.clear(); PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null; }
   const data = await jget('/api/runs/' + S.runId);
-  S.run = data.run; S.events = data.events || [];
+  S.run = data.run; S.events = data.events || []; S.instanceStats = data.instanceStats || null;
   const steps = deriveSteps(S.events);
   const atEnd = reset || S.i >= S.steps.length - 1 || !S.steps.length;
   S.steps = steps;
@@ -258,7 +237,7 @@ async function loadRun(reset) {
 // (collapse pages + clear the walk). userCleared stops the live-refresh tick from re-opening the newest.
 function toggleRun(id) {
   if (S.runId === id) {
-    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.userCleared = true; S.pipeRows = null; PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null;
+    S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.skel = null; S.skelKey = null; S.userCleared = true; S.pipeRows = null; PIPE_GRAPH.clear(); S.idGraph = null; S.idGraphRun = null;
     renderRunsList(); renderHeader(); renderKpis(); renderSteps(); renderStrip(); renderStage(); PIPE.update([]); refreshShell();
   } else { S.userCleared = false; S.runId = id; loadRun(true); }
 }
@@ -269,94 +248,15 @@ function renderHeader() {
   const live = r.status === 'running';
   $('#runStatus').innerHTML = r.id ? `<span class="badge ${live ? 'running' : 'done'}">${live ? '<span class="dot-live"></span>running' : 'done'}</span>` : '';
 }
-function lastStats() {
-  for (let k = S.events.length - 1; k >= 0; k--) if (S.events[k].kind === 'frontier.emit' && S.events[k].payload.stats) return S.events[k].payload.stats;
-  return (S.run && S.run.stats) || {};
-}
+const lastStats = () => statsOf(S.events, S.run);
+// The KPI strip is walk-view's `kpiHtml`; the page only hands it the loaded run.
 function renderKpis() {
-  const st = (S.run && S.run.stats) || lastStats();
-  // `avg act` is the average over acts that COMPLETED a causal window. A FAILED act carries only
-  // `timings.attemptMs` (a throw before/inside the click closed no window), so the old truthy `if (s.timings)`
-  // did `tot += undefined` and the whole run's average rendered `NaNms` — one failed act poisons the KPI, and
-  // they are ~15% of a real run (54 of 355 acts in `hygge2`, 56 of 408 in `goal1`). Attempt time is counted
-  // SEPARATELY under its own label; folding it into `avg act` would silently redefine the measure.
-  const edges = new Set(); let tot = 0, n = 0, att = 0, an = 0;
-  for (const s of S.steps) {
-    (s.requests || []).forEach((q) => edges.add(q.method + ' ' + q.urlPattern));
-    const t = s.timings || {};
-    if (Number.isFinite(t.actMs)) { tot += t.actMs; n++; }
-    if (Number.isFinite(t.attemptMs)) { att += t.attemptMs; an++; }
-  }
-  const k = (v, l) => `<span class="kpi"><b>${v}</b> <span>${l}</span></span>`;
-  // A DASH IS NOT A NUMBER, AND ON A LIVE RUN IT IS NOT EVEN A GAP. `explored`/`unreachable`/`routes`
-  // are stamped into run.json when the run CLOSES, so a run still in flight renders «–/– EXPLORED»
-  // and the screen looks broken while it is in fact working correctly. Say which it is: the counts
-  // that can only be totalled at the end are announced as such, and the ones we can compute from the
-  // trail right now (acts, edges, timings) keep rendering live.
-  const pending = st.explored == null && st.discovered == null && st.routes == null;
-  const live = S.run && S.run.status === 'running';
-  const totals = pending
-    ? (live ? '<span class="kpi wide">Итоги обхода (изучено, недостижимо, страниц) считаются по завершении прогона — он ещё идёт</span>'
-      : '<span class="kpi wide">Итоги обхода не записаны: прогон завершился, не подведя их</span>')
-    : [k(`${st.explored ?? '–'}/${st.discovered ?? '–'}`, 'изучено контролов'), k(st.unreachable ?? '–', 'не достучались'),
-      k(st.routes ?? '–', 'страниц пройдено')].join('');
-  $('#kpis').innerHTML = totals
-    + [k(S.steps.length, 'действий'), k(edges.size, 'связей контрол → запрос'),
-      k(n ? Math.round(tot / n) + 'мс' : '–', 'среднее действие'),
-      ...(an ? [k(Math.round(att / an) + 'мс', 'средняя неудачная попытка')] : [])].join('');
+  $('#kpis').innerHTML = kpiHtml({ run: S.run, steps: S.steps, stats: lastStats(), instanceStats: S.instanceStats });
 }
+// The step-detail panel is walk-view's `stepDetailHtml`; this binds the two graph lookups the page
+// owns (see graphForStep / nameGraph below) so the module stays pure.
+const stepDetailHtml = (s) => stepDetail(s, { stepGraph: graphForStep(s), nameGraph: nameGraph(s) });
 
-// WHAT THE CLICK ACTUALLY DID, as one sentence. The panel used to answer this with three lines of
-// field names — `no request caused` / `revealed 0 instance(s)` / `no observation (node-loop run)` —
-// English jargon in a Russian interface, from which the reader learned nothing, and which together
-// mean one simple thing: the click produced neither a server request nor a new element. The fields
-// stay below, smaller, as CONFIRMATION of the sentence rather than as the message itself.
-function actSummary(s) {
-  const n = (s.requests || []).length, rev = Number(s.revealed) || 0;
-  const req = `${n} ${plural(n, ['запрос', 'запроса', 'запросов'])}`;
-  const el = `${rev} ${plural(rev, ['новый элемент', 'новых элемента', 'новых элементов'])}`;
-  if (s.external) return 'Ссылка ведёт на другой сайт — по ней намеренно не переходили, за пределами приложения изучать нечего.';
-  if (s.error) return 'Клик не состоялся, поэтому ни запросов, ни новых элементов от него быть не может — почему именно, сказано выше.';
-  if (n && rev) return `Клик сработал: страница отправила ${req} на сервер и показала ${el}.`;
-  if (n) return `Клик отправил ${req} на сервер, но ничего нового на странице не появилось.`;
-  if (rev) return `Клик не обращался к серверу, но открыл ${el} на странице.`;
-  return 'Клик ничего не дал — ни запроса на сервер, ни новых элементов на странице.';
-}
-
-function stepDetailHtml(s) {
-  const reqs = (s.requests || []).map((r) => `<div class="reqrow"><span class="method m-${esc(r.method)}">${esc(r.method)}</span> <span class="endpoint mono">${esc(r.urlPattern)}</span></div>`).join('');
-  const t = s.timings || {}, w = (ms) => Math.max(2, Math.min(340, (ms || 0) * 1.2));
-  // Draw ONLY the stages this act actually reached. A FAILED act threw before/inside the click,
-  // so it carries `timings:{attemptMs}` and none of act/settle/snap — the old unconditional
-  // three-bar block rendered "undefinedms" three times over on ~15% of a run's steps.
-  const bar = (nm, cls, ms) => (Number.isFinite(ms)
-    ? `<div class="bar-row"><span class="nm">${nm}</span><div class="bar ${cls}" style="width:${w(ms)}px"></div><span class="muted">${ms}ms</span></div>` : '');
-  // Stage names in words: `act`/`settle`/`snap` are this codebase's internal vocabulary.
-  const bars = [bar('клик', '', t.actMs), bar('ожидание ответа', 'settle', t.settleMs), bar('снимок страницы', 'snap', t.snapMs),
-    bar('попытка клика', 'attempt', t.attemptMs)].join('') || '<div class="muted">стадии этого шага не замерялись</div>';
-  // OBSERVATION IS AN AGENT-PATH-ONLY BLOCK. The live driver has no LLM stage, so on those runs there
-  // is no observation to report — and «no observation (node-loop run)» told the reader nothing except
-  // that an internal term applied to him. A section with nothing in it is dropped, not translated.
-  const o = s.observe;
-  const obs = o ? `<h5>что записал агент</h5><span class="tag ${esc(o.danger)}">опасность: ${esc(o.danger)}</span><span class="tag">эффект: ${esc(o.effect)}</span>${o.unreachable ? '<span class="tag" style="color:var(--bad)">не достучались</span>' : ''}<div>${esc(o.purpose) || '<span class="muted">—</span>'}</div>` : '';
-  // Verdict first here too: the tone + the explanation sentence, with the raw error collapsed last.
-  const oc = outcomeOf(s);
-  const g = graphForStep(s);
-  const ex = oc ? explainFailure(anchorSource(s, nameGraph(s)), g) : null;
-  const err = oc ? `<h5>исход · ${esc(ex ? ex.toneLabel : oc.label)} · ${esc(oc.label)}</h5>
-    <div style="color:var(--fg);font-size:12px;line-height:1.45">${esc(ex ? ex.sentence : oc.why)}</div>
-    <details style="margin-top:5px"><summary style="cursor:pointer;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px">сырые данные</summary>
-      <div class="mono" style="color:var(--mut);font-size:11px;margin-top:4px;white-space:pre-wrap">${esc(s.error)}</div></details>` : '';
-  // READING ORDER: the conclusion, then the evidence for it, then the timings. The request list is
-  // kept because a caused endpoint IS the product of this whole tool — but it now sits UNDER the
-  // sentence that says whether there was one, instead of standing in for it.
-  const facts = `<div class="muted" style="margin-top:6px;font-size:11px">запросов: ${(s.requests || []).length} · новых элементов: ${Number(s.revealed) || 0}${s.external ? ' · ссылка на другой сайт' : ''}</div>`;
-  return `<div class="stepdetail">${err}
-    <h5>что дал клик</h5>
-    <div style="color:var(--fg);font-size:12px;line-height:1.45">${esc(actSummary(s))}</div>
-    ${reqs ? `<div style="margin-top:6px">${reqs}</div>` : ''}${facts}
-    <h5>сколько заняло</h5>${bars}${obs}</div>`;
-}
 // REPEATS, COLLAPSED WHERE THE OPERATOR ACTUALLY READS. The fold was built for the Конвейер tab; he
 // reads Прогоны, where rows 77-80 were four identical `textbox "Enter your email id"` ВЫКЛЮЧЕН and
 // 81-85 five identical `combobox без имени`. Nine rows carrying two facts. Same rule as
@@ -423,11 +323,7 @@ function renderSteps() {
 
 // Прогоны LEFT panel: the pages of the SELECTED run, drilled down UNDER its row. distinctRoutes maps each
 // route to its first act's index + act count, in walk order. Click a page → jump to its first act.
-function distinctRoutes() {
-  const seen = new Map();
-  S.steps.forEach((s, i) => { const r = s.route || '—'; if (!seen.has(r)) seen.set(r, { count: 0, idx: i }); seen.get(r).count++; });
-  return seen;
-}
+const distinctRoutes = () => routesOf(S.steps);
 function currentPage() { return S.pageFilter || (S.steps[S.i] ? (S.steps[S.i].route || '—') : ''); }
 function runPagesHtml() {
   if (!S.steps.length) return '';
@@ -482,56 +378,6 @@ function renderReadout() {
 
 function shotUrl(rel) { return api(`/api/runs/${S.runId}/${rel}`); }
 
-// A control's NAME is sometimes the concatenated text of a whole subtree — the operator was shown
-// `generic "Add GroupuploadCreatesearchConnections (0)No dataNo Connections Found"` as if that were a
-// label. Truncate for DISPLAY and hand the full string to the tooltip. Display-side only: the name
-// derivation in lib/graph/ is identity-adjacent and is deliberately not touched.
-//
-// Takes the STEP, not the bare name: a nameless control has no label to truncate, and «без имени»
-// on its own is unaddressable. displayName's anchor chain fills in the element's test-id / id /
-// class / position instead, and the step's graph snapshot (when loaded) supplies the selector for
-// runs whose act payloads carried none.
-function nameHtml(step, max) {
-  const src = step && typeof step === 'object' ? anchorSource(step, nameGraph(step)) : step;
-  const d = displayName(src, max || 44);
-  if (!d.full) return '<span class="muted">без имени</span>';
-  const q = d.kind === 'name' ? esc(JSON.stringify(d.text)) : esc(d.text);
-  return `<span title="${esc(d.full)}">${q}</span>`;
-}
-
-// WHAT THE READER SEES INSTEAD OF `combobox без имени · input:nth-child(1)`. That row was formally
-// better than a bare ARIA role and still useless to a human: it names a CSS position, in English,
-// for a reader who does not know the project. `controlPhrase` says what kind of thing it is in
-// Russian and gives it the best name anyone ever wrote for it; when the author wrote none, the last
-// resort is the one the operator asked for by name — the page and a count.
-//
-// The ordinal is computed HERE, not in the module, because only the page holds the graph: it is the
-// control's rank among the SAME-ROLE unnamed controls on the same route, so «второе поле ввода без
-// подписи» addresses exactly one thing and stays stable while that page's markup does.
-function ordinalOf(step, graph) {
-  if (!step || !graph || !graph.elements) return null;
-  const els = Array.isArray(graph.elements) ? graph.elements : Object.values(graph.elements);
-  const peers = els.filter((e) => e && e.route === step.route && e.role === step.role
-    && !String(e.name == null ? '' : e.name).trim())
-    .sort((a, b) => (a.templateId || 0) - (b.templateId || 0));
-  const i = peers.findIndex((e) => e.templateId === step.templateId);
-  return i >= 0 ? i + 1 : null;
-}
-// The full human phrase for a step's control, with the raw anchor kept in the tooltip.
-function controlHtml(step, max) {
-  const g = nameGraph(step);
-  const src = step && typeof step === 'object' ? anchorSource(step, g) : step;
-  const p = controlPhrase(src, { ordinal: ordinalOf(step, g), pageLabel: shortRoute(step && step.route) });
-  const full = p.text;
-  const shown = full.length > (max || 60) ? full.slice(0, (max || 60) - 1).trimEnd() + '…' : full;
-  const raw = displayName(src, 80).full;
-  return `<span title="${esc(full + (raw && raw !== full ? ` · ${raw}` : ''))}">${esc(shown)}</span>`;
-}
-const controlText = (step, max) => {
-  const g = nameGraph(step);
-  const p = controlPhrase(anchorSource(step, g), { ordinal: ordinalOf(step, g), pageLabel: shortRoute(step && step.route) });
-  return p.text.length > (max || 60) ? p.text.slice(0, (max || 60) - 1).trimEnd() + '…' : p.text;
-};
 // TWO lookups, deliberately not one. `graphForStep` is the snapshot for THIS step and is the only
 // thing allowed to answer the reveal-path split — a path recorded later says nothing about what was
 // known here, and answering with it would be a fresh version of the lie the split exists to end.
@@ -539,36 +385,31 @@ const controlText = (step, max) => {
 // is run-stable. Neither fetches: the panel renders immediately and sharpens when a snapshot lands.
 function graphForStep(step) { return step && S.sgSeq === step.seq ? S.sgGraph : null; }
 function nameGraph(step) { return graphForStep(step) || S.idGraph; }
+// The control phrase (walk-view) bound to the page's naming graph. `nameHtml` was deleted with the
+// extraction: it had no call site left — controlHtml/controlText superseded it everywhere.
+const controlHtml = (step, max) => ctlHtml(step, nameGraph(step), max || 60);
+const controlText = (step, max) => ctlText(step, nameGraph(step), max || 60);
 
-// «Что решил скрипт» — derived from trail ORDER, the only place this is recorded today: an act that
-// failed leaves the control unexplored, and the running count of such controls is what the ledger
-// carries forward. Counted over the steps up to and including this one, so it matches the walk.
-function verdictOf(i) {
-  let unreachable = 0;
-  for (let j = 0; j <= i && j < S.steps.length; j++) if (S.steps[j] && S.steps[j].error) unreachable++;
-  return `Отмечен недостижимым. Недостижимых к этому шагу: ${unreachable}.`;
-}
+// The failure card (walk-view `failurePanel`), bound to the page's naming graph and the loaded run.
+// `verdictOf` now needs BOTH: the step's taxonomy class and the run's unreachable total, because the
+// old line counted failed acts under an "unreachable controls" caption on every failure class alike.
+const failurePanel = (s, ex, oc) => failCard(s, ex, oc,
+  { nameGraph: nameGraph(s), steps: S.steps, instanceStats: S.instanceStats, run: S.run });
 
-// The failure panel, in the ONE binding reading order (see failure-hints.mjs):
-// 1 приговор · 2 где это было · 3 что пробовали · 4 что решил скрипт · 5 сырые данные (collapsed).
-// The verdict sentence is the first thing on the card; the selector is last and folded away.
-function failurePanel(s, ex, oc) {
-  const attempts = Array.isArray(s.attempts) ? s.attempts : null; // another agent is adding this; render gracefully when absent
-  const where = s.route
-    ? `<span class="mono">${esc(s.route)}</span>`
-    : '<span class="none">положение не записано</span>';
-  const tried = attempts && attempts.length
-    ? attempts.map((a) => `<div class="mono">${esc(typeof a === 'string' ? a : (a.what || a.selector || JSON.stringify(a)))}</div>`).join('')
-    : '<span class="none">список попыток не записан</span>';
-  return `<div class="ocard">
-    <span class="octag">${esc(ex ? ex.toneLabel : oc.label)}</span>
-    <div class="ocsent">${esc(ex ? ex.sentence : oc.why)}</div>
-    <div class="octitle">${controlHtml(s, 60)}</div>
-    <div class="ocsec"><h6>где это было</h6><div class="v">${where}</div></div>
-    <div class="ocsec"><h6>что пробовали</h6><div class="v ${attempts && attempts.length ? '' : 'none'}">${tried}</div></div>
-    <div class="ocsec"><h6>что решил скрипт</h6><div class="v">${esc(verdictOf(S.i))}</div></div>
-    <details class="ocraw"><summary>сырые данные</summary>
-      <div class="ocerr mono">${esc(s.error)}</div></details></div>`;
+// THE STAGE FOR A FAILED ACT. Screenshots structurally do not exist on the failure path, which is why
+// dom-skeleton.mjs was built and why trace writes `payload.skeleton` for every failure — but nothing
+// ever fetched it. One in-flight request at a time, keyed by the step, repainting when it lands.
+// trace writes the ref as `skel/<stem>.json`, which is exactly the server's `/skel/:file` route; the
+// shape is checked before it is used as a path so nothing from a trail can steer the request.
+const SKEL_REF = /^skel\/[A-Za-z0-9._-]+\.json$/;
+function loadSkeleton(step) {
+  const rel = step && step.skeleton;
+  if (!rel || !SKEL_REF.test(rel) || S.skelKey === rel) return;
+  S.skelKey = rel; S.skel = null;
+  const want = rel;
+  jget(`/api/runs/${S.runId}/${rel}`)
+    .then((sk) => { if (S.skelKey === want) { S.skel = sk; renderStage(); } })
+    .catch(() => { if (S.skelKey === want) { S.skel = null; renderStage(); } });
 }
 
 function renderStage() {
@@ -582,17 +423,27 @@ function renderStage() {
   $('#stageTitle').title = s ? `шаблон ${s.templateId} · ${s.route}` : '';
   if (!s) { wrap.innerHTML = '<div class="empty">нет шага</div>'; return; }
   const oc = outcomeOf(s);
-  if (oc) { // a blocked/failed act — explained outcome card + the before-frame if it was captured (so it is never blank)
+  if (oc) { // a blocked/failed act — explained outcome card + whatever evidence of the moment exists
     const g = graphForStep(s);
     const ex = explainFailure(anchorSource(s, nameGraph(s)), g);
     const sh = s.shots || {}, rel = sh.before || sh.after;
-    const shot = rel ? `<div class="frame"><img id="stageImg" src="${shotUrl(rel)}" alt="frame"></div>` : '<div class="noshot">кадр не снят для этого шага</div>';
-    wrap.innerHTML = `<div class="outcome tone-${oc.tone}">${failurePanel(s, ex, oc)}${shot}</div>`;
+    // A SCREENSHOT IS STRUCTURALLY IMPOSSIBLE HERE, so the DOM SKELETON is the stage — that is what
+    // the capture layer built it for (every pre-click gate throws before `capture.before`). It was
+    // written for all 39 failures of `fix1`, served by admin-server, and drawn by nobody.
+    loadSkeleton(s);
+    const skel = S.skelKey === s.skeleton && S.skel ? skeletonSvg(S.skel, sh.rect) : '';
+    const stage = rel ? `<div class="frame"><img id="stageImg" src="${shotUrl(rel)}" alt="frame"></div>`
+      : skel ? `<figure class="skelwrap">${skel}<figcaption>схема DOM на момент сбоя — скриншота на этом пути не бывает: отказ происходит до съёмки кадра. Красная рамка — где ожидался контрол.</figcaption></figure>`
+        : `<div class="noshot">${s.skeleton ? 'схема DOM загружается…' : stageNotice(S.steps)}</div>`;
+    wrap.innerHTML = `<div class="outcome tone-${oc.tone}">${failurePanel(s, ex, oc)}${stage}</div>`;
     const img = $('#stageImg'); if (img) img.onclick = () => { $('#lbImg').src = img.src; $('#lb').classList.add('open'); };
     return;
   }
   const sh = s.shots || {}, rel = S.frame === 'after' ? sh.after : sh.before;
-  if (!rel) { wrap.innerHTML = '<div class="placard">нет скриншота для этого кадра</div>'; return; }
+  // THE BLANK STAGE USED TO BLAME THE STEP («нет скриншота для этого кадра») when the fact is
+  // RUN-level: key-frames are opt-in (trace.mjs viewMode / BUGHUNTER_VIEW=1) and this run took none
+  // on ANY of its steps. stageNotice says which of the two it is, with the population attached.
+  if (!rel) { wrap.innerHTML = `<div class="placard">${stageNotice(S.steps)}</div>`; return; }
   wrap.innerHTML = `<div class="frame"><div class="box" id="rbox"></div><img id="stageImg" src="${shotUrl(rel)}" alt="frame"></div>`;
   const img = $('#stageImg'); img.onclick = () => { $('#lbImg').src = img.src; $('#lb').classList.add('open'); };
   img.onload = placeBox; if (img.complete) placeBox();
@@ -689,7 +540,7 @@ async function doDeleteRun() {
     const r = await fetch(api('/api/runs/' + id), { method: 'DELETE' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     closeConfirm();
-    if (S.runId === id) { S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; }
+    if (S.runId === id) { S.runId = null; S.run = null; S.events = []; S.steps = []; S.i = 0; S.pageFilter = null; S.sgSeq = null; S.sgGraph = null; S.instanceStats = null; S.skel = null; S.skelKey = null; }
     S.runs = S.runs.filter((x) => x.id !== id);
     if (typeof G !== 'undefined' && G.cache) G.cache.clear();
     await loadRuns();
@@ -728,32 +579,9 @@ function classifyEp(key) {
   return WRITE_RE.test(p) ? 'write' : 'read';
 }
 const epLabel = (k) => k.replace(/^\S+\s+/, '').replace('/api/', '').split('?')[0];
-// Human-readable page name from a route. Known routes get a curated label; unknown ones are prettified
-// (separators / camelCase → words, title-cased). An opaque trailing id (a profile hash) is dropped, but a
-// short 4-char tag is kept so two different profiles stay distinguishable rather than collapsing to one name.
-const ROUTE_NAMES = {
-  '/': 'Home', '/dashboard': 'Dashboard', '/profile': 'Profile', '/editprofile': 'Edit profile',
-  '/viewprofile': 'View profile', '/setting': 'Settings', '/settings': 'Settings', '/earnings': 'Earnings',
-  '/membership': 'Membership', '/referel': 'Referrals', '/referral': 'Referrals', '/support': 'Support',
-  '/call': 'Call', '/announcements': 'Announcements', '/community-signup': 'Community signup',
-  '/termsandconditions': 'Terms & conditions', '/payment_overview': 'Payment overview', '/post_ad': 'Post ad',
-  '/track_ad': 'Track ad', '/selectinfluencers': 'Select influencers', '/deletemyaccount': 'Delete my account',
-  '/dev': 'Dev', '/chat': 'Chat', '/notifications': 'Notifications', '/blocking': 'Blocking', '/stream': 'Stream',
-};
-function prettify(s) {
-  return String(s || '').replace(/[-_]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/\s+/g, ' ').trim().replace(/^\w/, (c) => c.toUpperCase());
-}
-function shortRoute(route) {
-  if (!route || route === '—') return route || '—';
-  const clean = route.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
-  if (ROUTE_NAMES[clean]) return ROUTE_NAMES[clean];
-  const segs = clean.split('/').filter(Boolean);
-  const base = ROUTE_NAMES['/' + (segs[0] || '')] || prettify(segs[0] || clean);
-  const tail = segs[segs.length - 1];
-  if (segs.length > 1 && /^[A-Za-z0-9=_-]{6,}$/.test(tail)) return base + ' ·' + tail.slice(0, 4); // opaque id → short tag
-  return base;
-}
+// shortRoute / ROUTE_NAMES / prettify moved to walk-view.mjs with the extraction — the graph tab and
+// the walk must label one page identically, and two copies is how they would stop.
+
 // A graph node's label. Icon-ligature noise is stripped, then displayName caps it — the SAME
 // truncator the walk and the pipeline use, so one control reads identically in all three views.
 // elLabelFull keeps the untruncated string for the tooltip.

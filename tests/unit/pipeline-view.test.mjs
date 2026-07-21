@@ -337,7 +337,10 @@ test('every placeholder explains itself instead of rendering blank', () => {
     const html = stubHtml(id, {});
     const s = STUBS[id];
     assert.ok(html.includes(s.title), `${id}: the placeholder does not name its section`);
-    assert.match(html, /раздел не построен/, `${id}: the placeholder does not admit it is unbuilt`);
+    // «экран не нарисован», not «раздел не построен»: per the stub rule (ADMIN-TRUTH-PLAN Stage 3) a
+    // stub names the FLOOR its gap is on and never claims data is absent that is present — all four
+    // sections have their data on disk today, so the honest admission is a missing SCREEN.
+    assert.match(html, /экран не нарисован/, `${id}: the placeholder does not admit its screen is unbuilt`);
     assert.ok(html.includes('—'), `${id}: with no run loaded the count must be '—'`);
     // It must say what is MISSING and what would FIX it — an empty state that only says "empty" is
     // the failure this section exists to correct.

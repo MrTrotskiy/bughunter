@@ -12,7 +12,9 @@
 //   foreign-Host request returns 200 → the "forbidden host" assertion goes red; (b) delete the
 //   tokenOk 403 guard → the no-token /api request returns 200 → the "token required" assertion
 //   goes red; (c) delete the `pipeline-shell.mjs` allowlist branch → the module 404s → the
-//   "pipeline-shell.mjs served" assertion goes red (the split-out chrome silently never mounts).
+//   "pipeline-shell.mjs served" assertion goes red (the split-out chrome silently never mounts);
+//   (d) delete the `walk-view.mjs` allowlist branch → the module 404s → the "walk-view.mjs served"
+//   assertion goes red (the split-out walk text silently never mounts).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -135,4 +137,11 @@ test('admin serves the capture trail behind a loopback + containment fence', asy
   assert.equal(shell.status, 200, 'pipeline-shell.mjs served (the split-out chrome module)');
   assert.match(shell.headers['content-type'], /javascript/, 'pipeline-shell served as javascript');
   assert.match(shell.body.toString(), /export function mountShell/, 'is the chrome module');
+
+  // walk-view.mjs — the walk's TEXT module split out of admin.html — is served the same way. A
+  // dropped allowlist branch 404s it under `script-src 'self'` and the walk mounts NOTHING.
+  const wv = await get(port, '/walk-view.mjs');
+  assert.equal(wv.status, 200, 'walk-view.mjs served (the split-out walk text module)');
+  assert.match(wv.headers['content-type'], /javascript/, 'walk-view served as javascript');
+  assert.match(wv.body.toString(), /export function kpiHtml/, 'is the walk text module');
 });
