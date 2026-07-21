@@ -47,6 +47,7 @@ Each live capability guard → test path (revert-verified).
 - a cookie/consent overlay is dismissed so the underlying control becomes reachable; a non-consent accept-text control is left alone — tests/live/overlay.test.mjs
 - the snapshot classifies each control's durable locator (testid/id/role-name/css) and gates test-id uniqueness (page-unique discriminator vs shared marker) — tests/live/locator.test.mjs
 - debug capture rides an act (before/after key-frames + rect + per-phase timings) WITHOUT perturbing causal attribution (real edge credited, in-window poll rejected) — tests/live/capture-causal.test.mjs
+- a SIGTERM/SIGINT-killed crawl stamps a PARTIAL conclusion on run.json (status != "running" + a `stopped` field) instead of leaving a phantom-running run with no conclusion — tests/live/signal-close.test.mjs
 - request/response BODY capture (opt-in) writes REDACTED bodies to the trail (files), keeps requests[] body-free, and re-proves the in-window poll is still rejected with capture ON; default OFF captures nothing; text/html is off-allowlist — tests/live/response-body.test.mjs
 - endCause freezes the kept-set (selectKept) BEFORE any body await, so a mid-await verdict flip adds no phantom edge (white-box tracker-seam) — tests/live/response-body.test.mjs
 - (unit) selectKept applies token + initiator + static filters synchronously (the kept-set decision is await-free) — tests/unit/select-kept.test.mjs
