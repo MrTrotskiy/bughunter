@@ -216,6 +216,10 @@ test('truncation is honest: the true total and a truncation marker when the samp
   assert.equal(p.truncated, true, 'the event is marked truncated when the sample list is capped');
   assert.ok(p.rejected.length < p.rejectedTotal,
     `the sample really is capped (${p.rejected.length} listed of ${p.rejectedTotal}) — else the marker is vacuous`);
-  assert.ok(p.rejected.every((r) => r.why === 'no-live-handle'),
-    'every listed loser carries the reason it lost, not merely its name');
+  // Every loser carries the REASON it lost — now a real resolve diagnosis (gone-from-dom / present-not-
+  // visible / wrong-template / not-probed) read off the per-strategy attempt record, NOT the old constant
+  // `no-live-handle` that collapsed every failure into one blind bucket (decisions.md 2026-07-22).
+  const RESOLVE_REASONS = new Set(['gone-from-dom', 'present-not-visible', 'wrong-template', 'not-probed', 'no-live-handle']);
+  assert.ok(p.rejected.every((r) => RESOLVE_REASONS.has(r.why)),
+    `every listed loser carries a real resolve diagnosis, not merely its name (got ${JSON.stringify(p.rejected.map((r) => r.why))})`);
 });
